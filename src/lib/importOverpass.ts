@@ -1,0 +1,190 @@
+import * as turf from "@turf/turf";
+import type { FeatureType, LatLng } from "../types/domain";
+
+// Tags we recognize -> our feature_type enum. `bunker` isn't here because it
+// needs the greenside/fairway heuristic (see classifyBunker below).
+const DIRECT_TAG_MAP: Record<string, FeatureType> = {
+  fairway: "fairway",
+  green: "green",
+  fringe: "fringe",
+  rough: "rough",
+  tee: "tee",
+  water_hazard: "hazard",
+  lateral_water_hazard: "hazard"
+};
+
+const GREENSIDE_BUNKER_THRESHOLD_YARDS = 30;
+
+export interface ParsedHole {
+  number: number;
+  par: number;
+  parInferred: boolean;
+  defaultYardage: number | null;
+}
+
+export interface ParsedFeature {
+  holeNumber: number;
+  featureType: FeatureType;
+  geometry: GeoJSON.Polygon;
+}
+
+export interface ParsedTeeBox {
+  holeNumber: number;
+  name: string;
+  location: LatLng;
+}
+
+export interface ParsedCourse {
+  name: string;
+  location: LatLng | null;
+  holes: ParsedHole[];
+  features: ParsedFeature[];
+  teeBoxes: ParsedTeeBox[];
+  warnings: string[];
+}
+
+function centroidLatLng(geom: GeoJSON.Geometry): LatLng {
+  const c = turf.centroid(turf.feature(geom));
+  const [lng, lat] = c.geometry.coordinates;
+  return { lat, lng };
+}
+
+function distanceYardsBetween(a: LatLng, b: LatLng): number {
+  return turf.distance([a.lng, a.lat], [b.lng, b.lat], { units: "yards" });
+}
+
+export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCourse {
+  const warnings: string[] = [];
+  const features = fc.features;
+
+  // --- 1. Course boundary / name ---
+  const boundary = features.find(
+    (f) => (f.properties as any)?.leisure === "golf_course" && (f.properties as any)?.name
+  ) ?? features.find((f) => (f.properties as any)?.landuse === "grass" && (f.properties as any)?.name);
+
+  const name = (boundary?.properties as any)?.name ?? "Imported Course";
+  const location = boundary ? centroidLatLng(boundary.geometry) : null;
+  if (!boundary) warnings.push("Couldn't find a course boundary feature — using a generic name and no location.");
+
+  // --- 2. Hole centerlines (golf=hole) ---
+  const holeLines = features.filter((f) => (f.properties as any)?.golf === "hole" && f.geometry.type === "LineString");
+
+  const holeLineByNumber = new Map<number, GeoJSON.Feature<GeoJSON.LineString>>();
+  let maxHoleNumber = 0;
+  for (const f of holeLines) {
+    const ref = parseInt((f.properties as any)?.ref, 10);
+    if (!Number.isFinite(ref)) continue;
+    holeLineByNumber.set(ref, f as GeoJSON.Feature<GeoJSON.LineString>);
+    maxHoleNumber = Math.max(maxHoleNumber, ref);
+  }
+  if (maxHoleNumber === 0) {
+    warnings.push("No golf=hole centerlines with a usable ref number were found — falling back to 18 holes, par 4, with no shape data.");
+    maxHoleNumber = 18;
+  }
+
+  // --- 3. Build Hole rows 1..maxHoleNumber, filling gaps where OSM has no centerline ---
+  const holes: ParsedHole[] = [];
+  const missingCenterlineHoles: number[] = [];
+  for (let n = 1; n <= maxHoleNumber; n++) {
+    const line = holeLineByNumber.get(n);
+    if (!line) {
+      missingCenterlineHoles.push(n);
+      holes.push({ number: n, par: 4, parInferred: true, defaultYardage: null });
+      continue;
+    }
+    const parTag = parseInt((line.properties as any)?.par, 10);
+    const par = Number.isFinite(parTag) ? parTag : 4;
+    const yardage = Math.round(turf.length(line, { units: "yards" }));
+    holes.push({ number: n, par, parInferred: !Number.isFinite(parTag), defaultYardage: yardage });
+  }
+  if (missingCenterlineHoles.length) {
+    warnings.push(
+      `Holes ${missingCenterlineHoles.join(", ")} have no OSM centerline — created as empty placeholders (par defaulted to 4). ` +
+        `Any fairway/green/bunker features that actually belong to them got approximately assigned to the nearest hole that does have a centerline; verify these manually once the course editor exists.`
+    );
+  }
+
+  // --- 4. Assign every other relevant polygon feature to the nearest hole centerline ---
+  const holeLineList = [...holeLineByNumber.entries()];
+  function nearestHoleNumber(point: GeoJSON.Feature<GeoJSON.Point>): { number: number; distanceMeters: number } | null {
+    let best: { number: number; distanceMeters: number } | null = null;
+    for (const [num, line] of holeLineList) {
+      const d = turf.pointToLineDistance(point, line, { units: "meters" });
+      if (!best || d < best.distanceMeters) best = { number: num, distanceMeters: d };
+    }
+    return best;
+  }
+
+  const rawFeatures: { holeNumber: number; featureType: FeatureType; geometry: GeoJSON.Polygon; centroid: LatLng }[] = [];
+  const bunkers: { geometry: GeoJSON.Polygon; centroid: LatLng; holeNumber: number }[] = [];
+  let lowConfidenceCount = 0;
+  let ignoredCount = 0;
+
+  for (const f of features) {
+    if (f === boundary) continue;
+    if (f.geometry.type !== "Polygon") continue;
+    const golfTag = (f.properties as any)?.golf as string | undefined;
+    if (!golfTag) continue;
+
+    const centroid = centroidLatLng(f.geometry);
+    const centroidPt = turf.point([centroid.lng, centroid.lat]);
+    const nearest = nearestHoleNumber(centroidPt);
+    if (!nearest) continue; // no centerlines at all — shouldn't happen given the maxHoleNumber fallback above
+    if (nearest.distanceMeters > 100) lowConfidenceCount++;
+
+    if (golfTag === "bunker") {
+      bunkers.push({ geometry: f.geometry, centroid, holeNumber: nearest.number });
+      continue;
+    }
+
+    const featureType = DIRECT_TAG_MAP[golfTag];
+    if (!featureType) {
+      ignoredCount++;
+      continue;
+    }
+    rawFeatures.push({ holeNumber: nearest.number, featureType, geometry: f.geometry, centroid });
+  }
+
+  // --- 5. Bunker greenside/fairway classification: distance from bunker centroid to nearest green centroid on the same hole ---
+  const greensByHole = new Map<number, LatLng[]>();
+  for (const rf of rawFeatures) {
+    if (rf.featureType !== "green") continue;
+    const arr = greensByHole.get(rf.holeNumber) ?? [];
+    arr.push(rf.centroid);
+    greensByHole.set(rf.holeNumber, arr);
+  }
+  for (const b of bunkers) {
+    const greens = greensByHole.get(b.holeNumber) ?? [];
+    const minDist = greens.length ? Math.min(...greens.map((g) => distanceYardsBetween(b.centroid, g))) : Infinity;
+    const featureType: FeatureType = minDist <= GREENSIDE_BUNKER_THRESHOLD_YARDS ? "bunker_greenside" : "bunker_fairway";
+    rawFeatures.push({ holeNumber: b.holeNumber, featureType, geometry: b.geometry, centroid: b.centroid });
+  }
+
+  if (lowConfidenceCount) {
+    warnings.push(`${lowConfidenceCount} feature(s) were more than 100m from any hole centerline — their hole assignment may be wrong.`);
+  }
+  if (ignoredCount) {
+    warnings.push(`Ignored ${ignoredCount} other OSM feature(s) not tracked by this app (cart paths, driving range, etc.).`);
+  }
+
+  // --- 6. Tee boxes: centroid point + name from `teebox` tag (color), separate from the tee polygon feature itself ---
+  const teeBoxes: ParsedTeeBox[] = [];
+  for (const f of features) {
+    if ((f.properties as any)?.golf !== "tee" || f.geometry.type !== "Polygon") continue;
+    const centroid = centroidLatLng(f.geometry);
+    const nearest = nearestHoleNumber(turf.point([centroid.lng, centroid.lat]));
+    if (!nearest) continue;
+    const teebox = (f.properties as any)?.teebox as string | undefined;
+    const name = teebox ? teebox.split(";").map((s) => s.trim()).join(" / ") : "Tee";
+    teeBoxes.push({ holeNumber: nearest.number, name, location: centroid });
+  }
+
+  return {
+    name,
+    location,
+    holes,
+    features: rawFeatures.map(({ holeNumber, featureType, geometry }) => ({ holeNumber, featureType, geometry })),
+    teeBoxes,
+    warnings
+  };
+}
