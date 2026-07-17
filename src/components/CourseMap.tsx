@@ -106,6 +106,13 @@ export function CourseMap({
 
   const [me, setMe] = useState<LatLng | null>(null);
   const [target, setTarget] = useState<LatLng | null>(initialTarget ?? null);
+  // Dragging the tee marker (§ below) updates this local-only override — never written to
+  // IndexedDB, and reset whenever fallbackOrigin itself changes (new hole, or a different tee set
+  // picked from the dropdown) so a stale drag from a previous tee never lingers.
+  const [teeOverride, setTeeOverride] = useState<LatLng | null>(null);
+  useEffect(() => {
+    setTeeOverride(null);
+  }, [fallbackOrigin]);
   // Controlled if the parent passes settingTarget/onSettingTargetChange (Grint-style round page
   // drives this from its own right-side pill button); otherwise CourseMap manages it itself
   // (demo mode, which renders its own internal "Set target" trigger).
@@ -116,9 +123,12 @@ export function CourseMap({
 
   // Live GPS if it's actually near this hole; otherwise fall back to the tee box (or
   // whatever fallbackOrigin was supplied) so the map/camera/line still make sense when
-  // you're browsing a hole you're not standing on (DESIGN.md's >300m rule).
+  // you're browsing a hole you're not standing on (DESIGN.md's >300m rule). The >300m proximity
+  // check itself stays against the REAL fallbackOrigin (not a dragged one) since it's about
+  // real-world position validity; teeOverride only substitutes for the line/camera origin once
+  // we've already decided live GPS isn't in play.
   const usingLiveGps = !!me && (!fallbackOrigin || distanceMeters(me, fallbackOrigin) <= FAR_FROM_HOLE_METERS);
-  const origin = usingLiveGps ? me : (fallbackOrigin ?? me);
+  const origin = usingLiveGps ? me : (teeOverride ?? fallbackOrigin ?? me);
 
   const stateRef = useRef({
     origin,
@@ -184,6 +194,23 @@ export function CourseMap({
       bearing: initialBearing
     });
     mapRef.current = map;
+
+    // Auto-fit the tee->green bounds instead of a fixed zoom, so short Par 3s and long Par 5s
+    // both frame sensibly. Asymmetric top/bottom padding biases the fit so the tee sits near the
+    // bottom of the screen and the green near the top, matching the tilted-camera convention
+    // above. duration: 0 makes this instant, not an animated fly-in, since it's the initial
+    // camera setup (same "no visible spin/tilt on first frame" goal as the constructor options).
+    if (fallbackOrigin && initialTarget) {
+      const bounds = new mapboxgl.LngLatBounds();
+      bounds.extend([fallbackOrigin.lng, fallbackOrigin.lat]);
+      bounds.extend([initialTarget.lng, initialTarget.lat]);
+      map.fitBounds(bounds, {
+        bearing: initialBearing,
+        pitch: initialPitch,
+        padding: { top: 80, bottom: 120, left: 50, right: 50 },
+        duration: 0
+      });
+    }
 
     map.on("load", () => ensureSources(map));
 
@@ -320,6 +347,7 @@ export function CourseMap({
     updateLineAndLabels();
     updateBunkerSource();
     updateDispersionEllipse();
+    updateWaterWarning();
   }
 
   // Populates the (invisible) bunker source from holeFeatures whenever it changes — a separate
@@ -352,27 +380,27 @@ export function CourseMap({
     };
   }
 
-  // Checks the current aim path (origin -> dots -> target) against every "hazard" (water)
-  // feature's boundary for crossings, reporting the closest one to origin (yards) via
-  // onWaterWarning and a floating map label. Called from updateLineAndLabels since it depends on
-  // the exact same path geometry.
-  function updateWaterWarning(pathCoords: number[][] | null) {
+  // Finds the closest point on the boundary of any "hazard" (water) feature to the current
+  // origin (tee/GPS), regardless of where the aim line/dots currently point — a proximity
+  // warning ("is there water near me"), not a crossing check. Reports it via onWaterWarning and a
+  // floating map marker. Called whenever origin changes (target/origin camera effect).
+  function updateWaterWarning() {
     const map = mapRef.current;
     if (!map) return;
     const { origin: curOrigin, holeFeatures, onWaterWarning: curOnWaterWarning } = stateRef.current;
     const hazards = (holeFeatures ?? []).filter((f) => f.featureType === "hazard");
 
     let closest: { yards: number; point: LatLng } | null = null;
-    if (curOrigin && pathCoords && pathCoords.length >= 2 && hazards.length > 0) {
-      const aimLine = turf.lineString(pathCoords);
+    if (curOrigin && hazards.length > 0) {
+      const originPt = turf.point([curOrigin.lng, curOrigin.lat]);
       for (const h of hazards) {
-        const boundary = turf.polygonToLine(turf.polygon(h.geometry.coordinates));
-        const hits = turf.lineIntersect(aimLine, boundary as GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString>);
-        for (const pt of hits.features) {
-          const [lng, lat] = pt.geometry.coordinates;
-          const yards = distanceYards(curOrigin, { lat, lng });
-          if (!closest || yards < closest.yards) closest = { yards: Math.round(yards), point: { lat, lng } };
-        }
+        const boundary = turf.polygonToLine(turf.polygon(h.geometry.coordinates)) as GeoJSON.Feature<
+          GeoJSON.LineString | GeoJSON.MultiLineString
+        >;
+        const nearest = turf.nearestPointOnLine(boundary, originPt, { units: "yards" });
+        const yards = nearest.properties.dist as number;
+        const [lng, lat] = nearest.geometry.coordinates;
+        if (!closest || yards < closest.yards) closest = { yards: Math.round(yards), point: { lat, lng } };
       }
     }
 
@@ -450,9 +478,8 @@ export function CourseMap({
     }
 
     const source = map.getSource(LINE_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
-    let coordinates: number[][] | null = null;
     if (source && curOrigin && curTarget) {
-      coordinates = [
+      const coordinates = [
         [curOrigin.lng, curOrigin.lat],
         ...dots.map((d) => [d.point.lng, d.point.lat]),
         [curTarget.lng, curTarget.lat]
@@ -467,8 +494,6 @@ export function CourseMap({
       const toNext = next ? Math.round(distanceYards(d.point, next)) : null;
       d.label.textContent = `${fromPrev ?? "?"}y / ${toNext ?? "?"}y`;
     });
-
-    updateWaterWarning(coordinates);
   }
 
   function addMeasureMarker(point: LatLng) {
@@ -525,21 +550,39 @@ export function CourseMap({
     }
   }, [me]);
 
-  // --- Tee box marker: a fixed dot at fallbackOrigin so the line has a visible start point
-  // even when origin is live GPS (which moves) instead of the tee itself ---
+  // --- Tee box marker: draggable to temporarily nudge the line/yardages/camera (e.g. playing
+  // from a spot slightly off the mapped tee box), but never persisted — dragging only updates
+  // teeOverride (local state, reset whenever fallbackOrigin changes), never IndexedDB. ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !fallbackOrigin) return;
+    const displayPoint = teeOverride ?? fallbackOrigin;
 
     if (!teeMarkerRef.current) {
       const el = document.createElement("div");
-      el.style.cssText =
-        "width:12px;height:12px;border-radius:50%;background:#ffffff;border:3px solid #2f5c3d;box-shadow:0 0 4px rgba(0,0,0,.4);";
-      teeMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat([fallbackOrigin.lng, fallbackOrigin.lat]).addTo(map);
+      el.className = "map-touch-target";
+      el.style.cssText = "width:44px;height:44px;display:flex;align-items:center;justify-content:center;";
+
+      const dot = document.createElement("div");
+      dot.className = "map-touch-dot";
+      dot.style.cssText =
+        "width:12px;height:12px;border-radius:50%;background:#ffffff;border:3px solid #2f5c3d;box-shadow:0 0 4px rgba(0,0,0,.4);cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
+      el.appendChild(dot);
+
+      const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
+        .setLngLat([displayPoint.lng, displayPoint.lat])
+        .addTo(map);
+
+      marker.on("drag", () => {
+        const pos = marker.getLngLat();
+        setTeeOverride({ lat: pos.lat, lng: pos.lng });
+      });
+
+      teeMarkerRef.current = marker;
     } else {
-      teeMarkerRef.current.setLngLat([fallbackOrigin.lng, fallbackOrigin.lat]);
+      teeMarkerRef.current.setLngLat([displayPoint.lng, displayPoint.lat]);
     }
-  }, [fallbackOrigin]);
+  }, [fallbackOrigin, teeOverride]);
 
   // --- Target marker + line + camera (tee-at-bottom, tilted view) ---
   useEffect(() => {
@@ -589,6 +632,7 @@ export function CourseMap({
     }
 
     updateLineAndLabels();
+    updateWaterWarning();
 
     if (origin && target && !isDraggingTargetRef.current) {
       // Orient camera tee-at-bottom / green-at-top with a tilt, so the hole fits a smaller
@@ -604,10 +648,11 @@ export function CourseMap({
     onDistanceUpdate?.(distanceToTarget);
   }, [distanceToTarget, onDistanceUpdate]);
 
-  // Refreshes the (invisible) bunker hit-test source whenever the hole changes, and clears any
-  // stale bunker card left over from the previous hole.
+  // Refreshes the (invisible) bunker hit-test source and the water-proximity check whenever the
+  // hole's features change, and clears any stale bunker card left over from the previous hole.
   useEffect(() => {
     updateBunkerSource();
+    updateWaterWarning();
     setBunkerCard(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holeFeatures]);

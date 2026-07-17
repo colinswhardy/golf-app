@@ -6,26 +6,29 @@
   - [x] Pass `onDistanceUpdate` callback from `src/components/CourseMap.tsx` to `src/pages/RoundMapPage.tsx`
   - [x] Render floating right-side vertical capsule action buttons
   - [x] Replace bottom sheet triggers with a sleek bottom profile/action bar
+  - [x] Add tooltips/titles to all pill buttons on the right side
 - [x] Implement Bottom-Left HUD Cards
-  - [x] Render Front/Center/Back green distance card in the bottom-left container in `src/pages/RoundMapPage.tsx`
-  - [x] Render Water Warning card (`⚠️ Water: XXXy`) in the bottom-left container
+  - [x] Render Front/Center/Back green distance card in the bottom-left container in `src/pages/RoundMapPage.tsx` (remove pace/time line)
+  - [x] Render Closest Water Warning card (`⚠️ Water: XXXy`) in the bottom-left container
 - [x] Implement Segmented Map Lines, HUD, and Tee Box Dot
   - [x] Adjust `hudStyle` in `src/components/CourseMap.tsx` to hide or move it out of the top
   - [x] Add `teeMarkerRef` to render a white circle dot with a dark green border on the tee box in `src/components/CourseMap.tsx`
+  - [x] Set `teeMarkerRef` to `draggable: true` but do not save position updates to IndexedDB (only update local state coordinates)
   - [x] Implement `updateLineAndLabels()` in `src/components/CourseMap.tsx` to sort measure markers by distance and route the line through them
   - [x] Format distance labels to read `XXXy / YYYy` where the first `XXXy` is the distance **from the previous point on the line**
   - [x] Bind `updateLineAndLabels()` to marker drag, initialization, and delete events
 - [x] Water Hazards & Bunker Warnings
-  - [x] Add `@turf/line-intersect` checks for water features in `src/components/CourseMap.tsx`
-  - [x] Place a small circular red marker with a white exclamation mark `!` at the boundary crossing point
-  - [x] Expose water intersection warning distance via callback to bottom-left HUD
-  - [x] Implement hover/click handlers on bunker polygons to display Front/Middle/Back yardages in a card
+  - [x] Scan boundaries of water features to find the closest point to the origin/tee box coordinate in `src/components/CourseMap.tsx`
+  - [x] Expose water warning distance via callback to bottom-left HUD
+  - [x] Implement click handlers on bunker polygons to display Front/Middle/Back yardages in a card
 - [x] Segmented Line Spawning & 5-Dot Limit
   - [x] Update map click listener in `src/components/CourseMap.tsx` to scan all path segments for tap coordinates
   - [x] Limit the total number of placed layup dots to 5 maximum
-- [x] Automatic Fairway Layup Points
-  - [x] Project the fairway centroid onto the centerline to find the midpoint in `src/components/CourseMap.tsx`
-  - [x] Automatically place the first layup dot at this fairway midpoint on load
+- [x] Automatic 275y Fairway Layup Points
+  - [x] For holes < 300 yards or Par 3s: Do not place an automatic dot
+  - [x] For holes >= 300 yards: Project a coordinate 275 yards down the centerline. If inside the fairway, place the dot there. Else, place it at the fairway point closest to the tee
+- [x] Auto-Fit Viewport Zoom
+  - [x] Replace constructor zoom with `fitBounds()` using bearing and paddings to position the tee near the bottom and green near the top
 - [x] Implement Draggable Greens & Pin Locations
   - [x] Change `targetMarkerRef` initialization to `draggable: true` in `src/components/CourseMap.tsx`
   - [x] Bind drag listeners to update target coordinates in state and invoke `onTargetChange` callback
@@ -59,7 +62,9 @@
   - [x] Render draggable confidence ellipse overlay around green target in `src/components/CourseMap.tsx`
 - [x] Correct OSM Green & Tee Polygon Mapping
   - [x] Update `parseOverpassGeoJson` in `src/lib/importOverpass.ts` to map greens to the centerline end and tee boxes to the centerline start
+  - [x] Check green-centerline coordinates to auto-reverse backward-drawn OSM lines in `src/lib/importOverpass.ts`
   - [x] Update `parseOverpassGeoJson` to generate fallback tee boxes from centerline starts for courses without tee polygons
+  - [x] Expand water hazard query tags in `src/lib/importOverpass.ts` to scan waterway, natural=water, streams, creeks, and drains
 - [x] Implement Teebox Selector UI & Backmost Default
   - [x] Add `selectedTeeName` state and persistent localStorage key in `src/pages/RoundMapPage.tsx`
   - [x] Render a dropdown selector in the round setup view for selecting teebox sets (excluding generic "Tee" if color sets exist)
@@ -81,15 +86,28 @@
 
 ## Extra notes from this turn's verification
 
-- Auto-fairway-miss classification (`lib/fairway.ts`) computed against the tee->green line rather
-  than a real OSM centerline (same rationale as the automatic layup dot, see DESIGN.md §17):
-  inside the fairway polygon -> "hit"; outside its downrange span along that line -> "short"/
-  "long"; otherwise "left"/"right" by the sign of `offlineYards`.
-- Verified end-to-end with a scripted GPS move (Playwright `context.setGeolocation`) to a point
-  computed 150y downrange / 45y right of a real hole's tee->green line: the app auto-classified it
-  "right" the instant Shot 2 was logged, and the Hole Out sheet correctly pre-selected the "Right"
-  tile — confirms the coordinate math end-to-end, not just that a value gets set.
-- Did not apply the "Premium Sleek Theme" (pitch-black `#000000` + emerald borders) to every
-  container in the app — only to the header capsule and the new notes-preview snippet, since those
-  are the ones implementation_plan.md's item 1 concretely ties the theme change to; task.md's
-  actual checkboxes don't call for a full app-wide reskin, and one wasn't attempted this turn.
+- Bumped the reseed migration key to `caddyshot_reseeded_v3` so existing installs pick up the
+  expanded water tags and centerline auto-reversal — both are parser-time fixes that only take
+  effect on a fresh import.
+- The two bundled courses' raw Overpass exports don't happen to contain any water feature tagged
+  only as `natural=water`/`waterway=*` without an accompanying `golf=water_hazard` tag — so the
+  expanded water-tag detection has no *visible* effect on Tarandowah/Innerkip today (hazard count
+  unchanged at 5). Verified correct anyway via a synthetic unit test (`npx tsx` against a fake
+  Overpass FeatureCollection with a `waterway=stream` LineString and a bare `natural=water`
+  polygon, neither carrying a `golf=*` tag) — both were correctly classified as `"hazard"`
+  features. This will matter for future course imports.
+- Centerline auto-reversal verified the same way: a synthetic backward-drawn line (`[green-end,
+  tee-end]` instead of `[tee-end, green-end]`) with no `golf=tee` polygon (forcing tee-box
+  synthesis from the centerline's start) produced a tee box at the *real* tee coordinate, not the
+  green end — confirming the reversal ran before that synthesis step.
+- fitBounds' framing under a tilted (pitch 55°) camera doesn't put the tee flush against the very
+  bottom edge the way a flat 2D map's padding would — Mapbox's bounds-fitting for a pitched camera
+  is an approximation, not an exact per-pixel placement. Used the plan's exact padding values
+  (`top:80, bottom:120, left:50, right:50`); the visible result is a clear improvement over the
+  old fixed `zoom:17` (adapts to each hole's actual length) with the green consistently landing
+  near the top, even if the tee isn't pinned to the literal bottom edge on every hole.
+- Did not implement implementation_plan.md's "Tap-Away Dismissal" (tapping the map closes notes/
+  club-grid popups) — it isn't a task.md checkbox, and no dispersion/tee/set-target pill semantics
+  were renamed to match the plan's alternate icon-meaning table, for the same reason noted in
+  prior turns (staying consistent with this app's actual shipped feature set, not the plan's
+  illustrative one).

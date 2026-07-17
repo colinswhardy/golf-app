@@ -49,7 +49,10 @@ let seedingPromise: Promise<void> | null = null;
 // wipes unconditionally — a course can have tee boxes and still have them (or its greens)
 // mapped to the wrong hole, which tee-box *presence* alone can't detect. Bump this key if a
 // future fix needs everyone re-seeded again.
-const RESEED_VERSION_KEY = "caddyshot_reseeded_v2";
+// v3: expanded water-hazard tag detection (natural=water, water=*, waterway=*, creek/stream/
+// drain names) and auto-reversal of backward-drawn hole centerlines (Tarandowah holes 1, 9, 11)
+// — both parser fixes that only take effect on a fresh import.
+const RESEED_VERSION_KEY = "caddyshot_reseeded_v3";
 
 /**
  * Imports any bundled course that isn't already in Dexie. Safe to call on every

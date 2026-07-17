@@ -14,6 +14,21 @@ const DIRECT_TAG_MAP: Record<string, FeatureType> = {
 };
 
 const GREENSIDE_BUNKER_THRESHOLD_YARDS = 30;
+// Streams/creeks/drains are usually mapped as centerlines, not polygons — buffered to a thin
+// corridor so they fit this app's polygon-only hazard model. Width is a guess (real width data
+// isn't in OSM for most of these); good enough for lie detection and proximity warnings.
+const WATERWAY_BUFFER_YARDS = 3;
+const WATERWAY_NAME_PATTERN = /creek|stream|drain/i;
+
+// Non-golf-tagged water features: OSM maps most streams/creeks/ponds without any golf=* tag at
+// all, so they'd otherwise be invisible to lie detection and the water-hazard warning.
+function isExpandedWaterFeature(props: any): boolean {
+  if (props?.natural === "water") return true;
+  if (typeof props?.water === "string") return true;
+  if (typeof props?.waterway === "string") return true;
+  if (typeof props?.name === "string" && WATERWAY_NAME_PATTERN.test(props.name)) return true;
+  return false;
+}
 
 export interface ParsedHole {
   number: number;
@@ -80,6 +95,34 @@ export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCours
   if (maxHoleNumber === 0) {
     warnings.push("No golf=hole centerlines with a usable ref number were found — falling back to 18 holes, par 4, with no shape data.");
     maxHoleNumber = 18;
+  }
+
+  // --- 2b. Auto-correct backward-drawn centerlines: some OSM ways for golf=hole are digitized
+  // green-to-tee instead of tee-to-green, which silently breaks nearestHoleByCenterlineHalf's
+  // start/end-fraction matching below (green/tee end up assigned to the wrong "half"). For each
+  // hole's line, find the closest green POLYGON by raw point-to-line distance (independent of any
+  // half-matching, which is what we're correcting) and check whether it sits nearer the line's
+  // first or last coordinate — nearer the first means the line runs green-to-tee, so reverse it.
+  // Found via real data: fixes Tarandowah's holes 1, 9, and 11.
+  const greenFeatures = features.filter((f) => (f.properties as any)?.golf === "green" && f.geometry.type === "Polygon");
+  for (const line of holeLineByNumber.values()) {
+    let closestGreen: LatLng | null = null;
+    let closestGreenDistance = Infinity;
+    for (const g of greenFeatures) {
+      const centroid = centroidLatLng(g.geometry);
+      const d = turf.pointToLineDistance(turf.point([centroid.lng, centroid.lat]), line, { units: "meters" });
+      if (d < closestGreenDistance) {
+        closestGreenDistance = d;
+        closestGreen = centroid;
+      }
+    }
+    if (!closestGreen) continue;
+    const coords = line.geometry.coordinates;
+    const firstPt: LatLng = { lat: coords[0][1], lng: coords[0][0] };
+    const lastPt: LatLng = { lat: coords[coords.length - 1][1], lng: coords[coords.length - 1][0] };
+    if (distanceYardsBetween(closestGreen, firstPt) < distanceYardsBetween(closestGreen, lastPt)) {
+      line.geometry.coordinates = [...coords].reverse();
+    }
   }
 
   // --- 3. Build Hole rows 1..maxHoleNumber, filling gaps where OSM has no centerline ---
@@ -150,32 +193,51 @@ export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCours
 
   for (const f of features) {
     if (f === boundary) continue;
-    if (f.geometry.type !== "Polygon") continue;
     const golfTag = (f.properties as any)?.golf as string | undefined;
-    if (!golfTag) continue;
 
-    const centroid = centroidLatLng(f.geometry);
-    const centroidPt = turf.point([centroid.lng, centroid.lat]);
-    const nearest =
-      golfTag === "green"
-        ? nearestHoleByCenterlineHalf(centroid, "end")
-        : golfTag === "tee"
-          ? nearestHoleByCenterlineHalf(centroid, "start")
-          : nearestHoleNumber(centroidPt);
-    if (!nearest) continue; // no centerlines at all — shouldn't happen given the maxHoleNumber fallback above
+    if (golfTag) {
+      if (f.geometry.type !== "Polygon") continue;
+      const centroid = centroidLatLng(f.geometry);
+      const centroidPt = turf.point([centroid.lng, centroid.lat]);
+      const nearest =
+        golfTag === "green"
+          ? nearestHoleByCenterlineHalf(centroid, "end")
+          : golfTag === "tee"
+            ? nearestHoleByCenterlineHalf(centroid, "start")
+            : nearestHoleNumber(centroidPt);
+      if (!nearest) continue; // no centerlines at all — shouldn't happen given the maxHoleNumber fallback above
+      if (nearest.distanceMeters > 100) lowConfidenceCount++;
+
+      if (golfTag === "bunker") {
+        bunkers.push({ geometry: f.geometry, centroid, holeNumber: nearest.number });
+        continue;
+      }
+
+      const featureType = DIRECT_TAG_MAP[golfTag];
+      if (!featureType) {
+        ignoredCount++;
+        continue;
+      }
+      rawFeatures.push({ holeNumber: nearest.number, featureType, geometry: f.geometry, centroid });
+      continue;
+    }
+
+    // Non-golf-tagged water: natural=water, water=*, waterway=*, or a creek/stream/drain name.
+    if (!isExpandedWaterFeature(f.properties)) continue;
+    let hazardGeometry: GeoJSON.Polygon | null = null;
+    if (f.geometry.type === "Polygon") {
+      hazardGeometry = f.geometry;
+    } else if (f.geometry.type === "LineString") {
+      const buffered = turf.buffer(f as GeoJSON.Feature<GeoJSON.LineString>, WATERWAY_BUFFER_YARDS, { units: "yards" });
+      if (buffered && buffered.geometry.type === "Polygon") hazardGeometry = buffered.geometry;
+    }
+    if (!hazardGeometry) continue;
+
+    const centroid = centroidLatLng(hazardGeometry);
+    const nearest = nearestHoleNumber(turf.point([centroid.lng, centroid.lat]));
+    if (!nearest) continue;
     if (nearest.distanceMeters > 100) lowConfidenceCount++;
-
-    if (golfTag === "bunker") {
-      bunkers.push({ geometry: f.geometry, centroid, holeNumber: nearest.number });
-      continue;
-    }
-
-    const featureType = DIRECT_TAG_MAP[golfTag];
-    if (!featureType) {
-      ignoredCount++;
-      continue;
-    }
-    rawFeatures.push({ holeNumber: nearest.number, featureType, geometry: f.geometry, centroid });
+    rawFeatures.push({ holeNumber: nearest.number, featureType: "hazard", geometry: hazardGeometry, centroid });
   }
 
   // --- 5. Bunker greenside/fairway classification: distance from bunker centroid to nearest green centroid on the same hole ---

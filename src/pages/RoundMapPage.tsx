@@ -18,15 +18,16 @@ import { detectLie } from "../lib/lie";
 import { classifyFairwayResult } from "../lib/fairway";
 import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE, type DispersionEllipseSpec } from "../components/CourseMap";
 import { HoleScoreSheet, ScorecardSheet, ShotSheet, relativeToParLabel } from "../components/RoundSheets";
-import { distanceMeters, distanceYards, nearestPointOnSegment } from "../lib/geo";
+import { bearingDegrees, distanceMeters, distanceYards, fromDownrangeOffline } from "../lib/geo";
 import { getClubDispersion } from "../lib/dispersion";
 import type { Club, FairwayResult, LatLng, Lie, Round } from "../types/domain";
 
 const GREENSIDE_BUNKER_MAX_YARDS = 40;
 const FAR_FROM_HOLE_METERS = 300;
 const GREEN_HALF_DEPTH_YARDS = 15;
-const PACE_TICK_MS = 15000;
 const TEE_PREFERENCE_KEY = "caddyshot_tee_preference";
+const AUTO_LAYUP_MIN_HOLE_YARDS = 300;
+const AUTO_LAYUP_DOWNRANGE_YARDS = 275;
 
 // Personal, single-user app — no auth/profile system exists (or is needed) to derive this from.
 const PLAYER_NAME = "Colin";
@@ -124,18 +125,6 @@ export function RoundMapPage() {
     if (name) localStorage.setItem(TEE_PREFERENCE_KEY, name);
     else localStorage.removeItem(TEE_PREFERENCE_KEY);
   }
-
-  // --- Pace-of-play timer: minutes elapsed since arriving at the current hole ---
-  const holeStartRef = useRef<number>(Date.now());
-  const [elapsedMinutes, setElapsedMinutes] = useState(0);
-  useEffect(() => {
-    holeStartRef.current = Date.now();
-    setElapsedMinutes(0);
-  }, [currentHole?.id]);
-  useEffect(() => {
-    const interval = setInterval(() => setElapsedMinutes(Math.floor((Date.now() - holeStartRef.current) / 60000)), PACE_TICK_MS);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (isDemo || !courseId) return;
@@ -258,17 +247,29 @@ export function RoundMapPage() {
     return backmost.location;
   }, [teeBoxes, selectedTeeName, greenCentroid, currentHole]);
 
-  // Suggested first layup dot: the fairway centroid, projected onto the tee->green line (the
-  // closest thing this app has to a real hole centerline at round-time — see DESIGN.md). Same
-  // stale-hole-data guard as greenCentroid/fallbackOrigin above, since CourseMap only acts on
-  // this once per mount.
+  // Suggested first layup dot: no dot on Par 3s or holes under 300y (nothing to lay up to);
+  // otherwise a point AUTO_LAYUP_DOWNRANGE_YARDS down the tee->green line (the closest thing this
+  // app has to a real hole centerline at round-time — see DESIGN.md) if that lands inside the
+  // fairway polygon, else the fairway point closest to the tee. Same stale-hole-data guard as
+  // greenCentroid/fallbackOrigin above, since CourseMap only acts on this once per mount.
   const fairwayLayupPoint = useMemo(() => {
     if (!holeFeatures?.length || !currentHole || !fallbackOrigin || !greenCentroid) return null;
     if (!holeFeatures.every((f) => f.holeId === currentHole.id)) return null;
+    if (currentHole.par === 3) return null;
+    if (currentHole.defaultYardage !== null && currentHole.defaultYardage < AUTO_LAYUP_MIN_HOLE_YARDS) return null;
     const fairway = holeFeatures.find((f) => f.featureType === "fairway");
     if (!fairway) return null;
-    const centroid = centroidLatLng(fairway.geometry);
-    return nearestPointOnSegment(fallbackOrigin, greenCentroid, centroid).point;
+
+    const bearing = bearingDegrees(fallbackOrigin, greenCentroid);
+    const candidate = fromDownrangeOffline(fallbackOrigin, bearing, AUTO_LAYUP_DOWNRANGE_YARDS, 0);
+    const fairwayPolygon = turf.polygon(fairway.geometry.coordinates);
+    if (turf.booleanPointInPolygon(turf.point([candidate.lng, candidate.lat]), fairwayPolygon)) {
+      return candidate;
+    }
+    const boundary = turf.polygonToLine(fairwayPolygon) as GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString>;
+    const nearest = turf.nearestPointOnLine(boundary, turf.point([fallbackOrigin.lng, fallbackOrigin.lat]));
+    const [lng, lat] = nearest.geometry.coordinates;
+    return { lat, lng };
   }, [holeFeatures, currentHole, fallbackOrigin, greenCentroid]);
 
   const maxHoleNumber = holes?.length ? Math.max(...holes.map((h) => h.number)) : 18;
@@ -374,9 +375,6 @@ export function RoundMapPage() {
             <span style={distanceLabelStyle}>FRONT</span>
             <span>{frontDistance ?? "—"}</span>
           </div>
-          <div style={paceTimerStyle}>
-            {elapsedMinutes}m · Hole {currentHole.number}
-          </div>
           {waterWarningYards !== null && <div style={waterWarningRowStyle}>⚠️ Water: {waterWarningYards}y</div>}
         </div>
       )}
@@ -387,6 +385,7 @@ export function RoundMapPage() {
             onClick={() => setSettingTarget((s) => !s)}
             style={{ ...pillButtonStyle, ...(settingTarget ? pillButtonActiveStyle : {}) }}
             aria-label="Set target"
+            title="Set Target"
           >
             🎯
           </button>
@@ -394,6 +393,7 @@ export function RoundMapPage() {
             onClick={() => setMapStyle((s) => (s === SATELLITE_STYLE ? OUTDOORS_STYLE : SATELLITE_STYLE))}
             style={pillButtonStyle}
             aria-label="Toggle map style"
+            title="Toggle Map Type"
           >
             🗺️
           </button>
@@ -401,16 +401,18 @@ export function RoundMapPage() {
             onClick={() => setNotesOpen((v) => !v)}
             style={{ ...pillButtonStyle, ...(notesOpen ? pillButtonActiveStyle : {}) }}
             aria-label="Hole notes"
+            title="Hole Notes"
           >
             📝
           </button>
-          <button onClick={() => setOpenSheet("scorecard")} style={pillButtonStyle} aria-label="Scorecard">
+          <button onClick={() => setOpenSheet("scorecard")} style={pillButtonStyle} aria-label="Scorecard" title="Score Summary">
             📋
           </button>
           <button
             onClick={() => setDispersionPickerOpen((v) => !v)}
             style={{ ...pillButtonStyle, ...(dispersionEllipse ? pillButtonActiveStyle : {}) }}
             aria-label="Dispersion overlay"
+            title="Dispersion Overlay"
           >
             📐
           </button>
@@ -615,8 +617,8 @@ const navButtonStyle: React.CSSProperties = {
 };
 
 // Bottom-left, just above the bottom profile bar (same "bottom: 76" convention as
-// teeSelectorStyle below) — stacks the green front/center/back distances, pace timer, and (when
-// active) the water warning row in one translucent container.
+// teeSelectorStyle below) — stacks the green front/center/back distances and (when active) the
+// water warning row in one translucent container.
 const bottomLeftHudStyle: React.CSSProperties = {
   position: "absolute",
   bottom: 76,
@@ -644,15 +646,6 @@ const distanceLabelStyle: React.CSSProperties = {
   fontSize: 10,
   opacity: 0.7,
   letterSpacing: 0.5
-};
-
-const paceTimerStyle: React.CSSProperties = {
-  marginTop: 6,
-  paddingTop: 6,
-  borderTop: "1px solid rgba(255,255,255,0.2)",
-  fontSize: 11,
-  opacity: 0.8,
-  whiteSpace: "nowrap"
 };
 
 const rightPillStyle: React.CSSProperties = {

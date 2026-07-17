@@ -209,6 +209,16 @@ bunker polygon later.
   `greenCentroid && fallbackOrigin` being resolved (not just `currentHole`) so those values are
   real by the time the map-init effect runs once on mount; the effect is mount-only, so mounting
   early would permanently lock the camera onto a null/flat fallback.
+  - **Auto-fit zoom**: instead of a fixed `zoom: 17` (too tight on long Par 5s, too loose on short
+    Par 3s), the constructor calls `map.fitBounds([fallbackOrigin, initialTarget], { bearing,
+    pitch, padding: { top: 80, bottom: 120, left: 50, right: 50 }, duration: 0 })` right after
+    creation — asymmetric padding biases the fit so the tee sits nearer the bottom and the green
+    nearer the top. `duration: 0` keeps it instant (no fly-in animation), matching the "no visible
+    spin/tilt on the first frame" goal the pre-rotated constructor options already established.
+    Caveat: Mapbox's bounds-fitting for a *pitched* camera is an approximation, not an exact
+    per-pixel placement — the green consistently lands near the top, but the tee isn't pinned to
+    the literal bottom edge on every hole. Falls back to the old fixed `zoom: 17` centered view
+    when `fallbackOrigin`/`initialTarget` aren't both available yet (e.g. demo mode).
 - **Tile caching**: flagging a real constraint here — Mapbox GL JS for **web** doesn't have the
   first-party "offline region" support that Mapbox's native iOS/Android SDKs have; that feature is
   SDK-only. Given you're fine with "spotty signal, not zero signal," the plan is a service-worker
@@ -229,8 +239,9 @@ bunker polygon later.
   Yards"`, no icons — pitch-black background with a thin emerald border, per the "sleek theme"
   pass; not extended to every other container, since only the header and the notes-preview
   snippet, §15, were concretely tied to that change), bottom-left front/center/back distance
-  capsule + pace timer (§17), right utility pill (set target / map style / notes / scorecard /
-  dispersion), bottom profile+score bar —
+  capsule (§17), right utility pill (set target / map style / notes / scorecard / dispersion —
+  each button also carries a native `title` attribute so its purpose is discoverable on
+  hover/long-press), bottom profile+score bar —
   and passes `hideInternalHud` to suppress `CourseMap`'s own built-in HUD box, which otherwise
   still exists as the default for simpler callers (currently just demo mode, `/round/demo`, which
   has no hole context to build real chrome around). Two pieces of `CourseMap` state became
@@ -264,6 +275,17 @@ bunker polygon later.
   fires `onTargetChange` with the settled point so `RoundMapPage` can persist it as
   `roundHoles.pinLocation`. Tap-to-set-target (§10) fires the same callback, so either way of moving
   the pin persists.
+- **Draggable tee marker (never persisted)**: unlike the target/measure markers, the tee marker's
+  drag only updates a local `teeOverride` state — there's no `onTeeChange`-style callback and
+  nothing is written to Dexie. `origin` resolves as `usingLiveGps ? me : (teeOverride ??
+  fallbackOrigin ?? me)`, so a drag temporarily re-anchors the line/yardages/camera (e.g. playing
+  from just off the mapped tee marker) without corrupting the real tee-box data. `teeOverride`
+  resets to `null` whenever `fallbackOrigin` itself changes — new hole, or a different tee set
+  picked from the dropdown — so a stale drag from a previous tee never lingers; since `CourseMap`
+  also fully remounts per hole (`key={currentHole.id}`), a hole change resets it for free anyway.
+  The `>300m live-GPS proximity check` stays keyed off the *real* `fallbackOrigin`, not
+  `teeOverride` — that check is about real-world position validity, which a temporary drag
+  shouldn't be able to spoof.
 
 ## 9. In-Round Measuring Tool
 
@@ -354,16 +376,21 @@ the selected round's actual recorded shots.
 Course polygons are still never rendered visually (§8's satellite-only design) — hazards and
 bunkers are used purely as invisible geometry, in two different ways:
 
-- **Water hazards**: `updateWaterWarning()` in `CourseMap.tsx` runs on every call to
-  `updateLineAndLabels()` (i.e. whenever the aim path changes — origin/target move, a measure dot
-  is added/dragged/removed). It builds the current path (`origin -> dots -> target`) as a
-  `turf.lineString`, converts each `hazard`-type `HoleFeature` polygon to its boundary line via
-  `turf.polygonToLine`, and checks `turf.lineIntersect` against each. The *closest* crossing to
-  origin (if any) is reported two ways: `onWaterWarning?(yards)` for the parent to show its own HUD
-  row (`RoundMapPage` renders "⚠️ Water: XXXy" as the last row of its bottom-left HUD, §17), and a
-  small circular red Mapbox `Marker` with a white "!" placed directly at the crossing point on the
-  map itself — no yardage text on the marker itself, by design; that's the HUD's job. A DOM marker
-  is simpler than a symbol layer for a single, occasionally-repositioned icon like this.
+- **Water hazards — closest-point proximity, not a crossing check**: `updateWaterWarning()` in
+  `CourseMap.tsx` finds the closest point on the boundary of *any* `hazard`-type `HoleFeature`
+  polygon to the current `origin` (tee/GPS) — `turf.polygonToLine` converts each hazard to its
+  boundary, `turf.nearestPointOnLine` finds the closest point on it to `origin`, closest wins
+  across all hazards on the hole. This is deliberately a "how close is water to me" proximity
+  warning, not "does my current aim line cross water" — earlier versions used
+  `turf.lineIntersect` against the aim path, but that only fired when actively aiming through a
+  hazard, missing hazards that are simply *nearby* (e.g. lurking down the right side) while you're
+  aiming elsewhere. Called whenever `origin` changes (the target/origin camera effect) or
+  `holeFeatures` updates, not tied to the measuring-line path at all anymore. Reported two ways:
+  `onWaterWarning?(yards)` for the parent's own HUD row (`RoundMapPage` renders "⚠️ Water: XXXy" as
+  the last row of its bottom-left HUD, §17), and a small circular red Mapbox `Marker` with a white
+  "!" placed directly at the closest point on the map itself — no yardage text on the marker
+  itself, by design; that's the HUD's job. A DOM marker is simpler than a symbol layer for a
+  single, occasionally-repositioned icon like this.
 - **Bunkers**: an invisible (`fill-opacity: 0`) GeoJSON fill layer (`BUNKER_SOURCE_ID`) holds every
   `bunker_greenside`/`bunker_fairway` feature for the current hole — invisible but still
   hit-testable via `map.queryRenderedFeatures`, same trick used for hazard-free click detection
@@ -463,20 +490,29 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
 
 ## 17. Round Map Layout — Bottom-Left HUD & Automatic Fairway Layup
 
-- **Bottom-left HUD**: the green front/center/back distance card, the pace timer, and (when
-  present) the water warning row all live in one stacked translucent container
-  (`bottomLeftHudStyle`) positioned `bottom: 76` / `left: 12` — just above the bottom profile bar,
-  using the same "76px clearance" convention `teeSelectorStyle` already used on the opposite
-  corner. Previously the distance card sat top-left and the water warning was a separate top-center
-  badge; consolidating them bottom-left keeps the top of the screen (header + right pill) free of
-  secondary chrome.
+- **Bottom-left HUD**: the green front/center/back distance card and (when present) the water
+  warning row live in one stacked translucent container (`bottomLeftHudStyle`) positioned
+  `bottom: 76` / `left: 12` — just above the bottom profile bar, using the same "76px clearance"
+  convention `teeSelectorStyle` already used on the opposite corner. Previously the distance card
+  sat top-left and the water warning was a separate top-center badge; consolidating them
+  bottom-left keeps the top of the screen (header + right pill) free of secondary chrome. A
+  pace-of-play timer (`elapsedMinutes` since arriving at the hole) used to live here too — removed
+  along with its state/effects, since nothing else in the app reads that value.
 - **Notes popover placement**: `notesBoxStyle` is `top: 76` / `right: 64` — vertically aligned with
   the right pill's first button, offset left just enough to clear the pill's own width, so opening
   notes reads as "a panel next to the tool that opened it" rather than a disconnected overlay.
-- **Automatic fairway layup dot**: on mount, if the current hole has a `fairway`-type
-  `HoleFeature` and no measure dots exist yet, `CourseMap` places one automatically at the fairway
-  centroid *projected onto the tee→green line* (`nearestPointOnSegment`) — a sensible starting
-  layup suggestion, still fully draggable/deletable like any manually-placed dot afterward.
+- **Automatic 275y fairway layup dot**: on mount, if the current hole isn't a Par 3 and its
+  `defaultYardage` isn't under 300y, and it has a `fairway`-type `HoleFeature` and no measure dots
+  exist yet, `CourseMap` places one automatically — the layup suggestion is still fully
+  draggable/deletable like any manually-placed dot afterward. Computed in `RoundMapPage`
+  (`fairwayLayupPoint`):
+  1. Project a point exactly 275 yards down the tee→green line (`fromDownrangeOffline(tee,
+     bearing, 275, 0)`).
+  2. If that point falls inside the fairway polygon (`turf.booleanPointInPolygon`), use it as-is.
+  3. Otherwise (a dogleg, a fairway that doesn't reach 275y, etc.), fall back to the point on the
+     fairway polygon's boundary closest to the tee (`turf.nearestPointOnLine` against
+     `turf.polygonToLine(fairway)`) — still a reasonable "aim here first" suggestion even when the
+     fixed-distance point misses the short grass entirely.
   - **No real centerline at round-time**: OSM's `golf=hole` centerline geometry (§ Course Import)
     is used only transiently during import — it's never persisted as a `HoleFeature` or any other
     Dexie row, only its *derived* outputs (yardage, par, tee/green hole-assignment) survive. Rather
@@ -493,8 +529,8 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
     currentHole.id)` guard already proven for `greenCentroid`/`fallbackOrigin`, and passed down as
     a single ready-made `autoLayupPoint: LatLng | null` prop. `CourseMap` only needs to know "place
     this point once when it shows up," not re-derive freshness itself. Also depends only on stable
-    per-hole values (tee, green) rather than live GPS, so it doesn't re-fire on every position tick
-    the way a naive `[origin, target, holeFeatures]` dependency array would have.
+    per-hole values (tee, green, par, yardage) rather than live GPS, so it doesn't re-fire on every
+    position tick the way a naive `[origin, target, holeFeatures]` dependency array would have.
 
 ## Course Import — Overpass → Dexie
 
@@ -525,10 +561,31 @@ persistence). Key decisions, since they weren't fully nailed down in the schema 
     unrelated neighboring hole's vertex happens to be closer by coincidence. Verified against the
     real Tarandowah/Innerkip data before shipping either version — see the code comment on
     `nearestHoleByCenterlineHalf` for how.
+  - **Backward-drawn centerlines**: `nearestHoleByCenterlineHalf`'s start/end-fraction matching
+    silently breaks if a `golf=hole` way was digitized green-to-tee instead of tee-to-green (real
+    bug found on Tarandowah's holes 1, 9, and 11). Corrected *before* any half-matching runs: for
+    each hole's line, find the closest `golf=green` polygon by raw `turf.pointToLineDistance`
+    (independent of half-matching, since that's what's being fixed) and check whether it sits
+    nearer the line's first or last coordinate — nearer the first means the line runs
+    green-to-tee, so its coordinates are reversed in place. Verified with a synthetic backward
+    line + no `golf=tee` polygon (forcing tee-box synthesis from the centerline's start, §
+    below) — the synthesized tee lands at the real tee coordinate only if the reversal ran first.
 - **Bunker greenside/fairway split**: OSM only has `golf=bunker`, no side info. Classified by
   distance from the bunker centroid to the nearest green centroid *on the same hole*: ≤30y →
   greenside, else fairway. A heuristic, not authoritative — fine to be wrong occasionally until the
   course editor exists to fix it by hand.
+- **Water hazards beyond `golf=water_hazard`**: OSM frequently maps ponds/streams/creeks with no
+  `golf=*` tag at all (`natural=water`, `waterway=stream`, etc.), which the original golf-tag-only
+  loop silently skipped. Non-golf-tagged features are now also checked against `natural=water`,
+  any `water=*`/`waterway=*` value, or a name containing "creek"/"stream"/"drain" — matches become
+  `hazard`-type features same as `golf=water_hazard`. Polygon geometry (ponds) is used directly;
+  LineString geometry (stream/creek centerlines, which is how OSM usually maps them) is buffered
+  into a 3-yard-wide corridor via `turf.buffer` first, since this app's hazard model is
+  polygon-only — a guess at width, since OSM rarely records real stream widths, but good enough for
+  lie detection and the proximity warning (§12). Neither bundled course's raw Overpass export
+  happens to contain a *non-golf-tagged* water feature (their ponds are already tagged
+  `golf=water_hazard`), so this has no visible effect on Tarandowah/Innerkip today — verified
+  correct via a synthetic Overpass FeatureCollection instead; matters for future course imports.
 - **Tee boxes**: `golf=tee` polygons produce *two* things — a `hole_features` row (feature_type
   `tee`, real polygon, for rendering) and a `tee_boxes` row (centroid point, name from the `teebox`
   color tag, semicolon-joined if a tee serves multiple colors) for later "which tee are you playing"
@@ -550,7 +607,8 @@ persistence). Key decisions, since they weren't fully nailed down in the schema 
 - **Re-seeding on a fix**: `seedBundledCourses()` has two independent triggers for wiping and
   re-importing an already-present bundled course, since neither alone catches every case a fix
   might need: (1) zero tee boxes present (detects the tee-box-fallback gap above), and (2) a
-  version-keyed `localStorage` flag (currently `caddyshot_reseeded_v2`) that unconditionally wipes
+  version-keyed `localStorage` flag (currently `caddyshot_reseeded_v3` — bumped from `v2` for the
+  backward-centerline and expanded-water-tag parser fixes above) that unconditionally wipes
   once regardless of tee-box presence — needed because a course can have tee boxes and still have
   them, or its greens, mapped to the *wrong hole*, which tee-box presence alone can't detect. Bump
   the version key (`v3`, `v4`, ...) the next time a parser fix needs everyone re-seeded again.
