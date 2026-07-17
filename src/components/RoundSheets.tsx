@@ -115,11 +115,17 @@ export function ScorecardSheet(props: { entries: { holeNumber: number; par: numb
   );
 }
 
-/** Bottom sheet for holing out: fairway result (Par 4+ only) + putts (with per-putt distances) + score (prefilled from recorded shots + putts). */
+/** Bottom sheet for holing out: fairway result (Par 4+ only, pre-selected from Shot 2's
+ * auto-detected landing spot but overridable) + putts (with per-putt distances) + score
+ * (prefilled from recorded shots + putts). */
 export function HoleScoreSheet(props: {
   holeNumber: number;
   par: number;
   recordedShots: number;
+  /** Auto-detected the moment Shot 2 was logged (see RoundMapPage.handleSaveShot) — pre-selects
+   * the fairway tile below, still fully overridable by tapping a different one. Null if there
+   * wasn't enough geometry to auto-detect (e.g. no mapped fairway polygon for this hole). */
+  autoDetectedFairwayResult?: FairwayResult | null;
   onSave: (
     score: number,
     putts: number,
@@ -132,7 +138,7 @@ export function HoleScoreSheet(props: {
   const [scoreTouched, setScoreTouched] = useState(false);
   const [score, setScore] = useState(props.recordedShots + 2);
   const [distances, setDistances] = useState<string[]>(["", ""]);
-  const [fairwayResult, setFairwayResult] = useState<FairwayResult | null>(null);
+  const [fairwayResult, setFairwayResult] = useState<FairwayResult | null>(props.autoDetectedFairwayResult ?? null);
 
   const effectiveScore = scoreTouched ? score : props.recordedShots + putts;
   const showFairway = props.par >= 4;

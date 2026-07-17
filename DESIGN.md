@@ -225,8 +225,12 @@ bunker polygon later.
   this by accident (still `null` on the very first synchronous mount), but anything already real at
   mount time (tee, target) hits it immediately.
 - **Chrome vs. map split (Grint-style layout)**: `RoundMapPage` owns all the surrounding UI —
-  back button, ordinal hole header (`getHoleOrdinal`), left front/center/back distance capsule +
-  pace timer, right utility pill (set target / map style / scorecard), bottom profile+score bar —
+  back button, a slim single-line hole header (`"${getHoleOrdinal(n)} - Par ${par} - ${yardage}
+  Yards"`, no icons — pitch-black background with a thin emerald border, per the "sleek theme"
+  pass; not extended to every other container, since only the header and the notes-preview
+  snippet, §15, were concretely tied to that change), bottom-left front/center/back distance
+  capsule + pace timer (§17), right utility pill (set target / map style / notes / scorecard /
+  dispersion), bottom profile+score bar —
   and passes `hideInternalHud` to suppress `CourseMap`'s own built-in HUD box, which otherwise
   still exists as the default for simpler callers (currently just demo mode, `/round/demo`, which
   has no hole context to build real chrome around). Two pieces of `CourseMap` state became
@@ -248,9 +252,9 @@ bunker polygon later.
   14px for the target). A thumb covers the 44px target without obscuring its own view of the
   smaller dot inside it. `src/index.css`'s `.map-touch-target:active .map-touch-dot` rule (with
   `!important`, since it overrides the dot's own inline `style.cssText`) pops the visual dot up
-  30px and turns it green while pressed, so it stays visible under the finger during a drag.
-  `user-select: none` is set globally in `index.css` too — this is a touch-driven map app, not a
-  document, so double-taps must never trigger the OS text-selection menu.
+  55px, grows it 1.25x, and turns it green while pressed, so it stays visible under the finger
+  during a drag. `user-select: none` is set globally in `index.css` too — this is a touch-driven
+  map app, not a document, so double-taps must never trigger the OS text-selection menu.
 - **Draggable target marker (custom pin locations)**: the red target marker is `draggable: true`;
   `drag` calls `setTarget()` on every tick (same render path as tap-to-set, so the line/labels/
   `onDistanceUpdate` all update live with no special-casing), while `dragstart`/`dragend` toggle an
@@ -392,9 +396,25 @@ a round, so this is worth a small special case.
 ## 14. Fairway Miss Tracking
 
 `RoundHole.fairwayResult?: FairwayResult | null` (`"hit" | "left" | "right" | "short" | "long"`).
-`HoleScoreSheet` renders a 5-tile selector for holes with `par >= 4` only (no fairway to miss on a
-Par 3); `RoundMapPage.handleSaveHole` threads the selected value through to
-`roundRepo.saveHoleResult`, which persists it alongside score/putts in the same write.
+
+- **Auto-detected the instant Shot 2 is logged** (`lib/fairway.ts`'s `classifyFairwayResult`), Par
+  4+ only, and only when the hole has a mapped `fairway` `HoleFeature` to test against — Shot 2's
+  start point is the same coordinate `recordShot` already closes Shot 1's `endPoint` out to, so no
+  extra GPS read is needed. Classification: inside the fairway polygon
+  (`turf.booleanPointInPolygon`) -> `"hit"`; otherwise projected into the tee→green
+  (downrange, offline) frame via `toDownrangeOffline` — past either end of the *fairway polygon's
+  own* downrange span along that line -> `"short"`/`"long"`; still within that span but off to the
+  side -> `"left"`/`"right"` by the sign of `offlineYards`. Written immediately via
+  `roundRepo.setRoundHoleFairwayResult`, independent of whether the hole is finished yet.
+- **Still overridable**: `HoleScoreSheet` renders the 5-tile selector for `par >= 4` holes with the
+  auto-detected value (passed in as `autoDetectedFairwayResult`) pre-selected — tapping any other
+  tile overrides it, and whatever the sheet shows at Save Hole time is what
+  `roundRepo.saveHoleResult` finally persists (the Shot-2-time write is just an early pre-fill, not
+  the source of truth).
+- Verified against real course data with a scripted GPS move to a point computed 150y downrange /
+  45y right of an actual hole's tee→green line — the app classified it `"right"` and the sheet
+  pre-selected "Right", confirming the coordinate math end-to-end rather than just that some value
+  gets set.
 
 ## 15. Per-Hole Notes
 
@@ -404,6 +424,9 @@ course/hole is played, regardless of which round. Editable via a togglable texta
 by a `📝` button in the right-side utility pill (originally lived in the header — moved to the pill
 so it groups with the rest of the round-map tools, §17); writes are debounced 600ms after the last
 keystroke (`lib/courseRepo.updateHoleNotes`) rather than requiring an explicit save action.
+Whenever a note exists and the popover is closed, a truncated one-line preview pill
+("📝 Notes: ...") floats centered above the bottom bar — tapping it just calls the same
+`setNotesOpen(true)` the pill button does, so there's no separate open path to keep in sync.
 
 ## 16. Dispersion Overlay & Settings
 

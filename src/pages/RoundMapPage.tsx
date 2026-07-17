@@ -10,10 +10,12 @@ import {
   getOrCreateRoundHole,
   recordShot,
   saveHoleResult,
+  setRoundHoleFairwayResult,
   setRoundHolePinLocation,
   startRound
 } from "../lib/roundRepo";
 import { detectLie } from "../lib/lie";
+import { classifyFairwayResult } from "../lib/fairway";
 import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE, type DispersionEllipseSpec } from "../components/CourseMap";
 import { HoleScoreSheet, ScorecardSheet, ShotSheet, relativeToParLabel } from "../components/RoundSheets";
 import { distanceMeters, distanceYards, nearestPointOnSegment } from "../lib/geo";
@@ -36,16 +38,16 @@ function centroidLatLng(geom: GeoJSON.Polygon): LatLng {
 }
 
 function getHoleOrdinal(n: number): string {
-  if (n % 100 >= 11 && n % 100 <= 13) return `${n}TH`;
+  if (n % 100 >= 11 && n % 100 <= 13) return `${n}th`;
   switch (n % 10) {
     case 1:
-      return `${n}ST`;
+      return `${n}st`;
     case 2:
-      return `${n}ND`;
+      return `${n}nd`;
     case 3:
-      return `${n}RD`;
+      return `${n}rd`;
     default:
-      return `${n}TH`;
+      return `${n}th`;
   }
 }
 
@@ -293,6 +295,18 @@ export function RoundMapPage() {
         ? "bunker_fairway"
         : lie;
     await recordShot({ roundHoleId, clubId, point, lie: resolvedLie });
+
+    // Auto-detect the fairway result the instant Shot 2 lands (this point is both Shot 1's end
+    // and Shot 2's start) — Par 4+ only, only when there's a mapped fairway to test against.
+    // Still overridable later in the hole-out sheet (HoleScoreSheet pre-selects this value).
+    if (shotCount === 1 && currentHole && currentHole.par >= 4 && fallbackOrigin && greenCentroid && holeFeatures) {
+      const fairway = holeFeatures.find((f) => f.featureType === "fairway");
+      if (fairway) {
+        const result = classifyFairwayResult(fairway.geometry, fallbackOrigin, greenCentroid, point);
+        await setRoundHoleFairwayResult(roundHoleId, result);
+      }
+    }
+
     setOpenSheet(null);
   }
 
@@ -332,13 +346,10 @@ export function RoundMapPage() {
           <button onClick={() => setHoleNumber((n) => Math.max(1, n - 1))} disabled={holeNumber <= 1} style={navButtonStyle}>
             ‹
           </button>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 19, fontWeight: 700 }}>⛳ {getHoleOrdinal(currentHole.number)}</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
-              Par {currentHole.par}
-              {currentHole.defaultYardage ? ` · ${currentHole.defaultYardage} Yards` : ""}
-            </div>
-          </div>
+          <span>
+            {getHoleOrdinal(currentHole.number)} - Par {currentHole.par}
+            {currentHole.defaultYardage ? ` - ${currentHole.defaultYardage} Yards` : ""}
+          </span>
           <button
             onClick={() => setHoleNumber((n) => Math.min(maxHoleNumber, n + 1))}
             disabled={holeNumber >= maxHoleNumber}
@@ -417,6 +428,12 @@ export function RoundMapPage() {
             autoFocus
           />
         </div>
+      )}
+
+      {!isDemo && currentHole && !notesOpen && currentHole.notes && (
+        <button onClick={() => setNotesOpen(true)} style={notesPreviewStyle}>
+          📝 Notes: {currentHole.notes}
+        </button>
       )}
 
       {!isDemo && currentHole && dispersionPickerOpen && (
@@ -538,6 +555,7 @@ export function RoundMapPage() {
           holeNumber={currentHole.number}
           par={currentHole.par}
           recordedShots={shotCount}
+          autoDetectedFairwayResult={currentRoundHole?.fairwayResult}
           onSave={handleSaveHole}
           onClose={() => setOpenSheet(null)}
         />
@@ -565,6 +583,8 @@ const backButtonStyle: React.CSSProperties = {
   boxShadow: "0 2px 6px rgba(0,0,0,.4)"
 };
 
+// Slim single-line "1st - Par 4 - 397 Yards" pill, no icons — pitch-black background with a thin
+// emerald border for the sleeker high-contrast look, per the redesign.
 const holeHeaderStyle: React.CSSProperties = {
   position: "absolute",
   top: 12,
@@ -574,10 +594,15 @@ const holeHeaderStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 12,
-  background: "rgba(11,15,12,0.75)",
+  background: "#000000",
+  border: "1px solid #16a34a",
   color: "#eef2ef",
-  padding: "6px 16px",
-  borderRadius: 999
+  padding: "7px 16px",
+  borderRadius: 999,
+  fontSize: 13,
+  fontWeight: 600,
+  letterSpacing: 0.3,
+  whiteSpace: "nowrap"
 };
 
 const navButtonStyle: React.CSSProperties = {
@@ -741,6 +766,28 @@ const notesBoxStyle: React.CSSProperties = {
   border: "1px solid #2f5c3d",
   borderRadius: 12,
   padding: 8
+};
+
+// Centered, just above the bottom bar (same "bottom: 76" convention used elsewhere) — a truncated
+// one-line preview of the saved note; tapping it opens the same popover as the pill's 📝 button.
+// Capped narrower than the full width so it doesn't reach the bottom-left HUD or tee selector.
+const notesPreviewStyle: React.CSSProperties = {
+  position: "absolute",
+  bottom: 76,
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 2,
+  maxWidth: "min(280px, 56vw)",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  background: "#000000",
+  border: "1px solid #16a34a",
+  color: "#eef2ef",
+  padding: "7px 14px",
+  borderRadius: 999,
+  fontSize: 12,
+  cursor: "pointer"
 };
 
 const notesTextareaStyle: React.CSSProperties = {

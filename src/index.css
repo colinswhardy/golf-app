@@ -8,9 +8,10 @@
 
 /* Draggable map dots (measure markers, the target/pin marker) are wrapped in an invisible 44px
    touch target so a thumb doesn't obscure the 16px visual dot it's dragging; while pressed, the
-   visual dot pops up 30px above the touch point and turns green so it stays visible. */
+   visual dot pops up 55px above the touch point, grows slightly, and turns green so it stays
+   visible under the finger. */
 .map-touch-target:active .map-touch-dot {
-  transform: translateY(-30px) !important;
+  transform: translateY(-55px) scale(1.25) !important;
   background: #22c55e !important;
   border-color: #16a34a !important;
 }

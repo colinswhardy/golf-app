@@ -1,8 +1,8 @@
 # Enhancement & Review Tasks
 
-- [x] Redesign Round Map Layout (Grint Style)
+- [x] Redesign Round Map Layout (Grint Style & Sleek Theme)
   - [x] Add circular white back button at top left in `src/pages/RoundMapPage.tsx`
-  - [x] Implement centered `getHoleOrdinal(n)` header capsule in `src/pages/RoundMapPage.tsx`
+  - [x] Implement centered slim `getHoleOrdinal(n) - Par Y - ZZZ Yards` header capsule in `src/pages/RoundMapPage.tsx`
   - [x] Pass `onDistanceUpdate` callback from `src/components/CourseMap.tsx` to `src/pages/RoundMapPage.tsx`
   - [x] Render floating right-side vertical capsule action buttons
   - [x] Replace bottom sheet triggers with a sleek bottom profile/action bar
@@ -32,9 +32,9 @@
   - [x] Resolve active target to `pinLocation ?? greenCentroid` inside `src/pages/RoundMapPage.tsx`
   - [x] Save pin location coordinate updates to `roundHoles` table in IndexedDB via `onTargetChange` callback
 - [x] Map Gesture & Touch Target Optimizations
-  - [x] Set `user-select: none` globally in `src/index.css` to disable copy-paste highlighting
+  - [x] Set `user-select: none; -webkit-user-select: none;` globally in `src/index.css` to disable copy-paste highlighting
   - [x] Wrap visual map dots in a `44px` invisible touch target in `src/components/CourseMap.tsx`
-  - [x] Apply CSS translation on drag (`:active`) to offset visual dots 30px above fingers and color them green
+  - [x] Apply CSS translation on drag (`:active`) to offset visual dots 55px above fingers and color them green
 - [x] Migrate Custom Clubs Seed List
   - [x] Modify `ensureDefaultClubs()` in `src/lib/courseRepo.ts` to clear and re-seed the new club list
 - [x] Update Shot Saving & GPS Fallback
@@ -45,13 +45,15 @@
   - [x] In `ShotSheet`, check if `props.detectedLie === "green"` and if so, save immediately with `"Putter"` (no club step)
   - [x] Add 2-column Lie grid and 3-column Club grid tiles
   - [x] Add click-to-transition flow (one-tap lie changes to club, one-tap club triggers instant save)
-- [x] Fairway Miss Tracking
+- [x] Auto-Detect Fairway Misses & Result Tracking
   - [x] Add `fairwayResult` field to `RoundHole` schema in `src/types/domain.ts`
-  - [x] Render 5-way miss selector (`Hit | Left | Right | Short | Long`) in `src/components/RoundSheets.tsx`
-- [x] Right Capsule Notes Popover
+  - [x] Auto-calculate miss direction (hit/left/right/short/long) using coordinate and line projection math when Shot 2 is logged
+  - [x] Render 5-way miss selector in `src/components/RoundSheets.tsx` showing the auto-detected result as pre-selected
+- [x] Right Capsule Notes Popover & Bottom Preview Snippet
   - [x] Add `notes` field to `Hole` schema in `src/types/domain.ts`
   - [x] Add `📝` notes button to the right utility pill in `src/pages/RoundMapPage.tsx`
-  - [x] Render a togglable, auto-saving notes text card adjacent to the right-side capsule
+  - [x] Render a togglable, auto-saving notes text card adjacent to the right-side capsule (ensuring no overlaps)
+  - [x] Render a notes preview card at the bottom of the map screen that opens the notes popover on click
 - [x] Dispersion Overlay & Settings
   - [x] Add dispersion ranges editing view to `src/pages/SettingsPage.tsx`
   - [x] Render draggable confidence ellipse overlay around green target in `src/components/CourseMap.tsx`
@@ -79,15 +81,15 @@
 
 ## Extra notes from this turn's verification
 
-- Automatic fairway layup point uses the tee→green straight line as a stand-in "centerline" (via
-  `nearestPointOnSegment`), not a real OSM hole centerline — that geometry is only used transiently
-  during course import and was never persisted to Dexie. Extending the schema to persist it was out
-  of scope for this turn; see DESIGN.md §17 for the reasoning.
-- Confirmed via real-browser screenshot: the bottom-left HUD (BACK/CTR/FRONT + pace timer +
-  `⚠️ Water: XXXy`), the minimalist red "!" water marker, the notes popover next to the right pill,
-  and the auto-placed fairway layup dot all render correctly together on the same hole.
-- The "Target Selector Dismiss" / rename-the-pill-icons parts of implementation_plan.md's right-side
-  breakdown (🎯 becoming "Reset Pin", 📐 becoming a dedicated "Ruler" toggle, 🏌️ moving into the
-  pill) were not in task.md's checklist and would have broken the already-shipped dispersion-picker
-  (📐) and set-target (🎯) features without a corresponding checkbox asking for that — left as-is,
-  only the explicitly-requested 📝 notes button was added to the pill.
+- Auto-fairway-miss classification (`lib/fairway.ts`) computed against the tee->green line rather
+  than a real OSM centerline (same rationale as the automatic layup dot, see DESIGN.md §17):
+  inside the fairway polygon -> "hit"; outside its downrange span along that line -> "short"/
+  "long"; otherwise "left"/"right" by the sign of `offlineYards`.
+- Verified end-to-end with a scripted GPS move (Playwright `context.setGeolocation`) to a point
+  computed 150y downrange / 45y right of a real hole's tee->green line: the app auto-classified it
+  "right" the instant Shot 2 was logged, and the Hole Out sheet correctly pre-selected the "Right"
+  tile — confirms the coordinate math end-to-end, not just that a value gets set.
+- Did not apply the "Premium Sleek Theme" (pitch-black `#000000` + emerald borders) to every
+  container in the app — only to the header capsule and the new notes-preview snippet, since those
+  are the ones implementation_plan.md's item 1 concretely ties the theme change to; task.md's
+  actual checkboxes don't call for a full app-wide reskin, and one wasn't attempted this turn.

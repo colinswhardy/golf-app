@@ -158,3 +158,13 @@ export async function setRoundHolePinLocation(roundHoleId: string, point: LatLng
   await db.roundHoles.put(updated);
   await queueOutbox("roundHoles", "upsert", updated);
 }
+
+/** Sets the fairway result for a hole in this round — used both for the auto-detected value
+ * written the moment Shot 2 is logged, and the hole-out sheet's final (possibly overridden) one. */
+export async function setRoundHoleFairwayResult(roundHoleId: string, result: FairwayResult | null): Promise<void> {
+  const rh = await db.roundHoles.get(roundHoleId);
+  if (!rh) return;
+  const updated: RoundHole = { ...rh, fairwayResult: result, updatedAt: now() };
+  await db.roundHoles.put(updated);
+  await queueOutbox("roundHoles", "upsert", updated);
+}
