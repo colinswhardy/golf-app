@@ -70,15 +70,21 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
     if (!TOKEN || !containerRef.current || mapRef.current) return;
     mapboxgl.accessToken = TOKEN;
 
-    const startCenter = initialTarget ?? fallbackOrigin ?? { lat: 43.55, lng: -80.2 };
+    // Tee-at-bottom from the first frame: center on the tee (not the green), pre-rotated
+    // and tilted toward the green, so there's no visible spin/tilt once the second effect
+    // (target/origin) below computes the same camera and calls easeTo with matching values.
+    // Demo mode (no real tee box yet) degrades to a flat, unrotated default view.
+    const initialCenter = fallbackOrigin ?? initialTarget ?? { lat: 43.55, lng: -80.2 };
+    const initialBearing = fallbackOrigin && initialTarget ? bearingDegrees(fallbackOrigin, initialTarget) : 0;
+    const initialPitch = fallbackOrigin && initialTarget ? 55 : 0;
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: "mapbox://styles/mapbox/satellite-streets-v12",
-      center: [startCenter.lng, startCenter.lat],
+      center: [initialCenter.lng, initialCenter.lat],
       zoom: 17,
-      pitch: 0,
-      bearing: 0
+      pitch: initialPitch,
+      bearing: initialBearing
     });
     mapRef.current = map;
 

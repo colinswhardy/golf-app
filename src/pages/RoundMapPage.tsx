@@ -161,7 +161,13 @@ export function RoundMapPage() {
 
       {isDemo ? (
         <CourseMap />
-      ) : currentHole ? (
+      ) : currentHole && greenCentroid && fallbackOrigin ? (
+        // Gated on the derived greenCentroid/fallbackOrigin themselves, not just on the
+        // holeFeatures/teeBoxes queries having "resolved" — Dexie's live-query hook briefly
+        // emits a genuinely-empty [] for each before converging on the real rows, so a
+        // resolved-vs-undefined check opens one render too early. CourseMap's map-init effect
+        // only runs once (on mount), so mounting before these are the real values would
+        // permanently lock the camera onto the null/flat fallback instead of tee-facing-green.
         <CourseMap
           key={currentHole.id}
           initialTarget={greenCentroid}

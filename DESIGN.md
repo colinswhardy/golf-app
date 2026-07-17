@@ -204,6 +204,11 @@ bunker polygon later.
 - **Camera**: `bearing` set to the tee→green azimuth so the hole always renders bottom-to-top;
   `pitch` gives the tilted/foreshortened view so the full hole fits a smaller vertical footprint at
   a given zoom. Pinch-to-zoom is native Mapbox GL JS gesture handling, unaffected by bearing/pitch.
+  The map constructor itself is initialized already tilted/rotated onto the tee (not a top-down
+  green-centered view that eases into place) — `RoundMapPage` gates rendering `CourseMap` on
+  `greenCentroid && fallbackOrigin` being resolved (not just `currentHole`) so those values are
+  real by the time the map-init effect runs once on mount; the effect is mount-only, so mounting
+  early would permanently lock the camera onto a null/flat fallback.
 - **Tile caching**: flagging a real constraint here — Mapbox GL JS for **web** doesn't have the
   first-party "offline region" support that Mapbox's native iOS/Android SDKs have; that feature is
   SDK-only. Given you're fine with "spotty signal, not zero signal," the plan is a service-worker
