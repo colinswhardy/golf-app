@@ -63,6 +63,44 @@ export function ShotSheet(props: {
   );
 }
 
+export function relativeToParLabel(diff: number): string {
+  return diff === 0 ? "E" : diff > 0 ? `+${diff}` : `${diff}`;
+}
+
+/** Bottom sheet showing the in-progress round's scorecard so far: hole/par/score/+- per hole played, with a running total. */
+export function ScorecardSheet(props: { entries: { holeNumber: number; par: number; score: number | null }[]; onClose: () => void }) {
+  const playedEntries = props.entries.filter((e) => e.score !== null);
+  const totalPar = playedEntries.reduce((s, e) => s + e.par, 0);
+  const totalScore = playedEntries.reduce((s, e) => s + (e.score as number), 0);
+
+  return (
+    <Sheet title="Scorecard" onClose={props.onClose}>
+      <div style={scorecardRowStyle}>
+        <span style={{ flex: 1, opacity: 0.7 }}>Hole</span>
+        <span style={scorecardColStyle}>Par</span>
+        <span style={scorecardColStyle}>Score</span>
+        <span style={scorecardColStyle}>+/-</span>
+      </div>
+      {props.entries.map((e) => (
+        <div key={e.holeNumber} style={scorecardRowStyle}>
+          <span style={{ flex: 1 }}>Hole {e.holeNumber}</span>
+          <span style={scorecardColStyle}>{e.par}</span>
+          <span style={scorecardColStyle}>{e.score ?? "—"}</span>
+          <span style={scorecardColStyle}>{e.score !== null ? relativeToParLabel(e.score - e.par) : "—"}</span>
+        </div>
+      ))}
+      {playedEntries.length > 0 && (
+        <div style={{ ...scorecardRowStyle, borderTop: "1px solid #2f5c3d", marginTop: 6, paddingTop: 10, fontWeight: 600 }}>
+          <span style={{ flex: 1 }}>Total</span>
+          <span style={scorecardColStyle}>{totalPar}</span>
+          <span style={scorecardColStyle}>{totalScore}</span>
+          <span style={scorecardColStyle}>{relativeToParLabel(totalScore - totalPar)}</span>
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
 /** Bottom sheet for holing out: putts (with per-putt distances) + score (prefilled from recorded shots + putts). */
 export function HoleScoreSheet(props: {
   holeNumber: number;
@@ -194,6 +232,18 @@ const sheetStyle: React.CSSProperties = {
   overflowY: "auto"
 };
 
+const scorecardRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  padding: "6px 0",
+  fontSize: 14
+};
+
+const scorecardColStyle: React.CSSProperties = {
+  width: 44,
+  textAlign: "center"
+};
+
 const chipStyle: React.CSSProperties = {
   padding: "8px 12px",
   background: "#1a3a24",
@@ -230,7 +280,10 @@ const tileStyle: React.CSSProperties = {
 const tileActiveStyle: React.CSSProperties = {
   background: "#f5d90a",
   color: "#111",
-  borderColor: "#f5d90a"
+  // Full `border` shorthand, not just borderColor — mixing shorthand/non-shorthand for the
+  // same property across re-renders (tileStyle uses the `border` shorthand) throws a React
+  // dev warning and can cause the un-set longhand pieces (width/style) to not reset.
+  border: "1px solid #f5d90a"
 };
 
 const distanceInputStyle: React.CSSProperties = {

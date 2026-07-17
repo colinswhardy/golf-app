@@ -1,76 +1,78 @@
-# CaddyShot Core Overhauls: Map Fixes, Auto-Putter, and OSM Mapping Rules
+# CaddyShot Overhaul: Grint-Style Map UI, Post-Round Aim targets, & OSM Retrieval
 
-This plan addresses:
-1. **HUD Overlap Fix**: Moves the Mapbox HUD distance overlay below the absolute header.
-2. **Auto-Select Putter on Green**: Automatically defaults the club to Putter when the ball lies on the green, reducing logging friction to a single tap.
-3. **OSM Tee Box fallback**: Automatically derives fallback tee box coordinates from the start point of `golf=hole` centerlines if no `golf=tee` polygons exist in the imported data (fixing Innerkip and Tarandowah loading issues).
-4. **Tee Box Visual Marker**: Adds a distinct tee box dot on the map at the hole's origin so the line doesn't start from empty space.
-5. **GPS Logging Explanation**: Explains how GPS auto-saving coordinates are captured at the start of each shot.
-6. **OpenStreetMap Mapping Guidelines**: Documents the OSM tag structure required for custom imports.
+This plan details:
+1. **OSM Retrieval Instructions**: Guide on how to export and import the user's favorite local courses using Overpass Turbo.
+2. **Grint-Style UI Redesign**: Adapts [RoundMapPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/RoundMapPage.tsx) to match the layout of the popular Grint app.
+3. **Post-Round Review & Aim Targets**: Implements [ReviewRoundsPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/ReviewRoundsPage.tsx) to allow review of completed rounds and option to place/save custom `aimPointOverride` targets.
+4. **Dispersion ellipse status report**: Reviews state of shot dispersion features.
 
 ---
 
-## 🧭 Concept Answers for the User
+## 📋 OSM Retrieval Guide for Favorite Courses
 
-### 1. GPS Auto-Saving: Start vs End Coordinates
-The app auto-saves coordinates at the **start** of each shot (i.e. where you hit the ball from):
-* When you log **Shot 1**, it records your location on the tee box as the `startPoint` of Shot 1.
-* When you log **Shot 2**, it captures your current coordinate (where the ball landed) as the `startPoint` of Shot 2, and automatically updates the `endPoint` of Shot 1 to match it.
-* When you **Hole Out**, it captures the green pin location as the `endPoint` of your final shot.
+To get detailed data for **Granite Ridge**, **Mount Nemo**, **Savannah Golf Links**, and **Victoria Park East**:
 
-### 2. Why the Tee Line and Dot Weren't Displaying
-Because the imported GeoJSON files for **Innerkip** and **Tarandowah** did not contain explicit `golf=tee` polygon features. Without them:
-* The database had no tee box coordinates (`fallbackOrigin` was `null`).
-* The map did not know where the tee was, so it defaulted to centering on the green, could not calculate the rotation bearing from tee to green, and could not draw a line.
-* **The Fix**: We will update the parser to automatically generate a fallback tee box using the **first coordinate of the hole centerline** if no tee polygon is found.
+1. Open [Overpass Turbo](https://overpass-turbo.eu/) in your browser.
+2. Search for the course name (e.g. "Granite Ridge Golf Club, Milton") to center the map on the course.
+3. Paste the following query into the left code editor:
+   ```query
+   [out:json][timeout:25];
+   (
+     nwr["leisure"="golf_course"]({{bbox}});
+     nwr["golf"]({{bbox}});
+   );
+   out body;
+   >;
+   out skel qt;
+   ```
+4. Click **Run** at the top left to load the vectors on the map.
+5. Click **Export** -> **download as GeoJSON**.
+6. Open your local CaddyShot app, navigate to **Data Imports**, and upload the file. It will automatically parse holes, greens, and fallback tee boxes!
+
+---
+
+## 🎯 Dispersion ellipse status
+* **Math module**: Complete. The covariance matrix formulas and confidence ellipse coordinates are fully coded in `computeDispersionEllipse` inside [geo.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/geo.ts).
+* **UI layer**: Missing. No charts or map overlays currently call this function. A dispersion ellipse visualization task is added to the checklist.
 
 ---
 
 ## Proposed Changes
 
-### 1. HUD Positioning & Overlap Fix
+### 1. Grint-Style Round Map Redesign
+
+#### [MODIFY] [RoundMapPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/RoundMapPage.tsx)
+Redesign the layout to match the provided layout photo:
+* **Floating Header Capsule**: Centered top pill containing:
+  - Navigation arrows: `<` and `>` on left and right.
+  - Large Ordinal Hole (e.g., `⛳ 1ST`, `⛳ 2ND`) using a `getHoleOrdinal(n)` helper.
+  - Subtitle inside: `Par X · YYY Yards`.
+* **Top Left Back Button**: White circular button floating on the top left with a black back arrow (`←`).
+* **Left Floating Green Card**: Displays distance to the center, back (+15 yards), and front (-15 yards) in a green capsule vertically stacked above a small pace timer (`0m · Hole X`).
+* **Right Floating Utility Pill**: Vertical capsule containing controls for setting/moving targets, toggling map styles, and reviewing scorecard.
+* **Bottom Profile & Score Bar**: Dark bar spanning the bottom containing:
+  - User initials circular avatar `CH` and name `Colin`, along with current round relative score (e.g., `E (0)`).
+  - Clean action buttons for recording shots: `🏌️ Shot X` and `🏁 Hole Out`.
 
 #### [MODIFY] [CourseMap.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/components/CourseMap.tsx)
-* **HUD Styles**: Update `hudStyle` at the bottom of the file to use `top: 76px` instead of `top: 12px`, placing it cleanly below the header.
-* **Tee Box Marker**: Add a `teeMarkerRef` state. If `fallbackOrigin` is present, create a white circle marker with a dark green border at `fallbackOrigin` and add it to the map.
-```typescript
-// Tee marker design style
-"width:12px;height:12px;border-radius:50%;background:#ffffff;border:3px solid #2f5c3d;box-shadow:0 0 4px rgba(0,0,0,.4);"
-```
+* **HUD Distance Callback**: Expose an `onDistanceUpdate?: (dist: number | null) => void` callback so the parent page can display center, back, and front yardages in the left-hand capsule.
+* **Measure Dot Distance Labels**: Render the segmented distance labels directly on the measure markers (`XXXy / YYYy`) in a stylish black capsule.
 
 ---
 
-### 2. Auto-Select Putter on Green
+### 2. Post-Round Review & Planned Aim Points
 
-#### [MODIFY] [RoundSheets.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/components/RoundSheets.tsx)
-* **Auto-Putter**: In `ShotSheet`, check if `props.detectedLie === "green"`. If so:
-  - Initialize the selector state step directly to `"club"`.
-  - Automatically highlight the `"Putter"` club as selected. Tapping it (or any other club) instantly logs and saves.
-  - If a user changes the lie from "Green" to another lie, reset the auto-selected club.
-
----
-
-### 3. OSM Centerline-to-Tee Fallbacks
-
-#### [MODIFY] [importOverpass.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/importOverpass.ts)
-* **Parser Fallback**: In `parseOverpassGeoJson()`, after processing polygon tee boxes, loop through holes 1 to `maxHoleNumber`. If a hole does not have a tee box assigned, check if it has a centerline (`golf=hole` LineString). If so, extract the first coordinate of the LineString and add it as a fallback tee box coordinate.
-
-#### [MODIFY] [seedCourses.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/seedCourses.ts)
-* **Database Seed Migration**: In `seedBundledCourses()`, add a check for existing courses. If an existing bundled course has **0 tee boxes** in the database, wipe the course version and associated records from Dexie so it re-seeds from the updated GeoJSON parser on next load.
+#### [MODIFY] [ReviewRoundsPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/ReviewRoundsPage.tsx)
+Build a full-featured post-round review workspace:
+* **Round List View**: Displays all completed rounds stored in `db.rounds` with name and date. Clicking one enters review mode.
+* **Hole-by-Hole review**: Let users step through holes 1 to 18.
+* **Map integration**: Load `<CourseMap>` for the selected hole in review mode, rendering the line segments of all shots recorded on this hole.
+* **Aim Target Setter**: Under the map, list all shots. Include a toggle "🎯 Set Aim Target" next to each. If toggled, clicking the map sets the planned coordinate (`aimPointOverride`) for that shot in IndexedDB, which displays as a target icon on the map.
 
 ---
 
-## 🛠️ OpenStreetMap (OSM) Tagging Guidelines
+## Verification Plan
 
-To ensure your custom course imports work perfectly, map them in OpenStreetMap using the following tagging structure:
-
-| Feature | OSM Tag Requirement | Geometry Type | Notes |
-| :--- | :--- | :--- | :--- |
-| **Course Boundary** | `leisure=golf_course` | Polygon / Relation | Must include a `name=*` tag. |
-| **Holes Centerline** | `golf=hole` | LineString | **CRITICAL**: Must include `ref=<number>` (e.g. `ref=1`) and `par=*`. The first node represents the tee box, and the last node represents the green. |
-| **Tee Boxes** | `golf=tee` | Polygon | Name by adding `teebox=blue;white`. Placed at the start of the centerline. |
-| **Greens** | `golf=green` | Polygon | Placed at the end of the centerline. |
-| **Fairways** | `golf=fairway` | Polygon | Drawn along the hole path. |
-| **Fringe / Apron** | `golf=fringe` | Polygon | Surrounding the green. |
-| **Sand Bunkers** | `golf=bunker` | Polygon | Classified as greenside if within 30 yards of a green. |
-| **Water Hazards** | `golf=water_hazard` | Polygon | Represents lakes, ponds, or lateral hazards. |
+### Manual Verification
+1. **Grint Layout Checks**: Verify the page has a centered header capsule, top-left back button, left-side front/center/back distance capsules, right-side utility panel, and bottom profile bar.
+2. **Review Mode Aim Points**: Go to "Review Rounds", select a completed round. Step through a hole, click "Set Aim Target" for a shot, tap the map, and confirm the target is saved and displayed.

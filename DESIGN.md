@@ -224,13 +224,33 @@ bunker polygon later.
   a fresh one attached to the real map — so it never appears. GPS-derived markers (`me`) usually dodge
   this by accident (still `null` on the very first synchronous mount), but anything already real at
   mount time (tee, target) hits it immediately.
+- **Chrome vs. map split (Grint-style layout)**: `RoundMapPage` owns all the surrounding UI —
+  back button, ordinal hole header (`getHoleOrdinal`), left front/center/back distance capsule +
+  pace timer, right utility pill (set target / map style / scorecard), bottom profile+score bar —
+  and passes `hideInternalHud` to suppress `CourseMap`'s own built-in HUD box, which otherwise
+  still exists as the default for simpler callers (currently just demo mode, `/round/demo`, which
+  has no hole context to build real chrome around). Two pieces of `CourseMap` state became
+  controllable from outside instead of fully internal:
+  - `settingTarget`/`onSettingTargetChange` — optional; falls back to an internal `useState` when
+    omitted (demo mode's own "Set target" button), so this is backward-compatible, not a breaking
+    change to the prop contract.
+  - `onDistanceUpdate?: (yards: number | null) => void` — fires whenever the origin→target
+    distance changes; `RoundMapPage` derives front/back by ±15y off this "center" value rather
+    than computing distance a second time.
+  - `mapStyle` (defaults to `SATELLITE_STYLE`) toggles via `map.setStyle()`; since a style change
+    can drop style-specific sources, the line source/layer setup was pulled into a named
+    `ensureLineSource()` re-run on both the initial `"load"` and `"style.load"` after every switch,
+    rather than assuming Mapbox's cross-style diffing preserves it.
 
 ## 9. In-Round Measuring Tool
 
 - Tap the tee→pin line → spawns a draggable marker at that point.
-- While dragging: compute (a) haversine distance from the live blue-dot position to the marker,
-  and (b) haversine distance from the marker to the current target (pin override or green center) —
-  both shown simultaneously.
+- The line is **segmented** through every placed marker rather than staying a straight
+  origin→target line: `updateLineAndLabels()` in `CourseMap.tsx` sorts all markers by distance
+  from origin and routes `origin -> nearest marker -> ... -> farthest marker -> target`. Recomputes
+  every marker's label on every drag/add/delete, since moving one marker can change every other
+  marker's sort position and neighbors — a label reads `<distance from origin> / <distance to the
+  next marker, or target if it's the last one>`, in a small dark capsule pinned above the dot.
 - Each tap on the line spawns an independent new marker; markers persist per hole until the hole
   changes, are draggable anywhere on the map (not constrained back to the original line), and are
   local-only UI state (not persisted to Supabase/Dexie).
@@ -251,6 +271,42 @@ navigation while playing. `CourseMap` remounts (via a `key={holeId}`) on every h
 than diffing Mapbox layers in place — simpler, and fast enough that the re-init isn't noticeable.
 Default target = the current hole's green centroid (first green if several, fairway centroid as a
 fallback if no green was mapped); still user-overridable via "Set target".
+
+## 11. Post-Round Review & Planned Aim Points
+
+`ReviewRoundsPage.tsx` lists completed rounds (`db.rounds` filtered to `status === "completed"`,
+joined through `courseVersions` to `courses` for a display name), then a hole-by-hole stepper for
+the selected round's actual recorded shots.
+
+- **`ReviewMap.tsx` is a separate component from `CourseMap`**, not more optional props bolted
+  onto it. Reviewing a completed round has a fundamentally different interaction model — a fixed
+  historical shot path, tapping the map to set a *planned* aim point — versus a live round's
+  GPS-driven origin, live tee→green line, and measuring tool. None of `CourseMap`'s GPS/blue-dot/
+  measuring-tool machinery makes sense here (you may not even be at the course), and threading a
+  review mode through it risked destabilizing the app's most-used, most-tested code path for
+  comparatively little shared logic. What IS shared: the tee-at-bottom tilted-camera convention,
+  for visual consistency with the live round view.
+- **Camera correctness gotcha**: `shots`/`fallbackOrigin` arrive from async `useLiveQuery` chains
+  in the parent that are essentially never resolved on `ReviewMap`'s first render. A first attempt
+  set the camera once in the mount effect (same pattern `CourseMap` used to have, before the
+  `greenCentroid && fallbackOrigin` gating fix in §8) and it reproduced the same failure mode: the
+  camera permanently locked onto the `{43.55, -80.2}` generic fallback while the real shot markers
+  rendered far outside the visible viewport. Fixed with a dedicated effect that re-centers whenever
+  real origin/finalPoint coordinates become available — `jumpTo` (instant) the first time, `easeTo`
+  (animated) after that for hole-to-hole navigation, since `ReviewMap` isn't remounted per hole the
+  way live-round `CourseMap` is.
+- **Aim points**: `Shot.aimPointOverride` (already in the schema, previously unused) is set via
+  `roundRepo.setShotAimPoint(shotId, point)`, following the same upsert+outbox pattern as every
+  other write in that file. The shot list below the map has a "🎯 Set Aim Target" toggle per shot;
+  toggling one arms `ReviewMap`'s click handler, and the next map tap writes the point and disarms.
+  Rendered as a small red marker per shot that has one set.
+
+### Dispersion ellipses — implemented, not wired up
+
+`computeDispersionEllipse()` in `lib/geo.ts` is complete (covariance-matrix eigendecomposition,
+confidence-scaled semi-axes) but nothing calls it yet — no chart or map overlay consumes it. Needs
+a UI home (likely a stats page, filtering shots by club into `(downrange, offline)` points via
+`toDownrangeOffline`) before it does anything visible.
 
 ## Course Import — Overpass → Dexie
 

@@ -8,6 +8,8 @@ const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const LINE_SOURCE_ID = "target-line";
 const ON_LINE_TOLERANCE_METERS = 8;
 const FAR_FROM_HOLE_METERS = 300;
+export const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
+export const OUTDOORS_STYLE = "mapbox://styles/mapbox/outdoors-v12";
 
 interface CourseMapProps {
   /** Default target (usually the green centroid) set once on mount; still user-overridable via "Set target". */
@@ -16,6 +18,17 @@ interface CourseMapProps {
   fallbackOrigin?: LatLng | null;
   /** Fires on every GPS fix — lets the parent (e.g. shot recording) know where the player is. */
   onPositionChange?: (p: LatLng) => void;
+  /** Fires whenever the origin->target distance changes (yards), so a parent HUD can show it. */
+  onDistanceUpdate?: (distanceYards: number | null) => void;
+  /** Controlled "tap map to set target" mode. Omit to let CourseMap manage this internally
+   * (e.g. demo mode, which renders its own trigger button). */
+  settingTarget?: boolean;
+  onSettingTargetChange?: (v: boolean) => void;
+  /** Mapbox style URL; defaults to satellite. Switching this preserves the line/markers. */
+  mapStyle?: string;
+  /** Hides CourseMap's own built-in distance/set-target HUD box, for parents (e.g. the Grint-style
+   * round page) that render their own controls and drive settingTarget externally instead. */
+  hideInternalHud?: boolean;
 }
 
 /**
@@ -25,7 +38,16 @@ interface CourseMapProps {
  * GPS), a target (green center by default, tap-to-override), a live distance
  * line, draggable multi-point measuring tool, tee-at-bottom tilted camera.
  */
-export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: CourseMapProps) {
+export function CourseMap({
+  initialTarget,
+  fallbackOrigin,
+  onPositionChange,
+  onDistanceUpdate,
+  settingTarget: settingTargetProp,
+  onSettingTargetChange,
+  mapStyle,
+  hideInternalHud
+}: CourseMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const meMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -35,7 +57,12 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
 
   const [me, setMe] = useState<LatLng | null>(null);
   const [target, setTarget] = useState<LatLng | null>(initialTarget ?? null);
-  const [settingTarget, setSettingTarget] = useState(false);
+  // Controlled if the parent passes settingTarget/onSettingTargetChange (Grint-style round page
+  // drives this from its own right-side pill button); otherwise CourseMap manages it itself
+  // (demo mode, which renders its own internal "Set target" trigger).
+  const [internalSettingTarget, setInternalSettingTarget] = useState(false);
+  const settingTarget = settingTargetProp ?? internalSettingTarget;
+  const setSettingTarget = onSettingTargetChange ?? setInternalSettingTarget;
   const [geoError, setGeoError] = useState<string | null>(null);
 
   // Live GPS if it's actually near this hole; otherwise fall back to the tee box (or
@@ -44,8 +71,8 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
   const usingLiveGps = !!me && (!fallbackOrigin || distanceMeters(me, fallbackOrigin) <= FAR_FROM_HOLE_METERS);
   const origin = usingLiveGps ? me : (fallbackOrigin ?? me);
 
-  const stateRef = useRef({ origin, target, settingTarget, onPositionChange });
-  stateRef.current = { origin, target, settingTarget, onPositionChange };
+  const stateRef = useRef({ origin, target, settingTarget, onPositionChange, setSettingTarget });
+  stateRef.current = { origin, target, settingTarget, onPositionChange, setSettingTarget };
 
   // --- Geolocation: watch position for the blue dot ---
   useEffect(() => {
@@ -81,7 +108,7 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: "mapbox://styles/mapbox/satellite-streets-v12",
+      style: mapStyle ?? SATELLITE_STYLE,
       center: [initialCenter.lng, initialCenter.lat],
       zoom: 17,
       pitch: initialPitch,
@@ -89,26 +116,15 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
     });
     mapRef.current = map;
 
-    map.on("load", () => {
-      map.addSource(LINE_SOURCE_ID, {
-        type: "geojson",
-        data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } }
-      });
-      map.addLayer({
-        id: LINE_SOURCE_ID,
-        type: "line",
-        source: LINE_SOURCE_ID,
-        paint: { "line-color": "#f5d90a", "line-width": 3, "line-dasharray": [2, 1] }
-      });
-    });
+    map.on("load", () => ensureLineSource(map));
 
     map.on("click", (e) => {
       const clicked = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-      const { origin: curOrigin, target: curTarget, settingTarget: curSetting } = stateRef.current;
+      const { origin: curOrigin, target: curTarget, settingTarget: curSetting, setSettingTarget: curSetSettingTarget } = stateRef.current;
 
       if (curSetting) {
         setTarget(clicked);
-        setSettingTarget(false);
+        curSetSettingTarget(false);
         return;
       }
       if (curOrigin && curTarget) {
@@ -137,6 +153,37 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // --- Map style switching (satellite <-> outdoors), triggered externally via the mapStyle prop ---
+  const isFirstStyleRender = useRef(true);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || isFirstStyleRender.current) {
+      isFirstStyleRender.current = false;
+      return; // the constructor already set the initial style; nothing to do on first mount
+    }
+    map.setStyle(mapStyle ?? SATELLITE_STYLE);
+    map.once("style.load", () => ensureLineSource(map));
+  }, [mapStyle]);
+
+  // Adds the target-line source/layer if missing. Called on initial "load" and again after
+  // every style change ("style.load") — Mapbox GL JS generally tries to carry sources/layers
+  // across setStyle(), but a style-specific source is never guaranteed to survive, so this
+  // re-adds it defensively rather than relying on that.
+  function ensureLineSource(map: mapboxgl.Map) {
+    if (map.getSource(LINE_SOURCE_ID)) return;
+    map.addSource(LINE_SOURCE_ID, {
+      type: "geojson",
+      data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } }
+    });
+    map.addLayer({
+      id: LINE_SOURCE_ID,
+      type: "line",
+      source: LINE_SOURCE_ID,
+      paint: { "line-color": "#f5d90a", "line-width": 3, "line-dasharray": [2, 1] }
+    });
+    updateLineAndLabels();
+  }
 
   // Redraws the target line so it routes origin -> each placed dot (nearest-to-origin
   // first) -> target, and relabels every dot "<distance from origin> / <distance to the
@@ -185,7 +232,7 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
 
     const label = document.createElement("div");
     label.style.cssText =
-      "position:absolute;top:20px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,.75);color:#fff;font-size:11px;padding:2px 5px;border-radius:4px;";
+      "position:absolute;top:20px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,.8);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.4);";
     el.appendChild(label);
 
     const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
@@ -264,6 +311,10 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
 
   const distanceToTarget = origin && target ? Math.round(distanceYards(origin, target)) : null;
 
+  useEffect(() => {
+    onDistanceUpdate?.(distanceToTarget);
+  }, [distanceToTarget, onDistanceUpdate]);
+
   if (!TOKEN) {
     return (
       <div style={{ padding: 24, color: "#eef2ef" }}>
@@ -277,28 +328,30 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
-      <div style={hudStyle}>
-        {geoError && <div style={{ color: "#ffb3b3" }}>GPS: {geoError}</div>}
-        {distanceToTarget !== null && (
-          <div>
-            {distanceToTarget}y to target
-            {!usingLiveGps && <span style={{ opacity: 0.7 }}> (from tee — not near this hole)</span>}
-          </div>
-        )}
-        <button
-          onClick={() => setSettingTarget((s) => !s)}
-          style={{
-            marginTop: 6,
-            padding: "6px 10px",
-            background: settingTarget ? "#f5d90a" : "#1a3a24",
-            color: settingTarget ? "#111" : "#eef2ef",
-            border: "1px solid #2f5c3d",
-            borderRadius: 6
-          }}
-        >
-          {settingTarget ? "Tap map to set target…" : target ? "Move target" : "Set target"}
-        </button>
-      </div>
+      {!hideInternalHud && (
+        <div style={hudStyle}>
+          {geoError && <div style={{ color: "#ffb3b3" }}>GPS: {geoError}</div>}
+          {distanceToTarget !== null && (
+            <div>
+              {distanceToTarget}y to target
+              {!usingLiveGps && <span style={{ opacity: 0.7 }}> (from tee — not near this hole)</span>}
+            </div>
+          )}
+          <button
+            onClick={() => setSettingTarget(!settingTarget)}
+            style={{
+              marginTop: 6,
+              padding: "6px 10px",
+              background: settingTarget ? "#f5d90a" : "#1a3a24",
+              color: settingTarget ? "#111" : "#eef2ef",
+              border: "1px solid #2f5c3d",
+              borderRadius: 6
+            }}
+          >
+            {settingTarget ? "Tap map to set target…" : target ? "Move target" : "Set target"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

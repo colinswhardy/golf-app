@@ -132,3 +132,16 @@ export async function completeRound(roundId: string): Promise<void> {
   await db.rounds.put(updated);
   await queueOutbox("rounds", "upsert", updated);
 }
+
+/** Sets (or clears, with `point: null`) a shot's planned aim point for post-round review. */
+export async function setShotAimPoint(shotId: string, point: LatLng | null): Promise<void> {
+  const shot = await db.shots.get(shotId);
+  if (!shot) return;
+  const updated: Shot = { ...shot, aimPointOverride: point, updatedAt: now() };
+  await db.shots.put(updated);
+  await queueOutbox("shots", "upsert", updated);
+}
+
+export async function listCompletedRounds(): Promise<Round[]> {
+  return (await db.rounds.where("status").equals("completed").toArray()).sort((a, b) => b.playedOn.localeCompare(a.playedOn));
+}
