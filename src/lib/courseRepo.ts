@@ -116,11 +116,24 @@ export async function getFeaturesForHole(holeId: string): Promise<HoleFeature[]>
   return db.holeFeatures.where("holeId").equals(holeId).toArray();
 }
 
+const DEFAULT_CLUB_NAMES = ["Driver", "5 Wood", "4 Iron", "5 Iron", "6 Iron", "7 Iron", "8 Iron", "9 Iron", "50°", "56°", "60°", "Putter"];
+// Names only ever seeded by the old default list — presence of any of these means this
+// install still has the pre-migration clubs and needs a one-time reseed onto the new list.
+const LEGACY_ONLY_CLUB_NAMES = ["3 Wood", "PW", "GW", "SW", "LW"];
+
 export async function ensureDefaultClubs(): Promise<Club[]> {
-  const existing = await db.clubs.toArray();
-  if (existing.length) return existing;
-  const names = ["Driver", "3 Wood", "5 Wood", "4 Iron", "5 Iron", "6 Iron", "7 Iron", "8 Iron", "9 Iron", "PW", "GW", "SW", "LW", "Putter"];
-  const clubs: Club[] = names.map((name, i) => ({ id: uuid(), name, sortOrder: i, updatedAt: now() }));
-  await db.clubs.bulkPut(clubs);
-  return clubs;
+  // Whole read-check-write runs as one Dexie transaction so two concurrent callers (e.g.
+  // React StrictMode's dev-only double effect invocation) can't both see "empty"/"legacy"
+  // and each seed their own duplicate batch — IndexedDB serializes same-store rw
+  // transactions, so the second call sees the first's already-committed result.
+  return db.transaction("rw", db.clubs, async () => {
+    const existing = await db.clubs.toArray();
+    const hasLegacy = existing.some((c) => LEGACY_ONLY_CLUB_NAMES.includes(c.name));
+    if (existing.length && !hasLegacy) return existing;
+    if (hasLegacy) await db.clubs.clear();
+
+    const clubs: Club[] = DEFAULT_CLUB_NAMES.map((name, i) => ({ id: uuid(), name, sortOrder: i, updatedAt: now() }));
+    await db.clubs.bulkPut(clubs);
+    return clubs;
+  });
 }

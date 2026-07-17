@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import * as turf from "@turf/turf";
 import { db } from "../lib/db";
@@ -15,8 +15,10 @@ import {
 import { detectLie } from "../lib/lie";
 import { CourseMap } from "../components/CourseMap";
 import { HoleScoreSheet, ShotSheet } from "../components/RoundSheets";
-import { distanceMeters } from "../lib/geo";
-import type { Club, LatLng, Round } from "../types/domain";
+import { distanceMeters, distanceYards } from "../lib/geo";
+import type { Club, LatLng, Lie, Round } from "../types/domain";
+
+const GREENSIDE_BUNKER_MAX_YARDS = 40;
 
 const FAR_FROM_HOLE_METERS = 300;
 
@@ -29,7 +31,6 @@ export function RoundMapPage() {
   const { courseId } = useParams();
   const isDemo = courseId === "demo" || !courseId;
 
-  const course = useLiveQuery(() => (isDemo ? undefined : db.courses.get(courseId!)), [courseId]);
   const courseVersion = useLiveQuery(() => (isDemo ? undefined : getLatestCourseVersion(courseId!)), [courseId]);
   const holes = useLiveQuery(() => (courseVersion ? getHolesForVersion(courseVersion.id) : []), [courseVersion?.id]);
 
@@ -108,9 +109,17 @@ export function RoundMapPage() {
     setRound(r);
   }
 
-  async function handleSaveShot(clubId: string | null, lie: Parameters<typeof recordShot>[0]["lie"]) {
-    if (!roundHoleId || !lastPositionRef.current) return;
-    await recordShot({ roundHoleId, clubId, point: lastPositionRef.current, lie });
+  async function handleSaveShot(clubId: string | null, lie: Lie) {
+    if (!roundHoleId) return;
+    // Fall back to the tee box when GPS hasn't locked yet (indoors, cold start) so the shot
+    // still saves with a usable coordinate for strokes-gained baselines, rather than blocking.
+    const point = lastPositionRef.current ?? fallbackOrigin;
+    if (!point) return;
+    const resolvedLie: Lie =
+      lie === "bunker_greenside" && greenCentroid && distanceYards(point, greenCentroid) > GREENSIDE_BUNKER_MAX_YARDS
+        ? "bunker_fairway"
+        : lie;
+    await recordShot({ roundHoleId, clubId, point, lie: resolvedLie });
     setOpenSheet(null);
   }
 
@@ -133,10 +142,6 @@ export function RoundMapPage() {
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <Link to="/courses" style={closeButtonStyle}>
-        ✕
-      </Link>
-
       {!isDemo && currentHole && (
         <div style={holeHeaderStyle}>
           <button onClick={() => setHoleNumber((n) => Math.max(1, n - 1))} disabled={holeNumber <= 1} style={navButtonStyle}>
@@ -145,9 +150,8 @@ export function RoundMapPage() {
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 15 }}>
               Hole {currentHole.number} · Par {currentHole.par}
-              {currentHole.defaultYardage ? ` · ${currentHole.defaultYardage}y` : ""}
+              {currentHole.defaultYardage ? ` · ${currentHole.defaultYardage} Yards` : ""}
             </div>
-            {course && <div style={{ fontSize: 11, opacity: 0.7 }}>{course.name}</div>}
           </div>
           <button
             onClick={() => setHoleNumber((n) => Math.min(maxHoleNumber, n + 1))}
@@ -191,8 +195,8 @@ export function RoundMapPage() {
             <>
               <button
                 onClick={() => setOpenSheet("shot")}
-                disabled={!lastPositionRef.current || !roundHoleId}
-                style={{ ...roundButtonStyle, opacity: lastPositionRef.current && roundHoleId ? 1 : 0.5 }}
+                disabled={!roundHoleId}
+                style={{ ...roundButtonStyle, opacity: roundHoleId ? 1 : 0.5 }}
               >
                 ⌗ Shot {shotCount + 1}
               </button>
@@ -224,18 +228,6 @@ export function RoundMapPage() {
     </div>
   );
 }
-
-const closeButtonStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 12,
-  right: 12,
-  zIndex: 2,
-  background: "rgba(11,15,12,0.75)",
-  color: "#eef2ef",
-  padding: "6px 10px",
-  borderRadius: 8,
-  textDecoration: "none"
-};
 
 const holeHeaderStyle: React.CSSProperties = {
   position: "absolute",

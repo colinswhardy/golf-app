@@ -1,8 +1,20 @@
 import { useState } from "react";
 import type { Club, Lie } from "../types/domain";
-import { ALL_LIES, LIE_LABELS } from "../lib/lie";
 
-/** Bottom sheet for recording a shot: shot number, club, auto-detected lie (overridable). */
+const LIE_TILES: { label: string; lie: Lie }[] = [
+  { label: "Fairway", lie: "fairway" },
+  { label: "Rough", lie: "rough" },
+  { label: "Sand Bunker", lie: "bunker_greenside" },
+  { label: "Water Hazard", lie: "hazard" },
+  { label: "Fringe", lie: "fringe" },
+  { label: "Green", lie: "green" }
+];
+
+/**
+ * Bottom sheet for recording a shot: two fast taps and it's saved — no separate Save
+ * button. Shot 1 skips the lie tap entirely (always "tee"); shot 2+ taps a lie tile,
+ * then a club tile, and the club tap saves immediately.
+ */
 export function ShotSheet(props: {
   shotNumber: number;
   clubs: Club[];
@@ -10,42 +22,33 @@ export function ShotSheet(props: {
   onSave: (clubId: string | null, lie: Lie) => void;
   onClose: () => void;
 }) {
-  const [clubId, setClubId] = useState<string | null>(null);
-  const [lie, setLie] = useState<Lie>(props.detectedLie);
+  const [lie, setLie] = useState<Lie | null>(props.shotNumber === 1 ? "tee" : null);
 
   return (
     <Sheet title={`Shot ${props.shotNumber}`} onClose={props.onClose}>
-      <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>
-        Lie (auto-detected — tap to change)
-      </div>
-      <div style={chipRowStyle}>
-        {ALL_LIES.map((l) => (
-          <button
-            key={l}
-            onClick={() => setLie(l)}
-            style={{ ...chipStyle, ...(lie === l ? chipActiveStyle : {}) }}
-          >
-            {LIE_LABELS[l]}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ fontSize: 13, opacity: 0.8, margin: "14px 0 8px" }}>Club</div>
-      <div style={chipRowStyle}>
-        {props.clubs.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setClubId(c.id === clubId ? null : c.id)}
-            style={{ ...chipStyle, ...(clubId === c.id ? chipActiveStyle : {}) }}
-          >
-            {c.name}
-          </button>
-        ))}
-      </div>
-
-      <button onClick={() => props.onSave(clubId, lie)} style={primaryButtonStyle}>
-        Save shot {props.shotNumber}
-      </button>
+      {lie === null ? (
+        <>
+          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>Lie</div>
+          <div style={lieGridStyle}>
+            {LIE_TILES.map((t) => (
+              <button key={t.lie} onClick={() => setLie(t.lie)} style={tileStyle}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>Club</div>
+          <div style={clubGridStyle}>
+            {props.clubs.map((c) => (
+              <button key={c.id} onClick={() => props.onSave(c.id, lie)} style={tileStyle}>
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </Sheet>
   );
 }
@@ -181,12 +184,6 @@ const sheetStyle: React.CSSProperties = {
   overflowY: "auto"
 };
 
-const chipRowStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 8
-};
-
 const chipStyle: React.CSSProperties = {
   padding: "8px 12px",
   background: "#1a3a24",
@@ -197,10 +194,27 @@ const chipStyle: React.CSSProperties = {
   cursor: "pointer"
 };
 
-const chipActiveStyle: React.CSSProperties = {
-  background: "#f5d90a",
-  color: "#111",
-  borderColor: "#f5d90a"
+const lieGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 10
+};
+
+const clubGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr 1fr",
+  gap: 8
+};
+
+const tileStyle: React.CSSProperties = {
+  padding: "18px 8px",
+  textAlign: "center",
+  background: "#1a3a24",
+  color: "#eef2ef",
+  border: "1px solid #2f5c3d",
+  borderRadius: 12,
+  fontSize: 14,
+  cursor: "pointer"
 };
 
 const distanceInputStyle: React.CSSProperties = {

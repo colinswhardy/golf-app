@@ -30,7 +30,7 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const meMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const targetMarkerRef = useRef<mapboxgl.Marker | null>(null);
-  const measureMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  const measureMarkersRef = useRef<Map<string, { marker: mapboxgl.Marker; label: HTMLDivElement }>>(new Map());
 
   const [me, setMe] = useState<LatLng | null>(null);
   const [target, setTarget] = useState<LatLng | null>(initialTarget ?? null);
@@ -125,6 +125,42 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Redraws the target line so it routes origin -> each placed dot (nearest-to-origin
+  // first) -> target, and relabels every dot "<distance from origin> / <distance to the
+  // next dot, or target if it's the last one>". Recomputes ALL dots' labels every time
+  // since moving/adding/removing any one dot can change every other dot's sort position
+  // and neighbors. Call after any marker drag, add, or delete.
+  function updateLineAndLabels() {
+    const map = mapRef.current;
+    if (!map) return;
+    const { origin: curOrigin, target: curTarget } = stateRef.current;
+
+    const dots = Array.from(measureMarkersRef.current.values()).map(({ marker, label }) => {
+      const pos = marker.getLngLat();
+      return { point: { lat: pos.lat, lng: pos.lng } as LatLng, label };
+    });
+    if (curOrigin) {
+      dots.sort((a, b) => distanceYards(curOrigin, a.point) - distanceYards(curOrigin, b.point));
+    }
+
+    const source = map.getSource(LINE_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+    if (source && curOrigin && curTarget) {
+      const coordinates = [
+        [curOrigin.lng, curOrigin.lat],
+        ...dots.map((d) => [d.point.lng, d.point.lat]),
+        [curTarget.lng, curTarget.lat]
+      ];
+      source.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } });
+    }
+
+    dots.forEach((d, i) => {
+      const toOrigin = curOrigin ? Math.round(distanceYards(curOrigin, d.point)) : null;
+      const next = i < dots.length - 1 ? dots[i + 1].point : curTarget;
+      const toNext = next ? Math.round(distanceYards(d.point, next)) : null;
+      d.label.textContent = `${toOrigin ?? "?"}y / ${toNext ?? "?"}y`;
+    });
+  }
+
   function addMeasureMarker(point: LatLng) {
     const map = mapRef.current;
     if (!map) return;
@@ -143,25 +179,17 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
       .setLngLat([point.lng, point.lat])
       .addTo(map);
 
-    const updateLabel = () => {
-      const pos = marker.getLngLat();
-      const here = { lat: pos.lat, lng: pos.lng };
-      const { origin: curOrigin, target: curTarget } = stateRef.current;
-      const toMe = curOrigin ? Math.round(distanceYards(here, curOrigin)) : null;
-      const toTarget = curTarget ? Math.round(distanceYards(here, curTarget)) : null;
-      label.textContent = `${toMe ?? "?"}y from you · ${toTarget ?? "?"}y to target`;
-    };
-
-    marker.on("drag", updateLabel);
-    updateLabel();
+    marker.on("drag", updateLineAndLabels);
 
     el.addEventListener("dblclick", (evt) => {
       evt.stopPropagation();
       marker.remove();
       measureMarkersRef.current.delete(id);
+      updateLineAndLabels();
     });
 
-    measureMarkersRef.current.set(id, marker);
+    measureMarkersRef.current.set(id, { marker, label });
+    updateLineAndLabels();
   }
 
   // --- Blue dot marker: always shows real GPS, regardless of the fallback used for the line/camera ---
@@ -195,13 +223,9 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
       }
     }
 
-    const source = map.getSource(LINE_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
-    if (source && origin && target) {
-      source.setData({
-        type: "Feature",
-        properties: {},
-        geometry: { type: "LineString", coordinates: [[origin.lng, origin.lat], [target.lng, target.lat]] }
-      });
+    updateLineAndLabels();
+
+    if (origin && target) {
       // Orient camera tee-at-bottom / green-at-top with a tilt, so the hole fits a smaller
       // vertical footprint than a flat top-down view would need. Only re-orients when the
       // target/origin change (not every GPS tick) to avoid a constantly spinning map.
