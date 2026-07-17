@@ -22,6 +22,7 @@ const GREENSIDE_BUNKER_MAX_YARDS = 40;
 const FAR_FROM_HOLE_METERS = 300;
 const GREEN_HALF_DEPTH_YARDS = 15;
 const PACE_TICK_MS = 15000;
+const TEE_PREFERENCE_KEY = "caddyshot_tee_preference";
 
 // Personal, single-user app — no auth/profile system exists (or is needed) to derive this from.
 const PLAYER_NAME = "Colin";
@@ -73,6 +74,18 @@ export function RoundMapPage() {
   const [settingTarget, setSettingTarget] = useState(false);
   const [mapStyle, setMapStyle] = useState(SATELLITE_STYLE);
   const [centerDistance, setCenterDistance] = useState<number | null>(null);
+
+  // Preferred tee set (e.g. "Blue"), persisted across sessions. Empty string = no preference set
+  // yet, meaning "use the backmost tee" (see fallbackOrigin below).
+  const [selectedTeeName, setSelectedTeeName] = useState<string>(() =>
+    typeof localStorage === "undefined" ? "" : (localStorage.getItem(TEE_PREFERENCE_KEY) ?? "")
+  );
+  function handleTeeChange(name: string) {
+    setSelectedTeeName(name);
+    if (typeof localStorage === "undefined") return;
+    if (name) localStorage.setItem(TEE_PREFERENCE_KEY, name);
+    else localStorage.removeItem(TEE_PREFERENCE_KEY);
+  }
 
   // --- Pace-of-play timer: minutes elapsed since arriving at the current hole ---
   const holeStartRef = useRef<number>(Date.now());
@@ -154,7 +167,27 @@ export function RoundMapPage() {
     return green ? centroidLatLng(green.geometry) : null;
   }, [holeFeatures]);
 
-  const fallbackOrigin = teeBoxes?.[0]?.location ?? null;
+  const uniqueTeeNames = useMemo(() => {
+    if (!allTeeBoxes?.length) return [];
+    return [...new Set(allTeeBoxes.map((t) => t.name))].sort();
+  }, [allTeeBoxes]);
+
+  // Prefers the selected tee set for this hole; falls back to the backmost tee box (furthest
+  // from the green) when no preference is set, or when this hole doesn't have a tee box under
+  // that name (tee-set naming can be inconsistent hole-to-hole in the source OSM data).
+  const fallbackOrigin = useMemo(() => {
+    if (!teeBoxes?.length) return null;
+    if (selectedTeeName) {
+      const matched = teeBoxes.find((t) => t.name === selectedTeeName);
+      if (matched) return matched.location;
+    }
+    if (!greenCentroid) return teeBoxes[0].location;
+    const backmost = [...teeBoxes].sort(
+      (a, b) => distanceYards(b.location, greenCentroid) - distanceYards(a.location, greenCentroid)
+    )[0];
+    return backmost.location;
+  }, [teeBoxes, selectedTeeName, greenCentroid]);
+
   const maxHoleNumber = holes?.length ? Math.max(...holes.map((h) => h.number)) : 18;
 
   async function handleStartRound() {
@@ -291,6 +324,27 @@ export function RoundMapPage() {
         />
       ) : (
         <div style={{ padding: 24, color: "#eef2ef" }}>Loading course…</div>
+      )}
+
+      {!isDemo && currentHole && !round && uniqueTeeNames.length > 0 && (
+        <div style={teeSelectorStyle}>
+          <label htmlFor="tee-select" style={{ fontSize: 11, opacity: 0.75 }}>
+            Tee
+          </label>
+          <select
+            id="tee-select"
+            value={selectedTeeName}
+            onChange={(e) => handleTeeChange(e.target.value)}
+            style={teeSelectStyle}
+          >
+            <option value="">Backmost (default)</option>
+            {uniqueTeeNames.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
 
       {!isDemo && currentHole && (
@@ -457,6 +511,29 @@ const pillButtonActiveStyle: React.CSSProperties = {
   // same property across re-renders (pillButtonStyle uses the `border` shorthand) throws a
   // React dev warning and can cause the un-set longhand pieces (width/style) to not reset.
   border: "1px solid #f5d90a"
+};
+
+const teeSelectorStyle: React.CSSProperties = {
+  position: "absolute",
+  bottom: 76,
+  right: 12,
+  zIndex: 2,
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  background: "rgba(11,15,12,0.85)",
+  color: "#eef2ef",
+  padding: "6px 12px",
+  borderRadius: 999
+};
+
+const teeSelectStyle: React.CSSProperties = {
+  background: "#1a3a24",
+  color: "#eef2ef",
+  border: "1px solid #2f5c3d",
+  borderRadius: 999,
+  padding: "4px 10px",
+  fontSize: 13
 };
 
 const bottomBarStyle: React.CSSProperties = {

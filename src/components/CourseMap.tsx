@@ -8,6 +8,7 @@ const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const LINE_SOURCE_ID = "target-line";
 const ON_LINE_TOLERANCE_METERS = 8;
 const FAR_FROM_HOLE_METERS = 300;
+const MAX_MEASURE_DOTS = 5;
 export const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
 export const OUTDOORS_STYLE = "mapbox://styles/mapbox/outdoors-v12";
 
@@ -127,10 +128,25 @@ export function CourseMap({
         curSetSettingTarget(false);
         return;
       }
-      if (curOrigin && curTarget) {
-        const { point, distanceMeters: d } = nearestPointOnSegment(curOrigin, curTarget, clicked);
+      if (!curOrigin || !curTarget) return;
+      if (measureMarkersRef.current.size >= MAX_MEASURE_DOTS) return;
+
+      // Scan every segment of the actual (possibly already-bent) path, not just the straight
+      // origin->target line, so tapping a segment created by an earlier dot spawns another one
+      // right there instead of only ever working on the original undragged line.
+      const sortedDots = Array.from(measureMarkersRef.current.values())
+        .map(({ marker }) => {
+          const pos = marker.getLngLat();
+          return { lat: pos.lat, lng: pos.lng } as LatLng;
+        })
+        .sort((a, b) => distanceYards(curOrigin, a) - distanceYards(curOrigin, b));
+      const path = [curOrigin, ...sortedDots, curTarget];
+
+      for (let i = 0; i < path.length - 1; i++) {
+        const { point, distanceMeters: d } = nearestPointOnSegment(path[i], path[i + 1], clicked);
         if (d <= ON_LINE_TOLERANCE_METERS) {
           addMeasureMarker(point);
+          break;
         }
       }
     });

@@ -115,6 +115,34 @@ export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCours
     return best;
   }
 
+  // Greens/tees get matched to whichever hole's centerline they project onto the correct HALF
+  // of (green -> back half, near the green end; tee -> front half, near the tee end) — among
+  // holes that qualify, picks whichever is perpendicular-closest; falls back to plain
+  // nearest-whole-line if nothing qualifies. A naive "nearest raw endpoint coordinate" version
+  // of this was tried first and rejected: real course centerlines are only 2-4 vertices
+  // approximating the true fairway path, so a genuinely-correct green can legitimately sit
+  // 100-300m from its own hole's literal last vertex, while an unrelated neighboring hole's
+  // vertex happens to be closer by coincidence — matching a *position along the line* rather
+  // than a *raw coordinate* avoids that. Verified against the real Tarandowah/Innerkip data:
+  // every case where this disagrees with plain nearest-whole-line has the plain approach
+  // landing at the WRONG end of its chosen hole's line (e.g. a "green" matched to a hole where
+  // it actually sits at fraction ~0.0 — right at that hole's tee, not a plausible green spot),
+  // while this approach lands at the correct end of the correct hole instead.
+  function nearestHoleByCenterlineHalf(centroid: LatLng, half: "start" | "end"): { number: number; distanceMeters: number } | null {
+    const pt = turf.point([centroid.lng, centroid.lat]);
+    let best: { number: number; distanceMeters: number } | null = null;
+    for (const [num, line] of holeLineList) {
+      const snapped = turf.nearestPointOnLine(line, pt, { units: "meters" });
+      const totalLength = turf.length(line, { units: "meters" });
+      const fraction = totalLength > 0 ? (snapped.properties.location as number) / totalLength : 0;
+      const qualifies = half === "end" ? fraction >= 0.5 : fraction <= 0.5;
+      if (!qualifies) continue;
+      const d = snapped.properties.dist as number;
+      if (!best || d < best.distanceMeters) best = { number: num, distanceMeters: d };
+    }
+    return best ?? nearestHoleNumber(pt);
+  }
+
   const rawFeatures: { holeNumber: number; featureType: FeatureType; geometry: GeoJSON.Polygon; centroid: LatLng }[] = [];
   const bunkers: { geometry: GeoJSON.Polygon; centroid: LatLng; holeNumber: number }[] = [];
   let lowConfidenceCount = 0;
@@ -128,7 +156,12 @@ export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCours
 
     const centroid = centroidLatLng(f.geometry);
     const centroidPt = turf.point([centroid.lng, centroid.lat]);
-    const nearest = nearestHoleNumber(centroidPt);
+    const nearest =
+      golfTag === "green"
+        ? nearestHoleByCenterlineHalf(centroid, "end")
+        : golfTag === "tee"
+          ? nearestHoleByCenterlineHalf(centroid, "start")
+          : nearestHoleNumber(centroidPt);
     if (!nearest) continue; // no centerlines at all — shouldn't happen given the maxHoleNumber fallback above
     if (nearest.distanceMeters > 100) lowConfidenceCount++;
 
@@ -172,7 +205,7 @@ export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCours
   for (const f of features) {
     if ((f.properties as any)?.golf !== "tee" || f.geometry.type !== "Polygon") continue;
     const centroid = centroidLatLng(f.geometry);
-    const nearest = nearestHoleNumber(turf.point([centroid.lng, centroid.lat]));
+    const nearest = nearestHoleByCenterlineHalf(centroid, "start");
     if (!nearest) continue;
     const teebox = (f.properties as any)?.teebox as string | undefined;
     const name = teebox ? teebox.split(";").map((s) => s.trim()).join(" / ") : "Tee";

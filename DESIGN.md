@@ -254,6 +254,11 @@ bunker polygon later.
 - Each tap on the line spawns an independent new marker; markers persist per hole until the hole
   changes, are draggable anywhere on the map (not constrained back to the original line), and are
   local-only UI state (not persisted to Supabase/Dexie).
+- **Tapping works on any segment of the (possibly already-bent) path**, not just the original
+  straight origin→target line — the click handler rebuilds the same `[origin, ...sortedDots,
+  target]` path `updateLineAndLabels()` uses, then scans consecutive pairs for one within
+  `ON_LINE_TOLERANCE_METERS` of the tap, stopping at the first hit. Capped at `MAX_MEASURE_DOTS = 5`
+  total markers per hole; taps beyond that are ignored rather than queued or replacing the oldest.
 
 ## 10. Hole Selection
 
@@ -317,11 +322,26 @@ persistence). Key decisions, since they weren't fully nailed down in the schema 
   gaps (a hole missing its centerline in OSM) still produce a placeholder `Hole` row (par defaulted
   to 4, no yardage) rather than being silently dropped — every other feature still needs a `hole_id`
   to attach to. See `docs/osm-editing-guide.md` for the real gaps found in Tarandowah (holes 12/13).
-- **Feature → hole assignment**: every fairway/green/bunker/tee/rough/hazard polygon is assigned to
-  whichever `golf=hole` centerline it's geometrically closest to (`turf.pointToLineDistance` from
-  the polygon's centroid). Simple and works well in practice, but a hole with no centerline "loses"
-  its features to a neighboring hole instead of failing — flagged as an import warning, not silently
-  wrong.
+- **Feature → hole assignment**: fairway/bunker/rough/hazard/fringe polygons are assigned to
+  whichever `golf=hole` centerline they're geometrically closest to (`turf.pointToLineDistance`
+  from the polygon's centroid). Simple and works well in practice, but a hole with no centerline
+  "loses" its features to a neighboring hole instead of failing — flagged as an import warning, not
+  silently wrong.
+  - **Greens and tees are handled differently** (`nearestHoleByCenterlineHalf`), because plain
+    nearest-line distance genuinely misassigns them on real data: two consecutive holes'
+    centerlines often run close together right where one hole's green sits near the next hole's
+    tee-off direction, and a green can end up perpendicular-closer to the *wrong* hole's line than
+    to its own. The fix uses `turf.nearestPointOnLine` to find where a feature projects onto each
+    candidate hole's line as a fraction (0=start, 1=end) of that line's length, only considers
+    holes where the fraction lands on the correct half (green → back half, tee → front half), and
+    picks the perpendicular-closest among those, falling back to plain nearest-line if nothing
+    qualifies. A simpler first attempt — matching to the nearest hole's raw start/end *vertex
+    coordinate* instead of a fractional position along the line — was tried and rejected: real
+    course centerlines are only 2-4 vertices approximating the true fairway path, so a genuinely
+    correct green can legitimately sit 100-300m from its own hole's literal last vertex, while an
+    unrelated neighboring hole's vertex happens to be closer by coincidence. Verified against the
+    real Tarandowah/Innerkip data before shipping either version — see the code comment on
+    `nearestHoleByCenterlineHalf` for how.
 - **Bunker greenside/fairway split**: OSM only has `golf=bunker`, no side info. Classified by
   distance from the bunker centroid to the nearest green centroid *on the same hole*: ≤30y →
   greenside, else fairway. A heuristic, not authoritative — fine to be wrong occasionally until the
@@ -334,9 +354,23 @@ persistence). Key decisions, since they weren't fully nailed down in the schema 
   Innerkip/Tarandowah) gets one synthesized from the first coordinate of its centerline instead,
   named `"Tee (approx.)"` so it's identifiable as a fallback rather than real OSM data. Without
   *some* tee box the round map has no origin to draw the tee→green line/camera from and gets stuck
-  on "Loading course…" — `seedBundledCourses()` also wipes and re-imports any bundled course it
-  finds with zero tee boxes, so this fallback retroactively fixes installs seeded before it existed.
-  A hole with no centerline at all still can't get one, though — see `docs/osm-editing-guide.md`.
+  on "Loading course…". A hole with no centerline at all still can't get one — see
+  `docs/osm-editing-guide.md`.
+- **Tee set selection**: a hole can have several `tee_boxes` rows (one per marker color —
+  white/blue/red, etc). `RoundMapPage` lets you pick a preferred set from a dropdown (populated
+  from the union of tee names across the whole course), persisted to `localStorage` under
+  `caddyshot_tee_preference` so it survives reloads. If the preference doesn't match a tee box on
+  the *current* hole (naming can be inconsistent hole-to-hole in the source data) or nothing's been
+  chosen yet, it falls back to the **backmost** tee box — furthest from the green centroid — rather
+  than an arbitrary array order, on the theory that "furthest from the green" is a more useful
+  default than "whichever happened to be seeded first."
+- **Re-seeding on a fix**: `seedBundledCourses()` has two independent triggers for wiping and
+  re-importing an already-present bundled course, since neither alone catches every case a fix
+  might need: (1) zero tee boxes present (detects the tee-box-fallback gap above), and (2) a
+  version-keyed `localStorage` flag (currently `caddyshot_reseeded_v2`) that unconditionally wipes
+  once regardless of tee-box presence — needed because a course can have tee boxes and still have
+  them, or its greens, mapped to the *wrong hole*, which tee-box presence alone can't detect. Bump
+  the version key (`v3`, `v4`, ...) the next time a parser fix needs everyone re-seeded again.
 - **Re-importing** a course with a name that already exists adds a new `course_versions` row under
   the same course (copy-on-write, per §7) rather than duplicating it.
 

@@ -44,6 +44,13 @@ async function wipeCourse(courseId: string): Promise<void> {
 // identical existing one. A second concurrent call just awaits the first's in-flight result.
 let seedingPromise: Promise<void> | null = null;
 
+// One-time forced re-seed so installs that already imported Tarandowah/Innerkip before the
+// green/tee centerline-endpoint matching fix pick it up. Unlike courseHasTeeBoxes below, this
+// wipes unconditionally — a course can have tee boxes and still have them (or its greens)
+// mapped to the wrong hole, which tee-box *presence* alone can't detect. Bump this key if a
+// future fix needs everyone re-seeded again.
+const RESEED_VERSION_KEY = "caddyshot_reseeded_v2";
+
 /**
  * Imports any bundled course that isn't already in Dexie. Safe to call on every
  * app start — courses already present (by name) are skipped, so this never
@@ -72,6 +79,20 @@ async function seedBundledCoursesOnce(): Promise<void> {
     }
   } catch (err) {
     console.error("Failed to upgrade existing courses:", err);
+  }
+
+  // 1.5. One-time forced re-seed (see RESEED_VERSION_KEY). Flag is only set after the wipes
+  // complete without error, so a failure here just retries on the next load.
+  if (typeof localStorage !== "undefined" && !localStorage.getItem(RESEED_VERSION_KEY)) {
+    try {
+      for (const entry of BUNDLED_COURSES) {
+        const existing = await db.courses.where("name").equals(entry.name).first();
+        if (existing) await wipeCourse(existing.id);
+      }
+      localStorage.setItem(RESEED_VERSION_KEY, "1");
+    } catch (err) {
+      console.error("Failed forced re-seed for " + RESEED_VERSION_KEY + ":", err);
+    }
   }
 
   // 2. Normal seeding process
