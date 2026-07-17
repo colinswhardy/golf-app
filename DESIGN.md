@@ -264,6 +264,28 @@ persistence). Key decisions, since they weren't fully nailed down in the schema 
 - **Re-importing** a course with a name that already exists adds a new `course_versions` row under
   the same course (copy-on-write, per §7) rather than duplicating it.
 
+### Bundled courses (zero-network on-course loading)
+
+Course GeoJSON is **not** fetched from a database at runtime — it ships as a static asset inside
+the app itself, so it works with zero network at the course, not just "usually fine on weak
+signal." `public/courses/*.geojson` are copies of the raw exports in `data/imports/` (which remain
+the source-of-truth audit trail); `vite.config.ts`'s `workbox.globPatterns` explicitly includes
+`geojson` so the service worker precaches them alongside the JS/CSS bundle. `lib/seedCourses.ts`
+runs once per app load (fired from `App.tsx`, fire-and-forget) and imports any bundled course not
+already in Dexie by name — idempotent, so it's cheap to just always call it rather than tracking a
+"first run" flag.
+
+This was a deliberate choice over a database-backed course catalog: the course list is small,
+changes rarely, and the whole point is it has to work standing in a fairway with no signal — a
+static bundle guarantees that; a database sync would just add a failure mode ("did it sync before I
+left home") for data that doesn't need to be dynamic. Supabase remains the right tool for *round*
+data (scores/shots), which is genuinely per-session and needs to survive a phone loss — see §1.
+
+**Adding a new bundled course**: drop the `.geojson` in `public/courses/`, add `{name, file}` to
+`BUNDLED_COURSES` in `seedCourses.ts`, commit+push — it auto-seeds into everyone's Dexie on next
+load. The in-app Data Imports upload flow (`DataImportsPage.tsx`) still exists independently for
+ad-hoc/one-off imports that don't warrant a code change.
+
 ## Open Items / Risks
 
 - **Trackman import deferred out of v1.** No usable CSV export in hand yet (only a web session
