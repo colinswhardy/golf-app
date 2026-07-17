@@ -6,6 +6,7 @@ import { RoundMapPage } from "./pages/RoundMapPage";
 import { ReviewRoundsPage } from "./pages/ReviewRoundsPage";
 import { DataImportsPage } from "./pages/DataImportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { CourseEditorPage } from "./pages/CourseEditorPage";
 import { seedBundledCourses } from "./lib/seedCourses";
 
 export default function App() {
@@ -23,6 +24,8 @@ export default function App() {
       <Route path="/rounds" element={<ReviewRoundsPage />} />
       <Route path="/imports" element={<DataImportsPage />} />
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/course-editor" element={<CourseEditorPage />} />
+      <Route path="/course-editor/:courseId" element={<CourseEditorPage />} />
     </Routes>
   );
 }

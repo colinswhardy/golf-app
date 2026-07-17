@@ -57,9 +57,9 @@ interface CourseMapProps {
   /** Hides CourseMap's own built-in distance/set-target HUD box, for parents (e.g. the Grint-style
    * round page) that render their own controls and drive settingTarget externally instead. */
   hideInternalHud?: boolean;
-  /** The active club's shot dispersion, rendered as a shaded ellipse centered on the target pin
-   * (so dragging the pin — already draggable — moves the ellipse with it) and oriented along the
-   * current origin->target bearing. Omit/null to hide. */
+  /** The active club's shot dispersion, rendered as a shaded ellipse. Centered on the current
+   * shot's target — see currentShotNumber below and getDispersionCenter() in the implementation
+   * — and oriented along the origin->center bearing. Omit/null to hide. */
   dispersionEllipse?: DispersionEllipseSpec | null;
   /** A one-time suggested layup dot (e.g. the fairway midpoint projected onto the tee->green
    * line) placed automatically on mount if no measure dots exist yet. Still draggable/deletable
@@ -67,6 +67,10 @@ interface CourseMapProps {
    * responsible for stale-hole-data guarding (same pattern as fallbackOrigin/initialTarget)
    * before passing this, since CourseMap only acts on it once per mount. */
   autoLayupPoint?: LatLng | null;
+  /** The shot number about to be recorded (1 = tee shot), used to decide what the dispersion
+   * ellipse centers on: the nearest-to-origin measure dot for shot 1, the second-nearest for
+   * shot 2, the green/pin target for shot 3+. Omit/1 if unknown. */
+  currentShotNumber?: number;
 }
 
 /**
@@ -89,7 +93,8 @@ export function CourseMap({
   mapStyle,
   hideInternalHud,
   dispersionEllipse,
-  autoLayupPoint
+  autoLayupPoint,
+  currentShotNumber
 }: CourseMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -139,7 +144,8 @@ export function CourseMap({
     onTargetChange,
     holeFeatures,
     onWaterWarning,
-    dispersionEllipse
+    dispersionEllipse,
+    currentShotNumber
   });
   stateRef.current = {
     origin,
@@ -150,7 +156,8 @@ export function CourseMap({
     onTargetChange,
     holeFeatures,
     onWaterWarning,
-    dispersionEllipse
+    dispersionEllipse,
+    currentShotNumber
   };
 
   // --- Geolocation: watch position for the blue dot ---
@@ -427,22 +434,44 @@ export function CourseMap({
     }
   }
 
+  // The dispersion ellipse centers on the target of the shot currently being played, not always
+  // the green/pin: the nearest-to-origin measure dot for shot 1 (e.g. laying up short of a
+  // hazard off the tee), the second-nearest for shot 2, and the green/pin target for shot 3+ (by
+  // then you're generally playing to the green, not a further layup spot). Falls back to target
+  // if the relevant dot doesn't exist (e.g. shot 1 requested but no dots placed at all). Dots
+  // live in a ref (imperative Mapbox markers), not React state, so callers that add/drag/delete a
+  // dot must call updateDispersionEllipse() themselves alongside updateLineAndLabels() — it won't
+  // re-run on its own from a dot change.
+  function getDispersionCenter(): LatLng | null {
+    const { origin: curOrigin, target: curTarget, currentShotNumber: shotNumber } = stateRef.current;
+    const dots = Array.from(measureMarkersRef.current.values()).map(({ marker }) => {
+      const pos = marker.getLngLat();
+      return { lat: pos.lat, lng: pos.lng } as LatLng;
+    });
+    if (curOrigin) dots.sort((a, b) => distanceYards(curOrigin, a) - distanceYards(curOrigin, b));
+
+    if ((shotNumber ?? 1) === 1) return dots[0] ?? curTarget;
+    if (shotNumber === 2) return dots[1] ?? curTarget;
+    return curTarget;
+  }
+
   // Draws dispersionEllipse (already computed in the shot's own downrange/offline frame by the
-  // caller) centered on the current target, oriented along the origin->target bearing — reusing
-  // fromDownrangeOffline (the inverse of the projection used to compute dispersion from history)
-  // to turn ellipse-boundary sample points back into map coordinates.
+  // caller) centered on getDispersionCenter(), oriented along the origin->center bearing —
+  // reusing fromDownrangeOffline (the inverse of the projection used to compute dispersion from
+  // history) to turn ellipse-boundary sample points back into map coordinates.
   function updateDispersionEllipse() {
     const map = mapRef.current;
     const source = map?.getSource(DISPERSION_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
     if (!source) return;
 
-    const { origin: curOrigin, target: curTarget, dispersionEllipse: ellipse } = stateRef.current;
-    if (!curOrigin || !curTarget || !ellipse) {
+    const { origin: curOrigin, dispersionEllipse: ellipse } = stateRef.current;
+    const center = getDispersionCenter();
+    if (!curOrigin || !center || !ellipse) {
       source.setData({ type: "FeatureCollection", features: [] });
       return;
     }
 
-    const bearing = bearingDegrees(curOrigin, curTarget);
+    const bearing = bearingDegrees(curOrigin, center);
     const steps = 40;
     const coordinates: number[][] = [];
     for (let i = 0; i <= steps; i++) {
@@ -451,7 +480,7 @@ export function CourseMap({
       const v = ellipse.semiMinorYards * Math.sin(t);
       const downrange = u * Math.cos(ellipse.rotationRad) - v * Math.sin(ellipse.rotationRad);
       const offline = u * Math.sin(ellipse.rotationRad) + v * Math.cos(ellipse.rotationRad);
-      const p = fromDownrangeOffline(curTarget, bearing, downrange, offline);
+      const p = fromDownrangeOffline(center, bearing, downrange, offline);
       coordinates.push([p.lng, p.lat]);
     }
     source.setData({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [coordinates] } });
@@ -522,17 +551,22 @@ export function CourseMap({
       .setLngLat([point.lng, point.lat])
       .addTo(map);
 
-    marker.on("drag", updateLineAndLabels);
+    marker.on("drag", () => {
+      updateLineAndLabels();
+      updateDispersionEllipse();
+    });
 
     el.addEventListener("dblclick", (evt) => {
       evt.stopPropagation();
       marker.remove();
       measureMarkersRef.current.delete(id);
       updateLineAndLabels();
+      updateDispersionEllipse();
     });
 
     measureMarkersRef.current.set(id, { marker, label });
     updateLineAndLabels();
+    updateDispersionEllipse();
   }
 
   // --- Blue dot marker: always shows real GPS, regardless of the fallback used for the line/camera ---
@@ -657,14 +691,14 @@ export function CourseMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holeFeatures]);
 
-  // Redraws the dispersion ellipse whenever the active club's dispersion spec changes, or the
-  // pin/origin moves (it's centered on target and oriented along origin->target bearing). A
-  // no-op before the map's initial "load" fires and creates DISPERSION_SOURCE_ID — ensureSources
-  // calls this itself once that source exists.
+  // Redraws the dispersion ellipse whenever the active club's dispersion spec changes, the
+  // pin/origin moves, or the shot number advances (which can change what it's centered on — see
+  // getDispersionCenter). A no-op before the map's initial "load" fires and creates
+  // DISPERSION_SOURCE_ID — ensureSources calls this itself once that source exists.
   useEffect(() => {
     updateDispersionEllipse();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispersionEllipse, target, origin]);
+  }, [dispersionEllipse, target, origin, currentShotNumber]);
 
   // Places one suggested layup dot at autoLayupPoint the first time it's available this mount —
   // guarded by a ref (not just "no dots yet") so it fires exactly once per hole and never fights

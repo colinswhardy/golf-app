@@ -1,6 +1,6 @@
 import { db } from "./db";
 import type { ParsedCourse } from "./importOverpass";
-import type { Club, Course, CourseVersion, FeatureType, Hole, HoleFeature, TeeBox } from "../types/domain";
+import type { Club, Course, CourseVersion, FeatureType, Hole, HoleFeature, LatLng, TeeBox } from "../types/domain";
 
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
@@ -114,6 +114,21 @@ export async function getHolesForVersion(courseVersionId: string): Promise<Hole[
 
 export async function getFeaturesForHole(holeId: string): Promise<HoleFeature[]> {
   return db.holeFeatures.where("holeId").equals(holeId).toArray();
+}
+
+export async function getTeeBoxesForHole(holeId: string): Promise<TeeBox[]> {
+  return db.teeBoxes.where("holeId").equals(holeId).toArray();
+}
+
+/** Overwrites a tee box's coordinate — used by the in-app Course Editor to correct
+ * mis-mapped/backward OSM data by hand. Direct overwrite, no versioning: tee boxes aren't
+ * course-version-scoped the way holes/features are (see §7 in DESIGN.md). */
+export async function updateTeeBoxLocation(teeBoxId: string, location: LatLng): Promise<void> {
+  const teeBox = await db.teeBoxes.get(teeBoxId);
+  if (!teeBox) return;
+  const updated: TeeBox = { ...teeBox, location };
+  await db.teeBoxes.put(updated);
+  await queueOutbox("teeBoxes", "upsert", updated);
 }
 
 /** Updates a hole's freeform notes. Tied to the hole (not a round), so notes persist and

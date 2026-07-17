@@ -474,11 +474,33 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
   actual history yet.
 - `RoundMapPage` adds a club-picker chip row (behind a 📐 pill button) that sets `activeClubId`;
   an effect resolves it to a `DispersionEllipseSpec` and passes it to `CourseMap`, which draws it as
-  a filled+outlined polygon (`DISPERSION_SOURCE_ID`) centered on `target` and oriented along the
-  live origin→target bearing — `fromDownrangeOffline` (the inverse of the projection above) turns
-  40 sampled ellipse-boundary points back into map coordinates. It's centered on the *already*
-  draggable target/pin rather than being independently draggable — moving the pin moves the
-  ellipse with it for free.
+  a filled+outlined polygon (`DISPERSION_SOURCE_ID`) — `fromDownrangeOffline` (the inverse of the
+  projection above) turns 40 sampled ellipse-boundary points back into map coordinates.
+  - **Centering** (`getDispersionCenter()`): the target of the shot currently being played, not
+    always the green — `RoundMapPage` passes `currentShotNumber={shotCount + 1}` down; shot 1
+    centers on the nearest-to-origin measure dot (`dots[0]`), shot 2 on the second-nearest
+    (`dots[1]`), shot 3+ on `target` (the green/pin). The idea: once you've placed layup dots,
+    those *are* the aim points for your first couple of shots (e.g. laying up short of a hazard,
+    then a second layup past it), and only later shots are realistically aimed at the green
+    itself. Falls back to `target` if the relevant dot doesn't exist yet (e.g. shot 1 requested
+    but no dots placed at all). Orientation bearing is `origin→center`, matching whichever point
+    it resolved to, so the ellipse's long axis always points along the actual aim line for the
+    current shot. Centered on the already-draggable dot/pin rather than being independently
+    draggable — moving either moves the ellipse with it for free.
+  - **Gotcha**: measure dots live in a ref (imperative Mapbox markers, not React state), so
+    `updateDispersionEllipse()` doesn't re-run on its own when a dot is added/dragged/deleted the
+    way it does for prop changes (`[dispersionEllipse, target, origin, currentShotNumber]`).
+    `addMeasureMarker()` and its drag/delete handlers all call it explicitly, same pattern as
+    `updateLineAndLabels()`.
+  - **Bug found via this feature's own verification**: advancing `currentShotNumber` (by
+    recording a shot) only matters if the player's placed measure dots *survive* that action —
+    they didn't. Starting a round (`round` flipping `null` → non-null) re-fires the effect that
+    resolves `roundHoleId`, and for one render `pinDataReady` (§ below) went false before the
+    separate `currentRoundHole` live query caught up, unmounting and remounting `CourseMap` and
+    silently wiping any dots the player had placed pre-round. Fixed by seeding a `resolvedRoundHole`
+    state with the exact row `getOrCreateRoundHole` already resolved, so `currentRoundHole` (and
+    `pinDataReady`) never has to wait on the live query to independently catch up to a
+    `roundHoleId` the app already has full data for.
 - Settings page (`SettingsPage.tsx`) is a simple per-club table (front/back yards, left/right
   yards, "use actual" checkbox), direct-writing on blur/change via
   `courseRepo.updateClubDispersion` — low-frequency editing, no debounce needed.
@@ -509,10 +531,23 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
   1. Project a point exactly 275 yards down the tee→green line (`fromDownrangeOffline(tee,
      bearing, 275, 0)`).
   2. If that point falls inside the fairway polygon (`turf.booleanPointInPolygon`), use it as-is.
-  3. Otherwise (a dogleg, a fairway that doesn't reach 275y, etc.), fall back to the point on the
-     fairway polygon's boundary closest to the tee (`turf.nearestPointOnLine` against
-     `turf.polygonToLine(fairway)`) — still a reasonable "aim here first" suggestion even when the
-     fixed-distance point misses the short grass entirely.
+  3. Otherwise (a dogleg, a fairway that doesn't reach 275y, etc.), fall back to the midpoint of
+     the segment where the tee→green line actually *crosses* the fairway polygon
+     (`fairwayCenterlineSegmentMidpoint`): intersect the line against the fairway boundary
+     (`turf.lineIntersect`), sort the crossing points by distance from the tee, and take the
+     midpoint of whichever consecutive pair's own midpoint falls inside the polygon (preferring
+     the widest such span if a dogleg produces more than one crossing pair). A straight line
+     through an oddly-shaped fairway can cross its boundary more than twice, so this doesn't just
+     assume "first two crossings = the inside segment."
+  4. If the line never crosses the fairway polygon at all (a sharp dogleg), fall back further to
+     the point on the fairway boundary closest to the tee (`turf.nearestPointOnLine` against
+     `turf.polygonToLine(fairway)`) — a last resort, but still on the short grass.
+  - This replaced an earlier version whose only fallback was step 4 (nearest fairway edge to the
+    tee) — which could land the suggested dot right at the fairway's near lip, barely past the
+    tee shot's landing area. The intersection-midpoint approach (step 3) is a meaningfully better
+    "aim here" suggestion for the common case (a fairway the 275y point simply doesn't reach or
+    overshoots on a dogleg) and is now the primary fallback; step 4 only fires when the straight
+    line genuinely misses the fairway polygon altogether.
   - **No real centerline at round-time**: OSM's `golf=hole` centerline geometry (§ Course Import)
     is used only transiently during import — it's never persisted as a `HoleFeature` or any other
     Dexie row, only its *derived* outputs (yardage, par, tee/green hole-assignment) survive. Rather
@@ -531,6 +566,47 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
     this point once when it shows up," not re-derive freshness itself. Also depends only on stable
     per-hole values (tee, green, par, yardage) rather than live GPS, so it doesn't re-fire on every
     position tick the way a naive `[origin, target, holeFeatures]` dependency array would have.
+
+## 18. Tap-Away Dismissal, Teebox Auto-Hide, and the In-App Course Editor
+
+- **Tap-away dismissal (notes popover)**: a wrapper `<div>` around `CourseMap` tracks
+  `pointerdown`/`pointerup` screen coordinates (`mapPointerDownRef`) rather than using a plain
+  `onClick` — panning/dragging the map still ends in a native `click` event on pointerup, so a
+  naive click handler would dismiss the notes popover on every pan, not just an intentional tap.
+  Only dismisses when movement between down and up is under `TAP_MOVE_TOLERANCE_PX` (10px). The
+  wrapper only wraps the map itself (not the header/HUD/pill/sheets, which are separate siblings
+  stacked above via z-index), so this never fights clicks meant for that chrome.
+  `ShotSheet`/`HoleScoreSheet`/`ScorecardSheet` already tap-away-dismiss via `RoundSheets.tsx`'s
+  shared `Sheet` component (a full-screen backdrop that closes on any click outside the sheet
+  card), so this only needed to cover the notes popover, which has no backdrop of its own.
+- **Teebox selector auto-hide**: `handleTeeChange` sets a `teeSelectorClosed` flag alongside
+  saving the preference, hiding the whole selector card immediately rather than leaving it open
+  for the rest of pre-round setup — the choice is already saved (`localStorage`), so there's
+  nothing left for the card to do. Resets on hole change (`useEffect` keyed on `currentHole?.id`)
+  so it's available again on a later hole, still gated to pre-round (`!round`) same as before.
+
+### In-App Course Editor
+
+`CourseEditorPage.tsx` (routes `/course-editor` and `/course-editor/:courseId`) exists to correct
+mis-mapped tee box coordinates by hand, without round-tripping through OpenStreetMap + Overpass
+Turbo + a re-import for a one-tee-box fix.
+
+- **Standalone map, not a `CourseMap` reuse** — same rationale as `ReviewMap` (§11): this has none
+  of `CourseMap`'s live-round machinery (GPS blue dot, measuring tool, dispersion, bunker cards,
+  water warnings), so reusing it would mostly mean threading props through to hide all of that.
+  Renders its own minimal Mapbox map: a read-only red green-reference marker, a draggable white
+  tee marker for whichever tee box is selected (chip row, for holes with multiple tee sets), and
+  a Save/Clear bottom bar.
+- **Staged edits, not live-write-on-drag**: unlike the round map's tee marker (§8, local-only,
+  never persisted) or target marker (persisted on every `dragend`), dragging here only updates a
+  local `draftLocation` — nothing touches Dexie until "Save" (`courseRepo.updateTeeBoxLocation`,
+  a direct overwrite of the `teeBoxes` row). "Clear" discards the unsaved drag back to whatever's
+  currently persisted — there's no true "revert to original OSM import," since the original
+  imported coordinate isn't tracked separately once overwritten. This is a deliberate scope call:
+  building real edit-history tracking for a personal single-user admin tool wasn't worth the
+  schema/complexity cost; the existing Data Imports flow remains the path to a genuine from-scratch
+  re-import if a full reset is ever needed.
+- Home's 4th tile (previously blank) now links here.
 
 ## Course Import — Overpass → Dexie
 

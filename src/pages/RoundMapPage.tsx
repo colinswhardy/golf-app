@@ -20,7 +20,7 @@ import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE, type DispersionEllipseSpec 
 import { HoleScoreSheet, ScorecardSheet, ShotSheet, relativeToParLabel } from "../components/RoundSheets";
 import { bearingDegrees, distanceMeters, distanceYards, fromDownrangeOffline } from "../lib/geo";
 import { getClubDispersion } from "../lib/dispersion";
-import type { Club, FairwayResult, LatLng, Lie, Round } from "../types/domain";
+import type { Club, FairwayResult, LatLng, Lie, Round, RoundHole } from "../types/domain";
 
 const GREENSIDE_BUNKER_MAX_YARDS = 40;
 const FAR_FROM_HOLE_METERS = 300;
@@ -28,6 +28,7 @@ const GREEN_HALF_DEPTH_YARDS = 15;
 const TEE_PREFERENCE_KEY = "caddyshot_tee_preference";
 const AUTO_LAYUP_MIN_HOLE_YARDS = 300;
 const AUTO_LAYUP_DOWNRANGE_YARDS = 275;
+const TAP_MOVE_TOLERANCE_PX = 10;
 
 // Personal, single-user app — no auth/profile system exists (or is needed) to derive this from.
 const PLAYER_NAME = "Colin";
@@ -36,6 +37,41 @@ const PLAYER_INITIALS = "CH";
 function centroidLatLng(geom: GeoJSON.Polygon): LatLng {
   const [lng, lat] = turf.centroid(turf.feature(geom)).geometry.coordinates;
   return { lat, lng };
+}
+
+// Finds where the tee->green line crosses the fairway polygon boundary and returns the midpoint
+// of the "inside the fairway" segment between two crossings — used as the automatic layup dot's
+// fallback when the fixed AUTO_LAYUP_DOWNRANGE_YARDS point itself misses the fairway (e.g. a
+// dogleg). A straight line can cross a polygon boundary more than twice for oddly-shaped
+// fairways, so this checks every consecutive pair of crossings (sorted by distance from the tee)
+// and picks the one whose own midpoint actually falls inside the polygon, preferring the widest
+// such segment if more than one qualifies.
+function fairwayCenterlineSegmentMidpoint(tee: LatLng, green: LatLng, fairwayPolygon: GeoJSON.Feature<GeoJSON.Polygon>): LatLng | null {
+  const line = turf.lineString([
+    [tee.lng, tee.lat],
+    [green.lng, green.lat]
+  ]);
+  const boundary = turf.polygonToLine(fairwayPolygon) as GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString>;
+  const hits = turf.lineIntersect(line, boundary);
+  if (hits.features.length < 2) return null;
+
+  const sorted = hits.features
+    .map((f) => {
+      const [lng, lat] = f.geometry.coordinates;
+      return { lat, lng, d: distanceYards(tee, { lat, lng }) };
+    })
+    .sort((a, b) => a.d - b.d);
+
+  let best: { mid: LatLng; span: number } | null = null;
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i];
+    const b = sorted[i + 1];
+    const mid: LatLng = { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+    if (!turf.booleanPointInPolygon(turf.point([mid.lng, mid.lat]), fairwayPolygon)) continue;
+    const span = b.d - a.d;
+    if (!best || span > best.span) best = { mid, span };
+  }
+  return best?.mid ?? null;
 }
 
 function getHoleOrdinal(n: number): string {
@@ -74,6 +110,9 @@ export function RoundMapPage() {
   const [roundHoleId, setRoundHoleId] = useState<string | null>(null);
   const [openSheet, setOpenSheet] = useState<"shot" | "score" | "scorecard" | null>(null);
   const lastPositionRef = useRef<LatLng | null>(null);
+  // Tracks pointerdown position on the map wrapper to distinguish a tap (dismisses the notes
+  // popover) from a drag/pan (which also ends in a native click but shouldn't dismiss anything).
+  const mapPointerDownRef = useRef<{ x: number; y: number } | null>(null);
 
   // --- Grint-style map controls, lifted so the right-side pill can drive CourseMap externally ---
   const [settingTarget, setSettingTarget] = useState(false);
@@ -119,8 +158,17 @@ export function RoundMapPage() {
   const [selectedTeeName, setSelectedTeeName] = useState<string>(() =>
     typeof localStorage === "undefined" ? "" : (localStorage.getItem(TEE_PREFERENCE_KEY) ?? "")
   );
+  // Hides the tee selector card immediately once a choice is made, rather than leaving it
+  // sitting open for the rest of pre-round setup — the choice is already saved (localStorage),
+  // so there's nothing left for the card to do. Resets on hole change so it's available again
+  // if you want to reconsider on a later hole (still pre-round only, per the render gate below).
+  const [teeSelectorClosed, setTeeSelectorClosed] = useState(false);
+  useEffect(() => {
+    setTeeSelectorClosed(false);
+  }, [currentHole?.id]);
   function handleTeeChange(name: string) {
     setSelectedTeeName(name);
+    setTeeSelectorClosed(true);
     if (typeof localStorage === "undefined") return;
     if (name) localStorage.setItem(TEE_PREFERENCE_KEY, name);
     else localStorage.removeItem(TEE_PREFERENCE_KEY);
@@ -133,18 +181,31 @@ export function RoundMapPage() {
   }, [isDemo, courseId]);
 
   // A RoundHole row is created lazily the first time you interact with a hole during a round.
+  // resolvedRoundHole seeds pinDataReady/currentRoundHole (below) with the SAME row
+  // getOrCreateRoundHole just resolved, so they don't have to wait for the separate live query to
+  // independently catch up to a roundHoleId we already have the full row for. Without this,
+  // starting a round (round null -> non-null, this effect re-firing) briefly flips pinDataReady
+  // false for the render or two before the live query resolves, which unmounts CourseMap and
+  // silently wipes any measure dots the player had already placed pre-round.
+  const [resolvedRoundHole, setResolvedRoundHole] = useState<RoundHole | null>(null);
   useEffect(() => {
     setRoundHoleId(null);
+    setResolvedRoundHole(null);
     if (!round || !currentHole) return;
-    getOrCreateRoundHole(round.id, currentHole.id).then((rh) => setRoundHoleId(rh.id));
+    getOrCreateRoundHole(round.id, currentHole.id).then((rh) => {
+      setResolvedRoundHole(rh);
+      setRoundHoleId(rh.id);
+    });
   }, [round, currentHole?.id]);
 
   // Live so a dragged/tapped pin (persisted via onTargetChange below) is picked back up
-  // correctly if you navigate away from this hole and back.
-  const currentRoundHole = useLiveQuery(
+  // correctly if you navigate away from this hole and back. Falls back to resolvedRoundHole
+  // (above) until this live query's own result for the current roundHoleId comes in.
+  const currentRoundHoleLive = useLiveQuery(
     () => (roundHoleId ? db.roundHoles.get(roundHoleId) : undefined),
     [roundHoleId]
   );
+  const currentRoundHole = currentRoundHoleLive ?? resolvedRoundHole ?? undefined;
 
   const shots = useLiveQuery(
     () => (roundHoleId ? db.shots.where("roundHoleId").equals(roundHoleId).toArray() : []),
@@ -215,7 +276,9 @@ export function RoundMapPage() {
   // wait for its row to actually load before mounting CourseMap, so a pin saved earlier in this
   // round isn't missed — CourseMap only reads its initialTarget prop once, at mount, so mounting
   // before this resolves would permanently lock onto the green centroid instead. Not needed
-  // pre-round (roundHoleId null), when there's no pin concept yet.
+  // pre-round (roundHoleId null), when there's no pin concept yet. In practice this almost never
+  // blocks anymore now that currentRoundHole falls back to resolvedRoundHole above — only a
+  // (still theoretically possible) gap between roundHoleId being set and either value existing.
   const pinDataReady = !roundHoleId || currentRoundHole !== undefined;
 
   // Excludes the generic "Tee" fallback name from the dropdown whenever real color sets (Blue,
@@ -248,10 +311,14 @@ export function RoundMapPage() {
   }, [teeBoxes, selectedTeeName, greenCentroid, currentHole]);
 
   // Suggested first layup dot: no dot on Par 3s or holes under 300y (nothing to lay up to);
-  // otherwise a point AUTO_LAYUP_DOWNRANGE_YARDS down the tee->green line (the closest thing this
-  // app has to a real hole centerline at round-time — see DESIGN.md) if that lands inside the
-  // fairway polygon, else the fairway point closest to the tee. Same stale-hole-data guard as
-  // greenCentroid/fallbackOrigin above, since CourseMap only acts on this once per mount.
+  // otherwise prefers a point AUTO_LAYUP_DOWNRANGE_YARDS down the tee->green line (the closest
+  // thing this app has to a real hole centerline at round-time — see DESIGN.md) if that lands
+  // inside the fairway polygon. Otherwise falls back to the midpoint of the segment where the
+  // tee->green line actually crosses the fairway polygon (e.g. a dogleg where 275y downrange
+  // misses the short grass) — a better "aim here" suggestion than the fixed-distance point in
+  // that case, and never too close to the tee the way "nearest fairway edge to the tee" could be.
+  // Same stale-hole-data guard as greenCentroid/fallbackOrigin above, since CourseMap only acts on
+  // this once per mount.
   const fairwayLayupPoint = useMemo(() => {
     if (!holeFeatures?.length || !currentHole || !fallbackOrigin || !greenCentroid) return null;
     if (!holeFeatures.every((f) => f.holeId === currentHole.id)) return null;
@@ -266,6 +333,12 @@ export function RoundMapPage() {
     if (turf.booleanPointInPolygon(turf.point([candidate.lng, candidate.lat]), fairwayPolygon)) {
       return candidate;
     }
+
+    const midpoint = fairwayCenterlineSegmentMidpoint(fallbackOrigin, greenCentroid, fairwayPolygon);
+    if (midpoint) return midpoint;
+
+    // Last resort, e.g. a sharp dogleg where the straight tee->green line never actually
+    // crosses the fairway polygon at all: nearest point on the fairway boundary to the tee.
     const boundary = turf.polygonToLine(fairwayPolygon) as GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString>;
     const nearest = turf.nearestPointOnLine(boundary, turf.point([fallbackOrigin.lng, fallbackOrigin.lat]));
     const [lng, lat] = nearest.geometry.coordinates;
@@ -458,39 +531,61 @@ export function RoundMapPage() {
         </div>
       )}
 
-      {isDemo ? (
-        <CourseMap />
-      ) : currentHole && greenCentroid && fallbackOrigin && pinDataReady ? (
-        // Gated on the derived greenCentroid/fallbackOrigin/pinDataReady themselves, not just on
-        // the holeFeatures/teeBoxes queries having "resolved" — Dexie's live-query hook briefly
-        // emits a genuinely-empty [] for each before converging on the real rows, so a
-        // resolved-vs-undefined check opens one render too early. CourseMap's map-init effect
-        // only runs once (on mount), so mounting before these are the real values would
-        // permanently lock the camera onto the null/flat fallback instead of tee-facing-green —
-        // and separately, would miss a pin saved earlier this round on this same hole.
-        <CourseMap
-          key={currentHole.id}
-          initialTarget={activeTarget}
-          fallbackOrigin={fallbackOrigin}
-          holeFeatures={holeFeatures}
-          onPositionChange={(p) => {
-            lastPositionRef.current = p;
-          }}
-          onDistanceUpdate={setCenterDistance}
-          onWaterWarning={setWaterWarningYards}
-          onTargetChange={handleTargetChange}
-          settingTarget={settingTarget}
-          onSettingTargetChange={setSettingTarget}
-          mapStyle={mapStyle}
-          hideInternalHud
-          dispersionEllipse={dispersionEllipse}
-          autoLayupPoint={fairwayLayupPoint}
-        />
-      ) : (
-        <div style={{ padding: 24, color: "#eef2ef" }}>Loading course…</div>
-      )}
+      {/* Tap-away dismissal: a genuine TAP (minimal movement between pointerdown and pointerup)
+          on the map itself (not the header/HUD/pill/sheets, all separate siblings stacked above
+          via z-index) closes the notes popover. Tracked via pointer position rather than a plain
+          onClick so panning/dragging the map — which still ends in a native click — doesn't also
+          dismiss the popover. ShotSheet/HoleScoreSheet/ScorecardSheet already tap-away-dismiss
+          via their own Sheet backdrop (RoundSheets.tsx), so this only needs to cover the notes
+          popover, which has no backdrop of its own. */}
+      <div
+        onPointerDown={(e) => {
+          mapPointerDownRef.current = { x: e.clientX, y: e.clientY };
+        }}
+        onPointerUp={(e) => {
+          const start = mapPointerDownRef.current;
+          mapPointerDownRef.current = null;
+          if (!start || !notesOpen) return;
+          const movedPx = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+          if (movedPx < TAP_MOVE_TOLERANCE_PX) setNotesOpen(false);
+        }}
+        style={{ position: "absolute", inset: 0 }}
+      >
+        {isDemo ? (
+          <CourseMap />
+        ) : currentHole && greenCentroid && fallbackOrigin && pinDataReady ? (
+          // Gated on the derived greenCentroid/fallbackOrigin/pinDataReady themselves, not just on
+          // the holeFeatures/teeBoxes queries having "resolved" — Dexie's live-query hook briefly
+          // emits a genuinely-empty [] for each before converging on the real rows, so a
+          // resolved-vs-undefined check opens one render too early. CourseMap's map-init effect
+          // only runs once (on mount), so mounting before these are the real values would
+          // permanently lock the camera onto the null/flat fallback instead of tee-facing-green —
+          // and separately, would miss a pin saved earlier this round on this same hole.
+          <CourseMap
+            key={currentHole.id}
+            initialTarget={activeTarget}
+            fallbackOrigin={fallbackOrigin}
+            holeFeatures={holeFeatures}
+            onPositionChange={(p) => {
+              lastPositionRef.current = p;
+            }}
+            onDistanceUpdate={setCenterDistance}
+            onWaterWarning={setWaterWarningYards}
+            onTargetChange={handleTargetChange}
+            settingTarget={settingTarget}
+            onSettingTargetChange={setSettingTarget}
+            mapStyle={mapStyle}
+            hideInternalHud
+            dispersionEllipse={dispersionEllipse}
+            autoLayupPoint={fairwayLayupPoint}
+            currentShotNumber={shotCount + 1}
+          />
+        ) : (
+          <div style={{ padding: 24, color: "#eef2ef" }}>Loading course…</div>
+        )}
+      </div>
 
-      {!isDemo && currentHole && !round && uniqueTeeNames.length > 0 && (
+      {!isDemo && currentHole && !round && uniqueTeeNames.length > 0 && !teeSelectorClosed && (
         <div style={teeSelectorStyle}>
           <label htmlFor="tee-select" style={{ fontSize: 11, opacity: 0.75 }}>
             Tee
