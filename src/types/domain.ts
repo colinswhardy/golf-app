@@ -20,6 +20,8 @@ export interface Course {
   location: LatLng | null;
   updatedAt: string;
   deletedAt: string | null;
+  isFeatured?: boolean;
+  lastSelectedAt?: string | null;
 }
 
 export interface CourseVersion {

@@ -18,16 +18,38 @@ const BUNDLED_COURSES = [
  * creates duplicate versions on repeat runs.
  */
 export async function seedBundledCourses(): Promise<void> {
+  // 1. Upgrade existing seeded default courses to ensure they have the isFeatured property
+  try {
+    const defaultCourseNames = BUNDLED_COURSES.map((c) => c.name);
+    const existingFeatured = await db.courses.where("name").anyOf(defaultCourseNames).toArray();
+    for (const c of existingFeatured) {
+      if (c.isFeatured === undefined) {
+        await db.courses.update(c.id, { isFeatured: true });
+      }
+    }
+  } catch (err) {
+    console.error("Failed to upgrade existing courses:", err);
+  }
+
+  // 2. Normal seeding process
   for (const entry of BUNDLED_COURSES) {
     try {
-      const existing = await db.courses.where("name").equals(entry.name).count();
-      if (existing > 0) continue;
+      const existing = await db.courses.where("name").equals(entry.name).first();
+      if (existing) {
+        if (existing.isFeatured === undefined) {
+          await db.courses.update(existing.id, { isFeatured: true });
+        }
+        continue;
+      }
 
       const res = await fetch(`${import.meta.env.BASE_URL}${entry.file}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const geojson = await res.json();
       const parsed = parseOverpassGeoJson(geojson);
-      await saveImportedCourse(parsed);
+      const ids = await saveImportedCourse(parsed);
+      
+      // Update isFeatured for newly seeded courses
+      await db.courses.update(ids.courseId, { isFeatured: true });
     } catch (e) {
       console.error(`Failed to seed bundled course "${entry.name}":`, e);
     }

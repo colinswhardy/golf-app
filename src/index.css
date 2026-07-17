@@ -17,3 +17,33 @@ body {
 a {
   color: inherit;
 }
+
+/* Custom Course Card Zoom Effects */
+.featured-card, .list-card {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.featured-card:hover {
+  transform: translateY(-2px);
+  border-color: #10b981 !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.15) !important;
+}
+
+.featured-card:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.list-card:hover {
+  border-color: #2f5c3d !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.05) !important;
+}
+
+.list-card:active {
+  transform: scale(0.99);
+}
+
+/* Custom Search Focus Glow */
+input:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
