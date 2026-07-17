@@ -512,17 +512,24 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
 
 ## 17. Round Map Layout — Bottom-Left HUD & Automatic Fairway Layup
 
-- **Bottom-left HUD**: the green front/center/back distance card and (when present) the water
-  warning row live in one stacked translucent container (`bottomLeftHudStyle`) positioned
-  `bottom: 76` / `left: 12` — just above the bottom profile bar, using the same "76px clearance"
-  convention `teeSelectorStyle` already used on the opposite corner. Previously the distance card
-  sat top-left and the water warning was a separate top-center badge; consolidating them
-  bottom-left keeps the top of the screen (header + right pill) free of secondary chrome. A
-  pace-of-play timer (`elapsedMinutes` since arriving at the hole) used to live here too — removed
-  along with its state/effects, since nothing else in the app reads that value.
+- **Bottom-left vertical stack**: three left-anchored elements stack without overlap, cleanest at
+  `left: 12` throughout: `bottomBarStyle` (`bottom: 0`, the profile/score/action bar) →
+  `notesPreviewStyle` (`bottom: 76`, the one-line note preview pill — left-aligned, not centered,
+  specifically so it lines up under the HUD rather than floating independently) →
+  `bottomLeftHudStyle` (`bottom: 122`, the green front/center/back distance card + water warning
+  row). 122 = 76 (notes bar clearance) + the notes pill's own rendered height (~34px) + a small
+  gap, so the HUD sits directly above the notes bar regardless of whether a note preview is
+  currently showing (its slot is reserved either way — nothing shifts when a note is added or
+  cleared). Previously the notes preview was horizontally centered and the HUD sat beside it, not
+  above it; moved so they read as one deliberate stack rather than two independently-floating
+  pieces. A pace-of-play timer (`elapsedMinutes` since arriving at the hole) used to live in the
+  HUD card too — removed along with its state/effects, since nothing else in the app reads that
+  value.
 - **Notes popover placement**: `notesBoxStyle` is `top: 76` / `right: 64` — vertically aligned with
   the right pill's first button, offset left just enough to clear the pill's own width, so opening
-  notes reads as "a panel next to the tool that opened it" rather than a disconnected overlay.
+  notes reads as "a panel next to the tool that opened it" rather than a disconnected overlay. This
+  is a different element from the *preview* pill above (which is always bottom-left when a note
+  exists); the popover itself stays anchored to the right, next to the 📝 button that opens it.
 - **Automatic 275y fairway layup dot**: on mount, if the current hole isn't a Par 3 and its
   `defaultYardage` isn't under 300y, and it has a `fairway`-type `HoleFeature` and no measure dots
   exist yet, `CourseMap` places one automatically — the layup suggestion is still fully
@@ -578,7 +585,12 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
   stacked above via z-index), so this never fights clicks meant for that chrome.
   `ShotSheet`/`HoleScoreSheet`/`ScorecardSheet` already tap-away-dismiss via `RoundSheets.tsx`'s
   shared `Sheet` component (a full-screen backdrop that closes on any click outside the sheet
-  card), so this only needed to cover the notes popover, which has no backdrop of its own.
+  card), so this only needed to cover the notes popover, which has no backdrop of its own. The
+  same distance check also correctly leaves the popover open while *repositioning a measure dot*
+  (dragging a marker, not panning the map background) — both are just pointer movement past the
+  wrapper's threshold from the same handler's point of view, so no separate marker-vs-background
+  distinction was needed. Verified explicitly since it's easy to assume markers might swallow the
+  pointer events differently than a bare map drag; they don't.
 - **Teebox selector auto-hide**: `handleTeeChange` sets a `teeSelectorClosed` flag alongside
   saving the preference, hiding the whole selector card immediately rather than leaving it open
   for the rest of pre-round setup — the choice is already saved (`localStorage`), so there's

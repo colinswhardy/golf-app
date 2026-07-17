@@ -711,12 +711,14 @@ const navButtonStyle: React.CSSProperties = {
   cursor: "pointer"
 };
 
-// Bottom-left, just above the bottom profile bar (same "bottom: 76" convention as
-// teeSelectorStyle below) — stacks the green front/center/back distances and (when active) the
-// water warning row in one translucent container.
+// Bottom-left column, stacked directly above the notes preview bar (bottom: 76, see
+// notesPreviewStyle below) rather than beside it — bottomBarStyle (bottom: 0) -> notesPreviewStyle
+// (bottom: 76) -> this (bottom: 122) forms one clean non-overlapping vertical stack on the left,
+// leaving the right side (tee selector, utility pill) untouched. Stacks the green front/center/
+// back distances and (when active) the water warning row in one translucent container.
 const bottomLeftHudStyle: React.CSSProperties = {
   position: "absolute",
-  bottom: 76,
+  bottom: 122,
   left: 12,
   zIndex: 2,
   display: "flex",
@@ -856,14 +858,14 @@ const notesBoxStyle: React.CSSProperties = {
   padding: 8
 };
 
-// Centered, just above the bottom bar (same "bottom: 76" convention used elsewhere) — a truncated
-// one-line preview of the saved note; tapping it opens the same popover as the pill's 📝 button.
-// Capped narrower than the full width so it doesn't reach the bottom-left HUD or tee selector.
+// Left-aligned, directly above the bottom bar — a truncated one-line preview of the saved note;
+// tapping it opens the same popover as the pill's 📝 button. Shares the left column with
+// bottomLeftHudStyle (which stacks directly above this) rather than floating centered, so the
+// two form one clean vertical stack instead of sitting side by side.
 const notesPreviewStyle: React.CSSProperties = {
   position: "absolute",
   bottom: 76,
-  left: "50%",
-  transform: "translateX(-50%)",
+  left: 12,
   zIndex: 2,
   maxWidth: "min(280px, 56vw)",
   overflow: "hidden",
