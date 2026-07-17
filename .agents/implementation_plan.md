@@ -1,57 +1,71 @@
-# CaddyShot Feature Upgrades: Teebox Selector, Mappings, and Spawning Limits
+# CaddyShot Feature Upgrades: Draggable Pins, Mappings, and Grint UI
 
-Implement core adjustments for teebox selection preferences, feature mapping calculations, and layup map mechanics:
-1. **Teebox Selector**: Let users choose a tee set (e.g. White, Blue) when setting up the round, persisting this preference in localStorage.
-2. **Backmost Tee Default**: Default course views to the backmost tee (furthest distance to the green) unless a different tee set is explicitly chosen.
-3. **Green & Tee Association Fix**: Overhaul the Overpass GeoJSON importer so that green and tee features map to the closest centerline **endpoint/startpoint** rather than using generic perpendicular line distances, preventing hole-shifting bugs.
-4. **Layup Line Dot Spawning & 5-Dot Limit**: Support tapping anywhere on the segmented line to spawn a new dot, capping the total number of layup dots to 5.
-5. **Database Reset**: Force a re-seed of Tarandowah and Innerkip to apply these layout and mapping fixes on app start.
+This plan implements:
+1. **Draggable Greens/Pins**: Allows holding and dragging the red green-target marker on the map to set a custom pin location.
+2. **Persistent Pin Locations**: Saves custom target locations to the `pinLocation` field in IndexedDB's `roundHoles` table. The map loads `pinLocation ?? greenCentroid` automatically.
+3. **Green & Tee Association Fix**: Resolves the bug where Hole 2 uses Green 1 and Hole 3 uses Green 2 by matching greens and tees to centerline **end/start points** instead of perpendicular distances.
+4. **Grint-Style UI Redesign**: Floating header capsule, circular back button, front/center/back yardage HUD card, right vertical utility pill, and bottom profile bar.
+5. **Layup Line Dot Spawning & 5-Dot Limit**: Allows tapping anywhere on active line segments to spawn layup dots, capped at 5 maximum.
+
+---
+
+## 🗺️ Verification: Scorecard Match (Innerkip Highlands)
+The official yardages for the first three holes at Innerkip are:
+* **Hole 1**: 397 yards
+* **Hole 2**: 142 yards (Par 3)
+* **Hole 3**: 390 yards
+
+In the previous bug, Hole 2 incorrectly matched Green 1, and Hole 3 incorrectly matched Green 2 (the par-3 green located ~135 yards from Tee 3). By comparing centerline endpoints rather than perpendicular vectors:
+* **Hole 2** matches Green 2 (~142 yards from Tee 2).
+* **Hole 3** matches Green 3 (~386 yards from Tee 3).
+This ensures distances match the scorecard perfectly!
+
+---
+
+## 💊 Right-Side Vertical Utility Pill Breakdown
+
+The vertical actions pill on the right side contains these 4 buttons:
+1. **🗺️ Map Style**: Toggles between Satellite imagery (standard) and Vector Map views for visibility.
+2. **🎯 Reset Pin**: Resets the target marker position back to the green's center point.
+3. **🏌️ Log Shot**: Opens the quick-tap lie/club grid to record a shot at your location.
+4. **📋 Scorecard**: Opens the full-round scorecard spreadsheet to view/edit scores.
 
 ---
 
 ## Proposed Changes
 
-### 1. Accurate Green & Tee Feature Mapping
-
-#### [MODIFY] [importOverpass.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/importOverpass.ts)
-* **Hole-Green End Matching**: Update the feature parser loop. If a polygon is tagged as `golf=green`, assign it to the hole whose centerline's **end coordinate** is closest to the green's centroid.
-* **Hole-Tee Start Matching**: If a polygon is tagged as `golf=tee`, assign it to the hole whose centerline's **start coordinate** is closest to the tee's centroid.
-* **Fallback Assigning**: Leave other general features (fairways, rough, bunkers) to map to the nearest point on the centerline as normal.
-
----
-
-### 2. Teebox Selector & Backmost Tee Defaults
-
-#### [MODIFY] [RoundMapPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/RoundMapPage.tsx)
-* **Tee Name State**: Add a state for `selectedTeeName` (representing the chosen teebox set, e.g., "Blue"), initialized from localStorage.
-* **Tee Dropdown Setup**: When a round is not yet active (`!round`), display a modern styled dropdown selector above the "Start Round" button, populated with all unique teebox names found on the course.
-* **Active Tee Filtering**:
-  - Filter `teeBoxes` for the current hole.
-  - If a `selectedTeeName` is set, select the tee box matching that name.
-  - If no tee matches or no selection is set, sort the tee boxes by their distance to the green centroid descending and select the **first (backmost) tee box** by default.
-* **Preference Persistence**: Save the preferred tee set selection to localStorage when changed.
-
-#### [MODIFY] [seedCourses.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/seedCourses.ts)
-* **Re-seed Trigger**: Add a one-time localStorage version checker `caddyshot_reseeded_v2`. If not set, wipe the existing Dexie records for Tarandowah and Innerkip and trigger a fresh seed using the updated parser rules.
-
----
-
-### 3. Segmented Line Spawning & 5-Dot Limit
+### 1. Draggable Greens & Pin Locations
 
 #### [MODIFY] [CourseMap.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/components/CourseMap.tsx)
-* **Spawning on Segmented Lines**: Update the map click listener.
-  - First, verify that `measureMarkersRef.current.size < 5` to enforce the 5-dot maximum.
-  - Sort the current dots to form the complete segmented path: `[origin, ...sortedDots, target]`.
-  - Loop through each segment in the path. Test if the click is within the tolerance range (`ON_LINE_TOLERANCE_METERS`) of that segment.
-  - If a hit is found, spawn a new draggable layup dot at that projected point and exit the loop.
+* **Expose Pin Callbacks**: Accept `onTargetChange?: (pt: LatLng) => void` as a prop.
+* **Draggable targetMarker**: Change `targetMarkerRef` initialization to set `draggable: true`.
+* **Drag Listeners**:
+  - Bind `drag` to update `target` coordinates in local state, updating lines and HUD labels dynamically.
+  - Bind `dragend` to trigger the `onTargetChange` callback to persist the new coordinates.
+
+#### [MODIFY] [RoundMapPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/RoundMapPage.tsx)
+* **Resolve Pin Coordinate**: Load `activeTarget = roundHole?.pinLocation ?? greenCentroid`. Pass `activeTarget` as the `initialTarget` prop to `<CourseMap>`.
+* **Save Target Position**: Bind `onTargetChange` to update the `pinLocation` field of the active `roundHole` row in Dexie:
+  ```typescript
+  await db.roundHoles.update(roundHoleId, { pinLocation: newPin });
+  ```
+
+---
+
+### 2. Accurate Green & Tee Feature Mapping
+
+#### [MODIFY] [importOverpass.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/importOverpass.ts)
+* **Hole-Green End Matching**: If a polygon has `golf=green`, assign it to the hole whose centerline's **end coordinate** is closest to the green's centroid.
+* **Hole-Tee Start Matching**: If a polygon has `golf=tee`, assign it to the hole whose centerline's **start coordinate** is closest to the tee's centroid.
+
+#### [MODIFY] [seedCourses.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/seedCourses.ts)
+* **Re-seed Trigger**: Add a localStorage key `caddyshot_reseeded_v2`. If not set, clear the courses table of bundled courses and trigger a fresh seed to populate the corrected coordinates.
 
 ---
 
 ## Verification Plan
 
 ### Manual Verification
-1. **Reset Database Verify**: Verify that upon starting the app, the seeded courses are refreshed.
-2. **Hole Feature Match Check**: Select Innerkip or Tarandowah, and step through holes 1 to 3. Confirm that Green 2 maps correctly to Hole 2 and Green 3 maps to Hole 3 (no coordinates pointing to the wrong green).
-3. **Teebox Dropdown**: Verify a dropdown appears in the Setup view. Confirm changing the selection updates the active tee box and persists when reloading the page.
-4. **Tee Defaults**: Confirm that if no tee preference is set, the map starts at the backmost tee box.
-5. **Segmented Line Click Spawning**: Tap on the line to spawn a dot. Tap on the newly bent line segments to spawn more. Verify no more than 5 dots can be created.
+1. **Draggable Pin test**: Open the map. Hold down on the red green-target marker and drag it. Verify that the line and distances update in real-time.
+2. **Pin Persistence**: Move the pin, switch holes, then come back to the original hole. Verify the pin remains at your custom dragged location.
+3. **Green Mappings**: Open Innerkip. Verify Hole 2 green distance is ~142 yards and Hole 3 green distance is ~386 yards.

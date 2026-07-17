@@ -145,3 +145,13 @@ export async function setShotAimPoint(shotId: string, point: LatLng | null): Pro
 export async function listCompletedRounds(): Promise<Round[]> {
   return (await db.rounds.where("status").equals("completed").toArray()).sort((a, b) => b.playedOn.localeCompare(a.playedOn));
 }
+
+/** Sets (or clears, with `point: null`) a custom pin location for a hole in this round, overriding
+ * the green centroid default. Persists across leaving and returning to the hole. */
+export async function setRoundHolePinLocation(roundHoleId: string, point: LatLng | null): Promise<void> {
+  const rh = await db.roundHoles.get(roundHoleId);
+  if (!rh) return;
+  const updated: RoundHole = { ...rh, pinLocation: point, updatedAt: now() };
+  await db.roundHoles.put(updated);
+  await queueOutbox("roundHoles", "upsert", updated);
+}

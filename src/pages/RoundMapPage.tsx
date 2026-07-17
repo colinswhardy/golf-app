@@ -10,6 +10,7 @@ import {
   getOrCreateRoundHole,
   recordShot,
   saveHoleResult,
+  setRoundHolePinLocation,
   startRound
 } from "../lib/roundRepo";
 import { detectLie } from "../lib/lie";
@@ -112,6 +113,13 @@ export function RoundMapPage() {
     getOrCreateRoundHole(round.id, currentHole.id).then((rh) => setRoundHoleId(rh.id));
   }, [round, currentHole?.id]);
 
+  // Live so a dragged/tapped pin (persisted via onTargetChange below) is picked back up
+  // correctly if you navigate away from this hole and back.
+  const currentRoundHole = useLiveQuery(
+    () => (roundHoleId ? db.roundHoles.get(roundHoleId) : undefined),
+    [roundHoleId]
+  );
+
   const shots = useLiveQuery(
     () => (roundHoleId ? db.shots.where("roundHoleId").equals(roundHoleId).toArray() : []),
     [roundHoleId]
@@ -162,10 +170,27 @@ export function RoundMapPage() {
   }, [isDemo, allTeeBoxes, holes]);
 
   const greenCentroid = useMemo(() => {
-    if (!holeFeatures?.length) return null;
+    if (!holeFeatures?.length || !currentHole) return null;
+    // Dexie's live-query hook keeps returning the PREVIOUS hole's already-resolved rows for a
+    // few renders after currentHole.id changes, before the new query catches up — a plain
+    // truthy/non-empty check doesn't catch this since the stale data is real, just for the
+    // wrong hole. CourseMap only reads its initialTarget prop once at mount, and remounts
+    // immediately on hole change (key={currentHole.id}), so trusting mismatched data here would
+    // permanently lock the new hole's camera onto the old hole's green.
+    if (!holeFeatures.every((f) => f.holeId === currentHole.id)) return null;
     const green = holeFeatures.find((f) => f.featureType === "green") ?? holeFeatures.find((f) => f.featureType === "fairway");
     return green ? centroidLatLng(green.geometry) : null;
-  }, [holeFeatures]);
+  }, [holeFeatures, currentHole]);
+
+  // A custom dragged/tapped pin overrides the green centroid default, once one's been set for
+  // this hole this round.
+  const activeTarget = currentRoundHole?.pinLocation ?? greenCentroid;
+  // Whether pin data is safe to consider "resolved": if a round hole exists (roundHoleId set),
+  // wait for its row to actually load before mounting CourseMap, so a pin saved earlier in this
+  // round isn't missed — CourseMap only reads its initialTarget prop once, at mount, so mounting
+  // before this resolves would permanently lock onto the green centroid instead. Not needed
+  // pre-round (roundHoleId null), when there's no pin concept yet.
+  const pinDataReady = !roundHoleId || currentRoundHole !== undefined;
 
   const uniqueTeeNames = useMemo(() => {
     if (!allTeeBoxes?.length) return [];
@@ -176,7 +201,10 @@ export function RoundMapPage() {
   // from the green) when no preference is set, or when this hole doesn't have a tee box under
   // that name (tee-set naming can be inconsistent hole-to-hole in the source OSM data).
   const fallbackOrigin = useMemo(() => {
-    if (!teeBoxes?.length) return null;
+    if (!teeBoxes?.length || !currentHole) return null;
+    // Same stale-data guard as greenCentroid above — teeBoxes can briefly still hold the
+    // previous hole's rows after currentHole.id has already changed.
+    if (!teeBoxes.every((t) => t.holeId === currentHole.id)) return null;
     if (selectedTeeName) {
       const matched = teeBoxes.find((t) => t.name === selectedTeeName);
       if (matched) return matched.location;
@@ -186,7 +214,7 @@ export function RoundMapPage() {
       (a, b) => distanceYards(b.location, greenCentroid) - distanceYards(a.location, greenCentroid)
     )[0];
     return backmost.location;
-  }, [teeBoxes, selectedTeeName, greenCentroid]);
+  }, [teeBoxes, selectedTeeName, greenCentroid, currentHole]);
 
   const maxHoleNumber = holes?.length ? Math.max(...holes.map((h) => h.number)) : 18;
 
@@ -194,6 +222,11 @@ export function RoundMapPage() {
     if (!courseVersion) return;
     const r = await startRound(courseVersion.id);
     setRound(r);
+  }
+
+  async function handleTargetChange(point: LatLng) {
+    if (!roundHoleId) return;
+    await setRoundHolePinLocation(roundHoleId, point);
   }
 
   async function handleSaveShot(clubId: string | null, lie: Lie) {
@@ -302,21 +335,23 @@ export function RoundMapPage() {
 
       {isDemo ? (
         <CourseMap />
-      ) : currentHole && greenCentroid && fallbackOrigin ? (
-        // Gated on the derived greenCentroid/fallbackOrigin themselves, not just on the
-        // holeFeatures/teeBoxes queries having "resolved" — Dexie's live-query hook briefly
+      ) : currentHole && greenCentroid && fallbackOrigin && pinDataReady ? (
+        // Gated on the derived greenCentroid/fallbackOrigin/pinDataReady themselves, not just on
+        // the holeFeatures/teeBoxes queries having "resolved" — Dexie's live-query hook briefly
         // emits a genuinely-empty [] for each before converging on the real rows, so a
         // resolved-vs-undefined check opens one render too early. CourseMap's map-init effect
         // only runs once (on mount), so mounting before these are the real values would
-        // permanently lock the camera onto the null/flat fallback instead of tee-facing-green.
+        // permanently lock the camera onto the null/flat fallback instead of tee-facing-green —
+        // and separately, would miss a pin saved earlier this round on this same hole.
         <CourseMap
           key={currentHole.id}
-          initialTarget={greenCentroid}
+          initialTarget={activeTarget}
           fallbackOrigin={fallbackOrigin}
           onPositionChange={(p) => {
             lastPositionRef.current = p;
           }}
           onDistanceUpdate={setCenterDistance}
+          onTargetChange={handleTargetChange}
           settingTarget={settingTarget}
           onSettingTargetChange={setSettingTarget}
           mapStyle={mapStyle}

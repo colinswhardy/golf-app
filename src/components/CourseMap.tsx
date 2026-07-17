@@ -21,6 +21,10 @@ interface CourseMapProps {
   onPositionChange?: (p: LatLng) => void;
   /** Fires whenever the origin->target distance changes (yards), so a parent HUD can show it. */
   onDistanceUpdate?: (distanceYards: number | null) => void;
+  /** Fires once a new target position is finalized — tapping while "set target" is armed, or
+   * releasing a drag of the target marker itself — so a parent can persist it (e.g. a custom
+   * pin location). Not fired on every intermediate drag tick, only the settled result. */
+  onTargetChange?: (p: LatLng) => void;
   /** Controlled "tap map to set target" mode. Omit to let CourseMap manage this internally
    * (e.g. demo mode, which renders its own trigger button). */
   settingTarget?: boolean;
@@ -44,6 +48,7 @@ export function CourseMap({
   fallbackOrigin,
   onPositionChange,
   onDistanceUpdate,
+  onTargetChange,
   settingTarget: settingTargetProp,
   onSettingTargetChange,
   mapStyle,
@@ -54,6 +59,10 @@ export function CourseMap({
   const meMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const targetMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const teeMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  // True while the target marker is actively being dragged — suppresses camera easeTo (which
+  // would otherwise spin/re-tilt the map on every drag tick) without affecting the live
+  // line/label/distance updates, which stay driven by `target` state as normal.
+  const isDraggingTargetRef = useRef(false);
   const measureMarkersRef = useRef<Map<string, { marker: mapboxgl.Marker; label: HTMLDivElement }>>(new Map());
 
   const [me, setMe] = useState<LatLng | null>(null);
@@ -72,8 +81,8 @@ export function CourseMap({
   const usingLiveGps = !!me && (!fallbackOrigin || distanceMeters(me, fallbackOrigin) <= FAR_FROM_HOLE_METERS);
   const origin = usingLiveGps ? me : (fallbackOrigin ?? me);
 
-  const stateRef = useRef({ origin, target, settingTarget, onPositionChange, setSettingTarget });
-  stateRef.current = { origin, target, settingTarget, onPositionChange, setSettingTarget };
+  const stateRef = useRef({ origin, target, settingTarget, onPositionChange, setSettingTarget, onTargetChange });
+  stateRef.current = { origin, target, settingTarget, onPositionChange, setSettingTarget, onTargetChange };
 
   // --- Geolocation: watch position for the blue dot ---
   useEffect(() => {
@@ -121,11 +130,18 @@ export function CourseMap({
 
     map.on("click", (e) => {
       const clicked = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-      const { origin: curOrigin, target: curTarget, settingTarget: curSetting, setSettingTarget: curSetSettingTarget } = stateRef.current;
+      const {
+        origin: curOrigin,
+        target: curTarget,
+        settingTarget: curSetting,
+        setSettingTarget: curSetSettingTarget,
+        onTargetChange: curOnTargetChange
+      } = stateRef.current;
 
       if (curSetting) {
         setTarget(clicked);
         curSetSettingTarget(false);
+        curOnTargetChange?.(clicked);
         return;
       }
       if (!curOrigin || !curTarget) return;
@@ -166,6 +182,7 @@ export function CourseMap({
       teeMarkerRef.current = null;
       targetMarkerRef.current = null;
       measureMarkersRef.current.clear();
+      isDraggingTargetRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -308,8 +325,32 @@ export function CourseMap({
       if (!targetMarkerRef.current) {
         const el = document.createElement("div");
         el.style.cssText =
-          "width:14px;height:14px;border-radius:50%;background:#e63946;border:2px solid #fff;";
-        targetMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat([target.lng, target.lat]).addTo(map);
+          "width:14px;height:14px;border-radius:50%;background:#e63946;border:2px solid #fff;cursor:grab;";
+        const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
+          .setLngLat([target.lng, target.lat])
+          .addTo(map);
+
+        // Drag updates `target` state on every tick (so the line/labels/HUD-distance all track
+        // live via their normal render path), but the camera easeTo below is suppressed for the
+        // duration via isDraggingTargetRef — otherwise the map would spin/re-tilt continuously
+        // as you drag instead of just following the pin. dragend settles the camera once and
+        // reports the final point upstream for persistence (a custom pin location).
+        marker.on("dragstart", () => {
+          isDraggingTargetRef.current = true;
+        });
+        marker.on("drag", () => {
+          const pos = marker.getLngLat();
+          setTarget({ lat: pos.lat, lng: pos.lng });
+        });
+        marker.on("dragend", () => {
+          isDraggingTargetRef.current = false;
+          const pos = marker.getLngLat();
+          const point = { lat: pos.lat, lng: pos.lng };
+          setTarget(point);
+          stateRef.current.onTargetChange?.(point);
+        });
+
+        targetMarkerRef.current = marker;
       } else {
         targetMarkerRef.current.setLngLat([target.lng, target.lat]);
       }
@@ -317,7 +358,7 @@ export function CourseMap({
 
     updateLineAndLabels();
 
-    if (origin && target) {
+    if (origin && target && !isDraggingTargetRef.current) {
       // Orient camera tee-at-bottom / green-at-top with a tilt, so the hole fits a smaller
       // vertical footprint than a flat top-down view would need. Only re-orients when the
       // target/origin change (not every GPS tick) to avoid a constantly spinning map.

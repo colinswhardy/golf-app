@@ -16,6 +16,11 @@
 - [x] Segmented Line Spawning & 5-Dot Limit
   - [x] Update map click listener in `src/components/CourseMap.tsx` to scan all path segments (origin -> dots -> target) for tap coordinates
   - [x] Limit the total number of placed layup dots to 5 maximum
+- [x] Implement Draggable Greens & Pin Locations
+  - [x] Change `targetMarkerRef` initialization to `draggable: true` in `src/components/CourseMap.tsx`
+  - [x] Bind drag listeners to update target coordinates in state and invoke `onTargetChange` callback
+  - [x] Resolve active target to `pinLocation ?? greenCentroid` inside `src/pages/RoundMapPage.tsx`
+  - [x] Save pin location coordinate updates to `roundHoles` table in IndexedDB via `onTargetChange` callback
 - [x] Migrate Custom Clubs Seed List
   - [x] Modify `ensureDefaultClubs()` in `src/lib/courseRepo.ts` to clear and re-seed the new club list
 - [x] Update Shot Saving & GPS Fallback
@@ -45,44 +50,44 @@
   - [x] Verify that teebox selection works and defaults to the backmost tee box
   - [x] Verify that green mapping bugs on holes 2 and 3 are fixed
   - [x] Verify that tapping the line spawns a layup dot (up to 5 dots max)
+  - [x] Verify that holding and dragging the pin updates position and persists on returning to the hole
 
-## Important deviation from the plan: green/tee mapping algorithm
+## Scorecard verification (Innerkip Highlands, per plan §"Verification: Scorecard Match")
 
-The plan specified matching greens/tees to the nearest hole centerline's raw **endpoint
-coordinate** (last/first vertex). Implemented that literally first, then stress-tested it against
-the real Tarandowah/Innerkip GeoJSON by comparing its output to the original algorithm across every
-green/tee polygon in both files — **before** shipping either. Result: the literal endpoint-distance
-version regressed 8+ correctly-assigned features (e.g. two Innerkip greens that are genuinely
-hole 6's went from correct to reassigned to hole 7), because real course centerlines are only
-2-4 vertices approximating the true fairway path — a genuinely-correct green can legitimately sit
-100-300m from its own hole's literal last vertex, while an unrelated neighboring hole's raw vertex
-happens to be closer by coincidence.
+Measured actual tee-to-green (CTR) distance shown in the app vs. official scorecard yardage,
+after the OSM mapping fix from the previous session:
 
-Replaced it with a hybrid: `nearestHoleByCenterlineHalf()` uses `turf.nearestPointOnLine` to find
-where a feature projects onto EACH candidate hole's line (as a fraction 0-1 along its length), only
-considers holes where that fraction is on the correct half (green → back half, tee → front half),
-and picks the perpendicular-closest among those — falling back to plain nearest-whole-line if
-nothing qualifies. Verified against the same real data: every case where this disagrees with the
-original algorithm has the original landing at the *wrong end* of its chosen hole's line (e.g. a
-"green" matched to fraction ~0.0 — right at that hole's tee, not a plausible green spot), confirming
-these are genuine fixes rather than new regressions. See the code comment on
-`nearestHoleByCenterlineHalf` in `importOverpass.ts` for the full reasoning.
+| Hole | App CTR | Official | Diff |
+|---|---|---|---|
+| 1 | 384y | 397y | 13y |
+| 2 | 126y | 142y | 16y |
+| 3 | 379y | 390y | 11y |
 
-## Notes on other scope/design calls made while executing
+All within a plausible OSM-data-quality margin (polygon-centroid tee/green positions vs. official
+"measured to the center of the box/green" convention — not a code bug). Confirms the previous
+session's green/tee mapping fix is still correct and holds up against real ground-truth numbers,
+not just internal cross-checking.
 
-- **Tee dropdown option list** is the union of tee names across the *whole course* (via the
-  already-existing `allTeeBoxes` query used for GPS auto-hole-select), not just the current hole's
-  tee boxes — matches the plan's "all unique teebox names found on the course."
-- **`caddyshot_reseeded_v2` wipes unconditionally** (not gated on the existing `courseHasTeeBoxes`
-  0-tee-box check from a prior session) — a course can have tee boxes present and still have them,
-  or its greens, mapped to the wrong hole, which tee-box *presence* alone can't detect.
+## Important bug found and fixed during verification (not in original plan)
 
-## Extra fix found during verification (not in original plan)
+**Hole navigation used the previous hole's tee/green data for a few renders after switching**,
+independent of and unrelated to today's new draggable-pin work — a pre-existing bug, just never
+caught before because nothing had checked hole-to-hole navigation against concrete expected
+yardages until this session's scorecard-match verification surfaced it (hole 2 showed a nonsensical
+CTR of 88y, hole 3 showed 135y against an expected ~390y).
 
-Segmented-line dot spawning initially appeared broken in testing (0 dots spawned even with
-geometrically-precise click coordinates). Root cause was in the **test scripts**, not the app: the
-measure-dot marker's inline style (`cursor:grab`) gets serialized by the browser back out as
-`cursor: grab` (with a space) once read via `getAttribute("style")`, which a substring match for
-the no-space form silently missed. Confirmed the actual feature works correctly once the test
-script's detection was fixed to match either form — dots increment 1 through 5 across taps at
-precise on-line coordinates, and a 6th tap is correctly rejected once the cap is hit.
+Root cause: `currentHole` is a `useMemo` derived synchronously from the already-loaded `holes`
+array, so it updates the instant `holeNumber` changes. `teeBoxes`/`holeFeatures`, however, are
+separate `useLiveQuery` subscriptions keyed on `currentHole?.id` — confirmed via direct render
+logging that Dexie's live-query hook keeps returning the *previous* hole's already-resolved rows
+for several renders after the dependency changes, before the new query catches up. Since
+`<CourseMap key={currentHole.id}>` remounts immediately when the key changes, and `CourseMap` only
+reads `initialTarget`/`fallbackOrigin` once at mount, it would lock onto this stale, wrong-hole
+data permanently — the classic "async data not ready when a mount-only effect runs" shape that's
+recurred several times this project (see the marker-refs/StrictMode and ReviewMap-camera write-ups
+in `DESIGN.md`), just triggered here by live-query staleness rather than initial-load timing.
+
+Fixed by having `greenCentroid`/`fallbackOrigin` reject data that doesn't actually belong to
+`currentHole.id` (checking every row's `holeId`) rather than just checking non-null/non-empty —
+returns `null` during the stale window, which naturally holds `<CourseMap>` on its existing
+"Loading course…" gate until the real data for the new hole arrives.

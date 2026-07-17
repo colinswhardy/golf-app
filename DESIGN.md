@@ -241,6 +241,15 @@ bunker polygon later.
     can drop style-specific sources, the line source/layer setup was pulled into a named
     `ensureLineSource()` re-run on both the initial `"load"` and `"style.load"` after every switch,
     rather than assuming Mapbox's cross-style diffing preserves it.
+- **Draggable target marker (custom pin locations)**: the red target marker is `draggable: true`;
+  `drag` calls `setTarget()` on every tick (same render path as tap-to-set, so the line/labels/
+  `onDistanceUpdate` all update live with no special-casing), while `dragstart`/`dragend` toggle an
+  `isDraggingTargetRef` that suppresses the camera's `easeTo` re-orientation for the duration —
+  without it, the map would spin/re-tilt continuously as you drag instead of just following the
+  pin. `dragend` re-enables the camera (settling it once, smoothly, to face the final position) and
+  fires `onTargetChange` with the settled point so `RoundMapPage` can persist it as
+  `roundHoles.pinLocation`. Tap-to-set-target (§10) fires the same callback, so either way of moving
+  the pin persists.
 
 ## 9. In-Round Measuring Tool
 
@@ -275,7 +284,24 @@ hole). It only runs once per page load, not continuously, so it won't fight manu
 navigation while playing. `CourseMap` remounts (via a `key={holeId}`) on every hole switch rather
 than diffing Mapbox layers in place — simpler, and fast enough that the re-init isn't noticeable.
 Default target = the current hole's green centroid (first green if several, fairway centroid as a
-fallback if no green was mapped); still user-overridable via "Set target".
+fallback if no green was mapped); user-overridable both by tapping "Set target" and by directly
+dragging the red target marker (see §11), and persisted per-hole-per-round as a custom pin once set.
+
+**Stale-hole-data gotcha (same shape as the marker-refs/StrictMode and ReviewMap-camera bugs
+elsewhere in this doc, different trigger):** `currentHole` is a `useMemo` derived synchronously from
+the already-loaded `holes` array, so it updates the instant `holeNumber` changes. `teeBoxes`/
+`holeFeatures`, however, are separate `useLiveQuery` subscriptions keyed on `currentHole?.id` —
+confirmed via direct render logging that Dexie's live-query hook keeps returning the *previous*
+hole's already-resolved rows for several renders after the dependency changes, before the new query
+catches up. Since `<CourseMap key={currentHole.id}>` remounts immediately when the key changes, and
+`CourseMap` only reads `initialTarget`/`fallbackOrigin` once at mount, trusting this stale data
+would lock the new hole's camera onto the *previous* hole's green/tee permanently. `greenCentroid`/
+`fallbackOrigin` in `RoundMapPage` guard against this by checking every row's `holeId` actually
+matches `currentHole.id` (not just checking non-null/non-empty) — returns `null` during the stale
+window, which naturally holds `<CourseMap>` on the existing "Loading course…" gate until the real
+data for the new hole arrives. Found via the OSM-mapping scorecard-yardage verification (§ real
+ground-truth yardages, not just internal cross-checking, caught what a simple non-null check
+couldn't).
 
 ## 11. Post-Round Review & Planned Aim Points
 
