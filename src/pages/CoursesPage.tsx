@@ -29,9 +29,8 @@ export function CoursesPage() {
       </ul>
 
       <p style={{ marginTop: 24, opacity: 0.7, fontSize: 13 }}>
-        No course loaded yet? <Link to="/round/demo">Preview the in-round map view</Link> using just
-        your current GPS position and a tappable target — useful for testing on your phone before any
-        course data exists.
+        <Link to="/round/demo">Preview the in-round map view</Link> using just your current GPS
+        position and a tappable target — no course data needed.
       </p>
     </div>
   );
