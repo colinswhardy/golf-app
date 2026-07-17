@@ -321,3 +321,15 @@ ad-hoc/one-off imports that don't warrant a code change.
   have no apostrophe, so CI builds fine. Local workflow remains `npm run dev`. If a local build is
   ever truly needed: move the project to an apostrophe-free path, or switch vite-plugin-pwa to
   `injectManifest`.
+- Same apostrophe bug also breaks the PWA plugin's **dev-mode** service worker (it 500s on
+  `dev-sw.js`), so `devOptions.enabled` is `false` in `vite.config.ts` — "Add to Home Screen" only
+  ever works against the real deployed site, never `npm run dev`. Caught by actually driving the
+  dev server in a real (Playwright) browser rather than just checking HTTP status codes on
+  transformed files — that testing gap is also how the `courses` table missing a `name` index
+  (below) shipped without being noticed.
+- **Fixed**: `db.courses` didn't index `name`, but both `courseRepo.saveImportedCourse` and
+  `seedCourses.ts` query `.where("name")` — Dexie throws on querying a non-indexed field, so course
+  saving/seeding was silently failing end-to-end since courseRepo.ts was written. Fixed via a
+  Dexie `version(2)` migration adding the index. Lesson: this class of bug is invisible to
+  type-checking and "does it transform" smoke tests — needs an actual browser exercising the
+  runtime query path to catch.

@@ -50,4 +50,10 @@ db.version(1).stores({
   outbox: "id, createdAt"
 });
 
+// v2: courseRepo/seedCourses both query courses by name (dedupe-by-name on
+// import) — "name" needs to be indexed for `.where("name")` to work at all.
+db.version(2).stores({
+  courses: "id, name, updatedAt, deletedAt"
+});
+
 export { db };

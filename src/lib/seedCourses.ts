@@ -19,10 +19,10 @@ const BUNDLED_COURSES = [
  */
 export async function seedBundledCourses(): Promise<void> {
   for (const entry of BUNDLED_COURSES) {
-    const existing = await db.courses.where("name").equals(entry.name).count();
-    if (existing > 0) continue;
-
     try {
+      const existing = await db.courses.where("name").equals(entry.name).count();
+      if (existing > 0) continue;
+
       const res = await fetch(`${import.meta.env.BASE_URL}${entry.file}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const geojson = await res.json();

@@ -4,7 +4,6 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // Day-to-day workflow is `npm run dev` (base "/"). The GitHub Actions deploy sets
 // VITE_BASE=/golf-app/ so the built app works at https://<user>.github.io/golf-app/.
-// PWA dev mode stays enabled so "Add to Home Screen" also works off the dev server.
 const base = process.env.VITE_BASE ?? "/";
 
 export default defineConfig({
@@ -13,7 +12,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      devOptions: { enabled: true },
+      // Off in dev: the dev-mode SW hits the same apostrophe-in-path workbox codegen
+      // bug as `npm run build` does locally (see DESIGN.md Open Items), so it 500s on
+      // this machine. Harmless to disable — it doesn't affect the app itself (only SW
+      // registration fails, everything else works), and "Add to Home Screen" testing
+      // only ever needs to happen against the real deployed site anyway.
+      devOptions: { enabled: false },
       workbox: {
         // Default precache limit is 2 MiB; our main bundle (mostly Mapbox GL) is ~2.2 MB.
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
