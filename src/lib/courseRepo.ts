@@ -116,6 +116,16 @@ export async function getFeaturesForHole(holeId: string): Promise<HoleFeature[]>
   return db.holeFeatures.where("holeId").equals(holeId).toArray();
 }
 
+/** Updates a hole's freeform notes. Tied to the hole (not a round), so notes persist and
+ * reload automatically the next time this course/hole is played, regardless of round. */
+export async function updateHoleNotes(holeId: string, notes: string | null): Promise<void> {
+  const hole = await db.holes.get(holeId);
+  if (!hole) return;
+  const updated: Hole = { ...hole, notes, updatedAt: now() };
+  await db.holes.put(updated);
+  await queueOutbox("holes", "upsert", updated);
+}
+
 const DEFAULT_CLUB_NAMES = ["Driver", "5 Wood", "4 Iron", "5 Iron", "6 Iron", "7 Iron", "8 Iron", "9 Iron", "50°", "56°", "60°", "Putter"];
 // Names only ever seeded by the old default list — presence of any of these means this
 // install still has the pre-migration clubs and needs a one-time reseed onto the new list.
@@ -136,4 +146,20 @@ export async function ensureDefaultClubs(): Promise<Club[]> {
     await db.clubs.bulkPut(clubs);
     return clubs;
   });
+}
+
+export async function listClubs(): Promise<Club[]> {
+  return (await db.clubs.toArray()).sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+/** Updates a club's manual dispersion settings (Settings page dispersion table). */
+export async function updateClubDispersion(
+  clubId: string,
+  patch: Partial<Pick<Club, "manualFrontBackYards" | "manualLeftRightYards" | "useActualDispersion">>
+): Promise<void> {
+  const club = await db.clubs.get(clubId);
+  if (!club) return;
+  const updated: Club = { ...club, ...patch, updatedAt: now() };
+  await db.clubs.put(updated);
+  await queueOutbox("clubs", "upsert", updated);
 }

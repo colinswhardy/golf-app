@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import * as turf from "@turf/turf";
 import { db } from "../lib/db";
-import { ensureDefaultClubs, getFeaturesForHole, getHolesForVersion, getLatestCourseVersion } from "../lib/courseRepo";
+import { ensureDefaultClubs, getFeaturesForHole, getHolesForVersion, getLatestCourseVersion, updateHoleNotes } from "../lib/courseRepo";
 import {
   completeRound,
   getActiveRoundForCourse,
@@ -14,10 +14,11 @@ import {
   startRound
 } from "../lib/roundRepo";
 import { detectLie } from "../lib/lie";
-import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE } from "../components/CourseMap";
+import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE, type DispersionEllipseSpec } from "../components/CourseMap";
 import { HoleScoreSheet, ScorecardSheet, ShotSheet, relativeToParLabel } from "../components/RoundSheets";
 import { distanceMeters, distanceYards } from "../lib/geo";
-import type { Club, LatLng, Lie, Round } from "../types/domain";
+import { getClubDispersion } from "../lib/dispersion";
+import type { Club, FairwayResult, LatLng, Lie, Round } from "../types/domain";
 
 const GREENSIDE_BUNKER_MAX_YARDS = 40;
 const FAR_FROM_HOLE_METERS = 300;
@@ -75,6 +76,40 @@ export function RoundMapPage() {
   const [settingTarget, setSettingTarget] = useState(false);
   const [mapStyle, setMapStyle] = useState(SATELLITE_STYLE);
   const [centerDistance, setCenterDistance] = useState<number | null>(null);
+  const [waterWarningYards, setWaterWarningYards] = useState<number | null>(null);
+
+  // --- Dispersion overlay: pick a club, show its (manual or actual, per the club's own flag)
+  // shot ellipse centered on the target pin ---
+  const [dispersionPickerOpen, setDispersionPickerOpen] = useState(false);
+  const [activeClubId, setActiveClubId] = useState<string | null>(null);
+  const [dispersionEllipse, setDispersionEllipse] = useState<DispersionEllipseSpec | null>(null);
+  useEffect(() => {
+    const club = clubs.find((c) => c.id === activeClubId);
+    if (!club) {
+      setDispersionEllipse(null);
+      return;
+    }
+    let cancelled = false;
+    getClubDispersion(club).then((spec) => {
+      if (!cancelled) setDispersionEllipse(spec);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeClubId, clubs]);
+
+  // --- Per-hole notes: freeform text tied to the hole (not the round), auto-saved on a short
+  // debounce so there's no explicit save action to remember to tap ---
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [notesDraft, setNotesDraft] = useState("");
+  useEffect(() => {
+    setNotesDraft(currentHole?.notes ?? "");
+  }, [currentHole?.id]);
+  useEffect(() => {
+    if (!currentHole || notesDraft === (currentHole.notes ?? "")) return;
+    const timer = setTimeout(() => updateHoleNotes(currentHole.id, notesDraft || null), 600);
+    return () => clearTimeout(timer);
+  }, [notesDraft, currentHole]);
 
   // Preferred tee set (e.g. "Blue"), persisted across sessions. Empty string = no preference set
   // yet, meaning "use the backmost tee" (see fallbackOrigin below).
@@ -192,9 +227,14 @@ export function RoundMapPage() {
   // pre-round (roundHoleId null), when there's no pin concept yet.
   const pinDataReady = !roundHoleId || currentRoundHole !== undefined;
 
+  // Excludes the generic "Tee" fallback name from the dropdown whenever real color sets (Blue,
+  // White, Gold, ...) exist — no point offering a vague "Tee" option alongside specific ones.
+  // Only falls back to including "Tee" when it's literally the only name available.
   const uniqueTeeNames = useMemo(() => {
     if (!allTeeBoxes?.length) return [];
-    return [...new Set(allTeeBoxes.map((t) => t.name))].sort();
+    const names = [...new Set(allTeeBoxes.map((t) => t.name))].sort();
+    const colorNames = names.filter((n) => n !== "Tee");
+    return colorNames.length > 0 ? colorNames : names;
   }, [allTeeBoxes]);
 
   // Prefers the selected tee set for this hole; falls back to the backmost tee box (furthest
@@ -243,9 +283,14 @@ export function RoundMapPage() {
     setOpenSheet(null);
   }
 
-  async function handleSaveHole(score: number, putts: number, puttDistancesFeet: (number | null)[]) {
+  async function handleSaveHole(
+    score: number,
+    putts: number,
+    puttDistancesFeet: (number | null)[],
+    fairwayResult: FairwayResult | null
+  ) {
     if (!roundHoleId) return;
-    await saveHoleResult({ roundHoleId, score, putts, puttDistancesFeet, holeOutPoint: greenCentroid });
+    await saveHoleResult({ roundHoleId, score, putts, puttDistancesFeet, fairwayResult, holeOutPoint: greenCentroid });
     setOpenSheet(null);
     if (holeNumber < maxHoleNumber) {
       setHoleNumber(holeNumber + 1);
@@ -281,6 +326,9 @@ export function RoundMapPage() {
               {currentHole.defaultYardage ? ` · ${currentHole.defaultYardage} Yards` : ""}
             </div>
           </div>
+          <button onClick={() => setNotesOpen((v) => !v)} style={navButtonStyle} aria-label="Hole notes">
+            {notesDraft ? "📝" : "🗒️"}
+          </button>
           <button
             onClick={() => setHoleNumber((n) => Math.min(maxHoleNumber, n + 1))}
             disabled={holeNumber >= maxHoleNumber}
@@ -290,6 +338,21 @@ export function RoundMapPage() {
           </button>
         </div>
       )}
+
+      {!isDemo && currentHole && notesOpen && (
+        <div style={notesBoxStyle}>
+          <textarea
+            value={notesDraft}
+            onChange={(e) => setNotesDraft(e.target.value)}
+            placeholder="Notes for this hole (yardages, strategy, hazards)…"
+            style={notesTextareaStyle}
+            rows={3}
+            autoFocus
+          />
+        </div>
+      )}
+
+      {!isDemo && waterWarningYards !== null && <div style={waterWarningStyle}>💧 Water: {waterWarningYards}y</div>}
 
       {!isDemo && currentHole && (
         <div style={leftCapsuleStyle}>
@@ -330,6 +393,33 @@ export function RoundMapPage() {
           <button onClick={() => setOpenSheet("scorecard")} style={pillButtonStyle} aria-label="Scorecard">
             📋
           </button>
+          <button
+            onClick={() => setDispersionPickerOpen((v) => !v)}
+            style={{ ...pillButtonStyle, ...(dispersionEllipse ? pillButtonActiveStyle : {}) }}
+            aria-label="Dispersion overlay"
+          >
+            📐
+          </button>
+        </div>
+      )}
+
+      {!isDemo && currentHole && dispersionPickerOpen && (
+        <div style={clubPickerStyle}>
+          <button
+            onClick={() => setActiveClubId(null)}
+            style={{ ...clubChipStyle, ...(activeClubId === null ? clubChipActiveStyle : {}) }}
+          >
+            None
+          </button>
+          {clubs.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setActiveClubId(c.id)}
+              style={{ ...clubChipStyle, ...(activeClubId === c.id ? clubChipActiveStyle : {}) }}
+            >
+              {c.name}
+            </button>
+          ))}
         </div>
       )}
 
@@ -347,15 +437,18 @@ export function RoundMapPage() {
           key={currentHole.id}
           initialTarget={activeTarget}
           fallbackOrigin={fallbackOrigin}
+          holeFeatures={holeFeatures}
           onPositionChange={(p) => {
             lastPositionRef.current = p;
           }}
           onDistanceUpdate={setCenterDistance}
+          onWaterWarning={setWaterWarningYards}
           onTargetChange={handleTargetChange}
           settingTarget={settingTarget}
           onSettingTargetChange={setSettingTarget}
           mapStyle={mapStyle}
           hideInternalHud
+          dispersionEllipse={dispersionEllipse}
         />
       ) : (
         <div style={{ padding: 24, color: "#eef2ef" }}>Loading course…</div>
@@ -426,6 +519,7 @@ export function RoundMapPage() {
       {openSheet === "score" && roundHoleId && currentHole && (
         <HoleScoreSheet
           holeNumber={currentHole.number}
+          par={currentHole.par}
           recordedShots={shotCount}
           onSave={handleSaveHole}
           onClose={() => setOpenSheet(null)}
@@ -613,4 +707,77 @@ const roundButtonStyle: React.CSSProperties = {
   borderRadius: 999,
   fontSize: 14,
   cursor: "pointer"
+};
+
+const notesBoxStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 56,
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 2,
+  width: "min(340px, 84vw)",
+  background: "rgba(11,15,12,0.92)",
+  border: "1px solid #2f5c3d",
+  borderRadius: 12,
+  padding: 8
+};
+
+const notesTextareaStyle: React.CSSProperties = {
+  width: "100%",
+  background: "#1a3a24",
+  color: "#eef2ef",
+  border: "1px solid #2f5c3d",
+  borderRadius: 8,
+  padding: 8,
+  fontSize: 13,
+  fontFamily: "inherit",
+  resize: "vertical"
+};
+
+const waterWarningStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 130,
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 2,
+  background: "rgba(37,99,235,.92)",
+  color: "#fff",
+  fontSize: 12,
+  fontWeight: 700,
+  padding: "5px 12px",
+  borderRadius: 999,
+  whiteSpace: "nowrap"
+};
+
+const clubPickerStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 130,
+  right: 12,
+  zIndex: 2,
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  maxHeight: "min(320px, 50vh)",
+  overflowY: "auto",
+  background: "rgba(11,15,12,0.92)",
+  border: "1px solid #2f5c3d",
+  borderRadius: 12,
+  padding: 8
+};
+
+const clubChipStyle: React.CSSProperties = {
+  padding: "6px 12px",
+  background: "#1a3a24",
+  color: "#eef2ef",
+  border: "1px solid #2f5c3d",
+  borderRadius: 999,
+  fontSize: 12,
+  cursor: "pointer",
+  whiteSpace: "nowrap"
+};
+
+const clubChipActiveStyle: React.CSSProperties = {
+  background: "#f5d90a",
+  color: "#111",
+  border: "1px solid #f5d90a"
 };

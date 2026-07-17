@@ -1,26 +1,49 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { bearingDegrees, distanceMeters, distanceYards, nearestPointOnSegment } from "../lib/geo";
-import type { LatLng } from "../types/domain";
+import * as turf from "@turf/turf";
+import { bearingDegrees, distanceMeters, distanceYards, fromDownrangeOffline, nearestPointOnSegment } from "../lib/geo";
+import type { FeatureType, LatLng } from "../types/domain";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const LINE_SOURCE_ID = "target-line";
+const BUNKER_SOURCE_ID = "bunkers";
+const DISPERSION_SOURCE_ID = "dispersion-ellipse";
 const ON_LINE_TOLERANCE_METERS = 8;
 const FAR_FROM_HOLE_METERS = 300;
 const MAX_MEASURE_DOTS = 5;
 export const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
 export const OUTDOORS_STYLE = "mapbox://styles/mapbox/outdoors-v12";
 
+export interface BunkerYardages {
+  front: number;
+  middle: number;
+  back: number;
+}
+
+export interface DispersionEllipseSpec {
+  /** Downrange (long/short) and offline (left/right) semi-axes, in yards. */
+  semiMajorYards: number;
+  semiMinorYards: number;
+  /** Rotation of the ellipse within the shot's own (downrange, offline) frame, radians. */
+  rotationRad: number;
+}
+
 interface CourseMapProps {
   /** Default target (usually the green centroid) set once on mount; still user-overridable via "Set target". */
   initialTarget?: LatLng | null;
   /** Tee box (or similar) used as the line/camera origin when live GPS is missing or far from this hole. */
   fallbackOrigin?: LatLng | null;
+  /** This hole's polygon features — used for water-crossing warnings and bunker F/M/B distance
+   * cards. Still never rendered visually (see the file-level doc comment). */
+  holeFeatures?: { featureType: FeatureType; geometry: GeoJSON.Polygon }[];
   /** Fires on every GPS fix — lets the parent (e.g. shot recording) know where the player is. */
   onPositionChange?: (p: LatLng) => void;
   /** Fires whenever the origin->target distance changes (yards), so a parent HUD can show it. */
   onDistanceUpdate?: (distanceYards: number | null) => void;
+  /** Fires whenever the current aim line's closest water-hazard crossing changes (yards from
+   * origin), so a parent HUD can surface the same "Water: XXXy" warning shown on the map. */
+  onWaterWarning?: (distanceYards: number | null) => void;
   /** Fires once a new target position is finalized — tapping while "set target" is armed, or
    * releasing a drag of the target marker itself — so a parent can persist it (e.g. a custom
    * pin location). Not fired on every intermediate drag tick, only the settled result. */
@@ -34,6 +57,10 @@ interface CourseMapProps {
   /** Hides CourseMap's own built-in distance/set-target HUD box, for parents (e.g. the Grint-style
    * round page) that render their own controls and drive settingTarget externally instead. */
   hideInternalHud?: boolean;
+  /** The active club's shot dispersion, rendered as a shaded ellipse centered on the target pin
+   * (so dragging the pin — already draggable — moves the ellipse with it) and oriented along the
+   * current origin->target bearing. Omit/null to hide. */
+  dispersionEllipse?: DispersionEllipseSpec | null;
 }
 
 /**
@@ -46,24 +73,29 @@ interface CourseMapProps {
 export function CourseMap({
   initialTarget,
   fallbackOrigin,
+  holeFeatures,
   onPositionChange,
   onDistanceUpdate,
+  onWaterWarning,
   onTargetChange,
   settingTarget: settingTargetProp,
   onSettingTargetChange,
   mapStyle,
-  hideInternalHud
+  hideInternalHud,
+  dispersionEllipse
 }: CourseMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const meMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const targetMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const teeMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const waterMarkerRef = useRef<mapboxgl.Marker | null>(null);
   // True while the target marker is actively being dragged — suppresses camera easeTo (which
   // would otherwise spin/re-tilt the map on every drag tick) without affecting the live
   // line/label/distance updates, which stay driven by `target` state as normal.
   const isDraggingTargetRef = useRef(false);
   const measureMarkersRef = useRef<Map<string, { marker: mapboxgl.Marker; label: HTMLDivElement }>>(new Map());
+  const [bunkerCard, setBunkerCard] = useState<BunkerYardages | null>(null);
 
   const [me, setMe] = useState<LatLng | null>(null);
   const [target, setTarget] = useState<LatLng | null>(initialTarget ?? null);
@@ -81,8 +113,28 @@ export function CourseMap({
   const usingLiveGps = !!me && (!fallbackOrigin || distanceMeters(me, fallbackOrigin) <= FAR_FROM_HOLE_METERS);
   const origin = usingLiveGps ? me : (fallbackOrigin ?? me);
 
-  const stateRef = useRef({ origin, target, settingTarget, onPositionChange, setSettingTarget, onTargetChange });
-  stateRef.current = { origin, target, settingTarget, onPositionChange, setSettingTarget, onTargetChange };
+  const stateRef = useRef({
+    origin,
+    target,
+    settingTarget,
+    onPositionChange,
+    setSettingTarget,
+    onTargetChange,
+    holeFeatures,
+    onWaterWarning,
+    dispersionEllipse
+  });
+  stateRef.current = {
+    origin,
+    target,
+    settingTarget,
+    onPositionChange,
+    setSettingTarget,
+    onTargetChange,
+    holeFeatures,
+    onWaterWarning,
+    dispersionEllipse
+  };
 
   // --- Geolocation: watch position for the blue dot ---
   useEffect(() => {
@@ -126,7 +178,7 @@ export function CourseMap({
     });
     mapRef.current = map;
 
-    map.on("load", () => ensureLineSource(map));
+    map.on("load", () => ensureSources(map));
 
     map.on("click", (e) => {
       const clicked = { lat: e.lngLat.lat, lng: e.lngLat.lng };
@@ -144,6 +196,18 @@ export function CourseMap({
         curOnTargetChange?.(clicked);
         return;
       }
+
+      // Bunker tap: check hit-testable (invisible) bunker polygons before falling through to the
+      // settingTarget/measure-dot logic below, so tapping a bunker always shows its F/M/B card
+      // rather than being swallowed by a nearby measure-dot placement.
+      const bunkerHits = map.queryRenderedFeatures(e.point, { layers: [BUNKER_SOURCE_ID] });
+      if (bunkerHits.length > 0 && curOrigin) {
+        const geometry = bunkerHits[0].geometry as GeoJSON.Polygon;
+        setBunkerCard(computeBunkerYardages(curOrigin, geometry));
+        return;
+      }
+      setBunkerCard(null);
+
       if (!curOrigin || !curTarget) return;
       if (measureMarkersRef.current.size >= MAX_MEASURE_DOTS) return;
 
@@ -181,6 +245,7 @@ export function CourseMap({
       meMarkerRef.current = null;
       teeMarkerRef.current = null;
       targetMarkerRef.current = null;
+      waterMarkerRef.current = null;
       measureMarkersRef.current.clear();
       isDraggingTargetRef.current = false;
     };
@@ -196,33 +261,171 @@ export function CourseMap({
       return; // the constructor already set the initial style; nothing to do on first mount
     }
     map.setStyle(mapStyle ?? SATELLITE_STYLE);
-    map.once("style.load", () => ensureLineSource(map));
+    map.once("style.load", () => ensureSources(map));
   }, [mapStyle]);
 
-  // Adds the target-line source/layer if missing. Called on initial "load" and again after
-  // every style change ("style.load") — Mapbox GL JS generally tries to carry sources/layers
-  // across setStyle(), but a style-specific source is never guaranteed to survive, so this
-  // re-adds it defensively rather than relying on that.
-  function ensureLineSource(map: mapboxgl.Map) {
-    if (map.getSource(LINE_SOURCE_ID)) return;
-    map.addSource(LINE_SOURCE_ID, {
-      type: "geojson",
-      data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } }
-    });
-    map.addLayer({
-      id: LINE_SOURCE_ID,
-      type: "line",
-      source: LINE_SOURCE_ID,
-      paint: { "line-color": "#f5d90a", "line-width": 3, "line-dasharray": [2, 1] }
-    });
+  // Adds the target-line, bunker (invisible, hit-test only), and dispersion-ellipse sources/layers
+  // if missing. Called on initial "load" and again after every style change ("style.load") —
+  // Mapbox GL JS generally tries to carry sources/layers across setStyle(), but a style-specific
+  // source is never guaranteed to survive, so this re-adds them defensively rather than relying
+  // on that.
+  function ensureSources(map: mapboxgl.Map) {
+    if (!map.getSource(LINE_SOURCE_ID)) {
+      map.addSource(LINE_SOURCE_ID, {
+        type: "geojson",
+        data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } }
+      });
+      map.addLayer({
+        id: LINE_SOURCE_ID,
+        type: "line",
+        source: LINE_SOURCE_ID,
+        paint: { "line-color": "#f5d90a", "line-width": 3, "line-dasharray": [2, 1] }
+      });
+    }
+    if (!map.getSource(BUNKER_SOURCE_ID)) {
+      // fill-opacity 0: never drawn (course polygons are deliberately never rendered — see the
+      // file-level doc comment) but still hit-testable via queryRenderedFeatures for the click
+      // handler above.
+      map.addSource(BUNKER_SOURCE_ID, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({
+        id: BUNKER_SOURCE_ID,
+        type: "fill",
+        source: BUNKER_SOURCE_ID,
+        paint: { "fill-color": "#000000", "fill-opacity": 0 }
+      });
+    }
+    if (!map.getSource(DISPERSION_SOURCE_ID)) {
+      map.addSource(DISPERSION_SOURCE_ID, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({
+        id: DISPERSION_SOURCE_ID,
+        type: "fill",
+        source: DISPERSION_SOURCE_ID,
+        paint: { "fill-color": "#3b82f6", "fill-opacity": 0.22 }
+      });
+      map.addLayer({
+        id: `${DISPERSION_SOURCE_ID}-outline`,
+        type: "line",
+        source: DISPERSION_SOURCE_ID,
+        paint: { "line-color": "#3b82f6", "line-width": 2, "line-opacity": 0.6 }
+      });
+    }
     updateLineAndLabels();
+    updateBunkerSource();
+    updateDispersionEllipse();
+  }
+
+  // Populates the (invisible) bunker source from holeFeatures whenever it changes — a separate
+  // function from ensureSources so the [holeFeatures] effect below can refresh it without
+  // re-adding sources/layers every time.
+  function updateBunkerSource() {
+    const map = mapRef.current;
+    const source = map?.getSource(BUNKER_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+    if (!source) return;
+    const bunkers = (stateRef.current.holeFeatures ?? []).filter(
+      (f) => f.featureType === "bunker_greenside" || f.featureType === "bunker_fairway"
+    );
+    source.setData({
+      type: "FeatureCollection",
+      features: bunkers.map((b) => ({ type: "Feature" as const, properties: {}, geometry: b.geometry }))
+    });
+  }
+
+  // Front/back = closest/farthest polygon-ring vertex from origin (a reasonable proxy for a
+  // bunker's near/far edge along the shot line without needing true line-polygon clipping);
+  // middle = the polygon's centroid. Good enough for a quick yardage card, not survey-precise.
+  function computeBunkerYardages(origin: LatLng, geometry: GeoJSON.Polygon): BunkerYardages {
+    const ring = geometry.coordinates[0];
+    const distances = ring.map(([lng, lat]) => distanceYards(origin, { lat, lng }));
+    const center = turf.centroid(turf.polygon(geometry.coordinates)).geometry.coordinates;
+    return {
+      front: Math.round(Math.min(...distances)),
+      middle: Math.round(distanceYards(origin, { lat: center[1], lng: center[0] })),
+      back: Math.round(Math.max(...distances))
+    };
+  }
+
+  // Checks the current aim path (origin -> dots -> target) against every "hazard" (water)
+  // feature's boundary for crossings, reporting the closest one to origin (yards) via
+  // onWaterWarning and a floating map label. Called from updateLineAndLabels since it depends on
+  // the exact same path geometry.
+  function updateWaterWarning(pathCoords: number[][] | null) {
+    const map = mapRef.current;
+    if (!map) return;
+    const { origin: curOrigin, holeFeatures, onWaterWarning: curOnWaterWarning } = stateRef.current;
+    const hazards = (holeFeatures ?? []).filter((f) => f.featureType === "hazard");
+
+    let closest: { yards: number; point: LatLng } | null = null;
+    if (curOrigin && pathCoords && pathCoords.length >= 2 && hazards.length > 0) {
+      const aimLine = turf.lineString(pathCoords);
+      for (const h of hazards) {
+        const boundary = turf.polygonToLine(turf.polygon(h.geometry.coordinates));
+        const hits = turf.lineIntersect(aimLine, boundary as GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString>);
+        for (const pt of hits.features) {
+          const [lng, lat] = pt.geometry.coordinates;
+          const yards = distanceYards(curOrigin, { lat, lng });
+          if (!closest || yards < closest.yards) closest = { yards: Math.round(yards), point: { lat, lng } };
+        }
+      }
+    }
+
+    curOnWaterWarning?.(closest?.yards ?? null);
+
+    if (!closest) {
+      waterMarkerRef.current?.remove();
+      waterMarkerRef.current = null;
+      return;
+    }
+
+    if (!waterMarkerRef.current) {
+      const el = document.createElement("div");
+      el.style.cssText =
+        "background:rgba(37,99,235,.92);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.4);";
+      waterMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "center" })
+        .setLngLat([closest.point.lng, closest.point.lat])
+        .addTo(map);
+    } else {
+      waterMarkerRef.current.setLngLat([closest.point.lng, closest.point.lat]);
+    }
+    waterMarkerRef.current.getElement().textContent = `Water: ${closest.yards}y`;
+  }
+
+  // Draws dispersionEllipse (already computed in the shot's own downrange/offline frame by the
+  // caller) centered on the current target, oriented along the origin->target bearing — reusing
+  // fromDownrangeOffline (the inverse of the projection used to compute dispersion from history)
+  // to turn ellipse-boundary sample points back into map coordinates.
+  function updateDispersionEllipse() {
+    const map = mapRef.current;
+    const source = map?.getSource(DISPERSION_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+    if (!source) return;
+
+    const { origin: curOrigin, target: curTarget, dispersionEllipse: ellipse } = stateRef.current;
+    if (!curOrigin || !curTarget || !ellipse) {
+      source.setData({ type: "FeatureCollection", features: [] });
+      return;
+    }
+
+    const bearing = bearingDegrees(curOrigin, curTarget);
+    const steps = 40;
+    const coordinates: number[][] = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = (i / steps) * 2 * Math.PI;
+      const u = ellipse.semiMajorYards * Math.cos(t);
+      const v = ellipse.semiMinorYards * Math.sin(t);
+      const downrange = u * Math.cos(ellipse.rotationRad) - v * Math.sin(ellipse.rotationRad);
+      const offline = u * Math.sin(ellipse.rotationRad) + v * Math.cos(ellipse.rotationRad);
+      const p = fromDownrangeOffline(curTarget, bearing, downrange, offline);
+      coordinates.push([p.lng, p.lat]);
+    }
+    source.setData({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [coordinates] } });
   }
 
   // Redraws the target line so it routes origin -> each placed dot (nearest-to-origin
-  // first) -> target, and relabels every dot "<distance from origin> / <distance to the
-  // next dot, or target if it's the last one>". Recomputes ALL dots' labels every time
-  // since moving/adding/removing any one dot can change every other dot's sort position
-  // and neighbors. Call after any marker drag, add, or delete.
+  // first) -> target, and relabels every dot "<distance from the previous point on the
+  // path> / <distance to the next dot, or target if it's the last one>" — i.e. true
+  // segment-to-segment yardages (tee-to-dot-1, dot-1-to-dot-2, ...), not always measured
+  // from the tee. Recomputes ALL dots' labels every time since moving/adding/removing any
+  // one dot can change every other dot's sort position and neighbors on both sides. Call
+  // after any marker drag, add, or delete.
   function updateLineAndLabels() {
     const map = mapRef.current;
     if (!map) return;
@@ -237,8 +440,9 @@ export function CourseMap({
     }
 
     const source = map.getSource(LINE_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+    let coordinates: number[][] | null = null;
     if (source && curOrigin && curTarget) {
-      const coordinates = [
+      coordinates = [
         [curOrigin.lng, curOrigin.lat],
         ...dots.map((d) => [d.point.lng, d.point.lat]),
         [curTarget.lng, curTarget.lat]
@@ -247,11 +451,14 @@ export function CourseMap({
     }
 
     dots.forEach((d, i) => {
-      const toOrigin = curOrigin ? Math.round(distanceYards(curOrigin, d.point)) : null;
+      const prev = i === 0 ? curOrigin : dots[i - 1].point;
+      const fromPrev = prev ? Math.round(distanceYards(prev, d.point)) : null;
       const next = i < dots.length - 1 ? dots[i + 1].point : curTarget;
       const toNext = next ? Math.round(distanceYards(d.point, next)) : null;
-      d.label.textContent = `${toOrigin ?? "?"}y / ${toNext ?? "?"}y`;
+      d.label.textContent = `${fromPrev ?? "?"}y / ${toNext ?? "?"}y`;
     });
+
+    updateWaterWarning(coordinates);
   }
 
   function addMeasureMarker(point: LatLng) {
@@ -259,13 +466,21 @@ export function CourseMap({
     if (!map) return;
     const id = crypto.randomUUID();
 
+    // Outer 44px element is the actual drag handle Mapbox positions/tracks — invisible, just a
+    // bigger touch target than the 16px visual dot so a thumb doesn't block its own view of it.
     const el = document.createElement("div");
-    el.style.cssText =
-      "width:16px;height:16px;border-radius:50%;background:#ffffff;border:2px solid #222;box-shadow:0 0 4px rgba(0,0,0,.5);cursor:grab;";
+    el.className = "map-touch-target";
+    el.style.cssText = "width:44px;height:44px;display:flex;align-items:center;justify-content:center;";
+
+    const dot = document.createElement("div");
+    dot.className = "map-touch-dot";
+    dot.style.cssText =
+      "width:16px;height:16px;border-radius:50%;background:#ffffff;border:2px solid #222;box-shadow:0 0 4px rgba(0,0,0,.5);cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
+    el.appendChild(dot);
 
     const label = document.createElement("div");
     label.style.cssText =
-      "position:absolute;top:20px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,.8);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.4);";
+      "position:absolute;top:36px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,.8);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.4);";
     el.appendChild(label);
 
     const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
@@ -324,8 +539,15 @@ export function CourseMap({
     if (target) {
       if (!targetMarkerRef.current) {
         const el = document.createElement("div");
-        el.style.cssText =
-          "width:14px;height:14px;border-radius:50%;background:#e63946;border:2px solid #fff;cursor:grab;";
+        el.className = "map-touch-target";
+        el.style.cssText = "width:44px;height:44px;display:flex;align-items:center;justify-content:center;";
+
+        const dot = document.createElement("div");
+        dot.className = "map-touch-dot";
+        dot.style.cssText =
+          "width:14px;height:14px;border-radius:50%;background:#e63946;border:2px solid #fff;cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
+        el.appendChild(dot);
+
         const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
           .setLngLat([target.lng, target.lat])
           .addTo(map);
@@ -372,6 +594,23 @@ export function CourseMap({
     onDistanceUpdate?.(distanceToTarget);
   }, [distanceToTarget, onDistanceUpdate]);
 
+  // Refreshes the (invisible) bunker hit-test source whenever the hole changes, and clears any
+  // stale bunker card left over from the previous hole.
+  useEffect(() => {
+    updateBunkerSource();
+    setBunkerCard(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holeFeatures]);
+
+  // Redraws the dispersion ellipse whenever the active club's dispersion spec changes, or the
+  // pin/origin moves (it's centered on target and oriented along origin->target bearing). A
+  // no-op before the map's initial "load" fires and creates DISPERSION_SOURCE_ID — ensureSources
+  // calls this itself once that source exists.
+  useEffect(() => {
+    updateDispersionEllipse();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispersionEllipse, target, origin]);
+
   if (!TOKEN) {
     return (
       <div style={{ padding: 24, color: "#eef2ef" }}>
@@ -409,6 +648,17 @@ export function CourseMap({
           </button>
         </div>
       )}
+
+      {bunkerCard && (
+        <div style={bunkerCardStyle}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>Bunker</div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <span>Front {bunkerCard.front}y</span>
+            <span>Mid {bunkerCard.middle}y</span>
+            <span>Back {bunkerCard.back}y</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -423,4 +673,19 @@ const hudStyle: React.CSSProperties = {
   borderRadius: 8,
   fontSize: 14,
   zIndex: 1
+};
+
+const bunkerCardStyle: React.CSSProperties = {
+  position: "absolute",
+  bottom: 96,
+  left: "50%",
+  transform: "translateX(-50%)",
+  background: "rgba(11,15,12,0.9)",
+  color: "#eef2ef",
+  padding: "8px 14px",
+  borderRadius: 10,
+  fontSize: 13,
+  border: "1px solid #d4a017",
+  zIndex: 2,
+  textAlign: "center"
 };

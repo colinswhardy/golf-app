@@ -1,5 +1,5 @@
 import { db } from "./db";
-import type { LatLng, Lie, Round, RoundHole, Shot } from "../types/domain";
+import type { FairwayResult, LatLng, Lie, Round, RoundHole, Shot } from "../types/domain";
 
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
@@ -39,6 +39,7 @@ export async function getOrCreateRoundHole(roundId: string, holeId: string): Pro
     putts: null,
     puttDistancesFeet: null,
     pinLocation: null,
+    fairwayResult: null,
     updatedAt: now()
   };
   await db.roundHoles.put(roundHole);
@@ -100,6 +101,7 @@ export async function saveHoleResult(params: {
   score: number;
   putts: number;
   puttDistancesFeet: (number | null)[];
+  fairwayResult: FairwayResult | null;
   holeOutPoint: LatLng | null;
 }): Promise<void> {
   await db.transaction("rw", [db.roundHoles, db.shots, db.outbox], async () => {
@@ -110,6 +112,7 @@ export async function saveHoleResult(params: {
       score: params.score,
       putts: params.putts,
       puttDistancesFeet: params.puttDistancesFeet,
+      fairwayResult: params.fairwayResult,
       updatedAt: now()
     };
     await db.roundHoles.put(updated);

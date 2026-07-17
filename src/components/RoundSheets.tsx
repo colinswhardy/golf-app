@@ -1,5 +1,13 @@
-import { useState } from "react";
-import type { Club, Lie } from "../types/domain";
+import { useEffect, useState } from "react";
+import type { Club, FairwayResult, Lie } from "../types/domain";
+
+const FAIRWAY_TILES: { label: string; value: FairwayResult }[] = [
+  { label: "Hit", value: "hit" },
+  { label: "Left", value: "left" },
+  { label: "Right", value: "right" },
+  { label: "Short", value: "short" },
+  { label: "Long", value: "long" }
+];
 
 const LIE_TILES: { label: string; lie: Lie }[] = [
   { label: "Fairway", lie: "fairway" },
@@ -13,7 +21,10 @@ const LIE_TILES: { label: string; lie: Lie }[] = [
 /**
  * Bottom sheet for recording a shot: two fast taps and it's saved — no separate Save
  * button. Shot 1 skips the lie tap entirely (always "tee"); shot 2+ taps a lie tile,
- * then a club tile, and the club tap saves immediately.
+ * then a club tile, and the club tap saves immediately. Green is a special case: tapping
+ * "Green" (or landing there via auto-detection) saves instantly with Putter — zero taps
+ * in the club grid, since putting off the green is a near-certainty and this is the single
+ * most frequent lie transition in a round.
  */
 export function ShotSheet(props: {
   shotNumber: number;
@@ -22,13 +33,20 @@ export function ShotSheet(props: {
   onSave: (clubId: string | null, lie: Lie) => void;
   onClose: () => void;
 }) {
-  // Shot 1 always skips the lie tap (it's the tee). Auto-detected "green" also skips it —
-  // putting is overwhelmingly the likely club there, so jump straight to club tiles with
-  // Putter pre-highlighted; tapping it (or overriding to any other club) saves instantly.
   const isFirstShot = props.shotNumber === 1;
   const isOnGreen = props.detectedLie === "green";
   const [lie, setLie] = useState<Lie | null>(isFirstShot ? "tee" : isOnGreen ? "green" : null);
   const putter = props.clubs.find((c) => c.name === "Putter");
+
+  // Fires for both the auto-detected initial state (isOnGreen) and a manual tap of the Green
+  // tile — either way, landing on "green" should save immediately, not just pre-highlight Putter
+  // and wait for another tap.
+  useEffect(() => {
+    if (lie === "green") props.onSave(putter?.id ?? null, "green");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lie]);
+
+  if (lie === "green") return null;
 
   return (
     <Sheet title={`Shot ${props.shotNumber}`} onClose={props.onClose}>
@@ -48,11 +66,7 @@ export function ShotSheet(props: {
           <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>Club</div>
           <div style={clubGridStyle}>
             {props.clubs.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => props.onSave(c.id, lie)}
-                style={{ ...tileStyle, ...(lie === "green" && c.id === putter?.id ? tileActiveStyle : {}) }}
-              >
+              <button key={c.id} onClick={() => props.onSave(c.id, lie)} style={tileStyle}>
                 {c.name}
               </button>
             ))}
@@ -101,22 +115,46 @@ export function ScorecardSheet(props: { entries: { holeNumber: number; par: numb
   );
 }
 
-/** Bottom sheet for holing out: putts (with per-putt distances) + score (prefilled from recorded shots + putts). */
+/** Bottom sheet for holing out: fairway result (Par 4+ only) + putts (with per-putt distances) + score (prefilled from recorded shots + putts). */
 export function HoleScoreSheet(props: {
   holeNumber: number;
+  par: number;
   recordedShots: number;
-  onSave: (score: number, putts: number, puttDistancesFeet: (number | null)[]) => void;
+  onSave: (
+    score: number,
+    putts: number,
+    puttDistancesFeet: (number | null)[],
+    fairwayResult: FairwayResult | null
+  ) => void;
   onClose: () => void;
 }) {
   const [putts, setPutts] = useState(2);
   const [scoreTouched, setScoreTouched] = useState(false);
   const [score, setScore] = useState(props.recordedShots + 2);
   const [distances, setDistances] = useState<string[]>(["", ""]);
+  const [fairwayResult, setFairwayResult] = useState<FairwayResult | null>(null);
 
   const effectiveScore = scoreTouched ? score : props.recordedShots + putts;
+  const showFairway = props.par >= 4;
 
   return (
     <Sheet title={`Hole ${props.holeNumber} — finish`} onClose={props.onClose}>
+      {showFairway && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>Fairway</div>
+          <div style={fairwayGridStyle}>
+            {FAIRWAY_TILES.map((t) => (
+              <button
+                key={t.value}
+                onClick={() => setFairwayResult(t.value)}
+                style={{ ...tileStyle, ...(fairwayResult === t.value ? tileActiveStyle : {}), padding: "12px 4px" }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <Stepper
         label="Putts"
         value={putts}
@@ -165,7 +203,8 @@ export function HoleScoreSheet(props: {
             distances.map((d) => {
               const n = parseFloat(d);
               return Number.isFinite(n) && n >= 0 ? n : null;
-            })
+            }),
+            showFairway ? fairwayResult : null
           )
         }
         style={primaryButtonStyle}
@@ -264,6 +303,12 @@ const clubGridStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr 1fr",
   gap: 8
+};
+
+const fairwayGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5, 1fr)",
+  gap: 6
 };
 
 const tileStyle: React.CSSProperties = {

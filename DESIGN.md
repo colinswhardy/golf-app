@@ -238,9 +238,19 @@ bunker polygon later.
     distance changes; `RoundMapPage` derives front/back by ±15y off this "center" value rather
     than computing distance a second time.
   - `mapStyle` (defaults to `SATELLITE_STYLE`) toggles via `map.setStyle()`; since a style change
-    can drop style-specific sources, the line source/layer setup was pulled into a named
-    `ensureLineSource()` re-run on both the initial `"load"` and `"style.load"` after every switch,
-    rather than assuming Mapbox's cross-style diffing preserves it.
+    can drop style-specific sources, all of `CourseMap`'s sources/layers (target line, invisible
+    bunker hit-test layer, dispersion ellipse) are (re-)added by one named `ensureSources()`,
+    re-run on both the initial `"load"` and `"style.load"` after every switch, rather than assuming
+    Mapbox's cross-style diffing preserves them.
+- **Touch targets**: every draggable map dot (measure markers, the target/pin marker) is a
+  44×44px invisible flex-centered `.map-touch-target` div — the actual Mapbox marker element
+  Mapbox positions/tracks — wrapping a smaller visual `.map-touch-dot` (16px for measure dots,
+  14px for the target). A thumb covers the 44px target without obscuring its own view of the
+  smaller dot inside it. `src/index.css`'s `.map-touch-target:active .map-touch-dot` rule (with
+  `!important`, since it overrides the dot's own inline `style.cssText`) pops the visual dot up
+  30px and turns it green while pressed, so it stays visible under the finger during a drag.
+  `user-select: none` is set globally in `index.css` too — this is a touch-driven map app, not a
+  document, so double-taps must never trigger the OS text-selection menu.
 - **Draggable target marker (custom pin locations)**: the red target marker is `draggable: true`;
   `drag` calls `setTarget()` on every tick (same render path as tap-to-set, so the line/labels/
   `onDistanceUpdate` all update live with no special-casing), while `dragstart`/`dragend` toggle an
@@ -256,13 +266,16 @@ bunker polygon later.
 - Tap the tee→pin line → spawns a draggable marker at that point.
 - The line is **segmented** through every placed marker rather than staying a straight
   origin→target line: `updateLineAndLabels()` in `CourseMap.tsx` sorts all markers by distance
-  from origin and routes `origin -> nearest marker -> ... -> farthest marker -> target`. Recomputes
-  every marker's label on every drag/add/delete, since moving one marker can change every other
-  marker's sort position and neighbors — a label reads `<distance from origin> / <distance to the
-  next marker, or target if it's the last one>`, in a small dark capsule pinned above the dot.
+  from origin and routes `origin -> nearest marker -> ... -> farthest marker -> target`, in a small
+  dark capsule pinned above the dot (see the segment-label bullet below for the label format).
 - Each tap on the line spawns an independent new marker; markers persist per hole until the hole
   changes, are draggable anywhere on the map (not constrained back to the original line), and are
   local-only UI state (not persisted to Supabase/Dexie).
+- **Segment-to-segment labels, not always-from-tee**: a label reads `<distance from the previous
+  point on the path> / <distance to the next point, or target if it's the last one>` — i.e. true
+  leg-by-leg yardages (tee-to-dot-1, dot-1-to-dot-2, ...), not every dot's distance measured from
+  the tee. `updateLineAndLabels()` recomputes every dot's neighbors (both sides) on every
+  drag/add/delete, since moving one dot can change every other dot's sort position.
 - **Tapping works on any segment of the (possibly already-bent) path**, not just the original
   straight origin→target line — the click handler rebuilds the same `[origin, ...sortedDots,
   target]` path `updateLineAndLabels()` uses, then scans consecutive pairs for one within
@@ -332,12 +345,96 @@ the selected round's actual recorded shots.
   toggling one arms `ReviewMap`'s click handler, and the next map tap writes the point and disarms.
   Rendered as a small red marker per shot that has one set.
 
-### Dispersion ellipses — implemented, not wired up
+## 12. Water Hazards & Bunker Warnings
 
-`computeDispersionEllipse()` in `lib/geo.ts` is complete (covariance-matrix eigendecomposition,
-confidence-scaled semi-axes) but nothing calls it yet — no chart or map overlay consumes it. Needs
-a UI home (likely a stats page, filtering shots by club into `(downrange, offline)` points via
-`toDownrangeOffline`) before it does anything visible.
+Course polygons are still never rendered visually (§8's satellite-only design) — hazards and
+bunkers are used purely as invisible geometry, in two different ways:
+
+- **Water hazards**: `updateWaterWarning()` in `CourseMap.tsx` runs on every call to
+  `updateLineAndLabels()` (i.e. whenever the aim path changes — origin/target move, a measure dot
+  is added/dragged/removed). It builds the current path (`origin -> dots -> target`) as a
+  `turf.lineString`, converts each `hazard`-type `HoleFeature` polygon to its boundary line via
+  `turf.polygonToLine`, and checks `turf.lineIntersect` against each. The *closest* crossing to
+  origin (if any) is reported two ways: `onWaterWarning?(yards)` for the parent to show its own HUD
+  badge (`RoundMapPage` renders "💧 Water: XXXy"), and a small blue Mapbox `Marker` placed directly
+  at the crossing point on the map itself (not a GeoJSON layer — it's a single text label, a DOM
+  marker is simpler than a symbol layer for that).
+- **Bunkers**: an invisible (`fill-opacity: 0`) GeoJSON fill layer (`BUNKER_SOURCE_ID`) holds every
+  `bunker_greenside`/`bunker_fairway` feature for the current hole — invisible but still
+  hit-testable via `map.queryRenderedFeatures`, same trick used for hazard-free click detection
+  elsewhere. The map's single `click` handler checks this layer *first*, before falling through to
+  the existing settingTarget/measure-dot logic; a hit computes `front`/`middle`/`back` yardages
+  (closest/farthest polygon-ring vertex from origin for front/back, `turf.centroid` for middle —
+  a reasonable proxy, not survey-precise line-polygon clipping) and shows them in a floating capsule
+  card, cleared on hole change.
+- Both sources are populated by `updateBunkerSource()`, called from `ensureSources()` on load/style
+  change and from a `[holeFeatures]`-keyed effect so navigating holes refreshes them.
+- **Verification note**: hit-testing a small polygon on a tilted (pitch 55°) 3D-projected map by
+  guessing screen pixel coordinates is unreliable — a coarse blind grid-click sweep missed real
+  bunkers repeatedly during verification even though the underlying data/layer were correct. Confirmed
+  correct by temporarily exposing the map instance (`window.__debugMap`, removed before shipping) to
+  call `map.project()` on a known bunker's actual centroid and click exactly there — the card
+  rendered ("Front 209y Mid 212y Back 215y"). Water hazard crossings don't have this problem since
+  the check is pure lat/lng geometry (`turf.lineIntersect`), not a screen click.
+
+## 13. Shot Logging — Instant Green-Putter Save
+
+`ShotSheet` (`RoundSheets.tsx`) treats landing on `"green"` as a special case: unlike every other
+lie (which requires a lie tap, then a club tap to save), tapping "Green" — or auto-detecting it via
+`detectedLie` — saves the shot **immediately** with `Putter`, zero taps in the club grid. A
+`useEffect` watching `lie` fires `onSave(putter.id, "green")` whenever `lie` becomes `"green"`,
+covering both paths (auto-detected initial state, and a later manual tap of the Green tile) with
+one code path; the component renders `null` once that state is reached, since the sheet is about
+to close. Putting off the green is a near-certainty and the single most frequent lie transition in
+a round, so this is worth a small special case.
+
+## 14. Fairway Miss Tracking
+
+`RoundHole.fairwayResult?: FairwayResult | null` (`"hit" | "left" | "right" | "short" | "long"`).
+`HoleScoreSheet` renders a 5-tile selector for holes with `par >= 4` only (no fairway to miss on a
+Par 3); `RoundMapPage.handleSaveHole` threads the selected value through to
+`roundRepo.saveHoleResult`, which persists it alongside score/putts in the same write.
+
+## 15. Per-Hole Notes
+
+`Hole.notes?: string | null` — tied to the **hole** (course-level data), not the round, so a note
+written once ("water short-right, take one more club") reloads automatically the next time that
+course/hole is played, regardless of which round. Editable via a toggleable textarea in
+`RoundMapPage`'s header; writes are debounced 600ms after the last keystroke
+(`lib/courseRepo.updateHoleNotes`) rather than requiring an explicit save action.
+
+## 16. Dispersion Overlay & Settings
+
+`computeDispersionEllipse()` in `lib/geo.ts` (covariance-matrix eigendecomposition,
+confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
+
+- **Manual** (`manualDispersion(club)`): reads `Club.manualFrontBackYards`/`manualLeftRightYards`
+  (edited on the Settings page's per-club table) and halves them into semi-axes. `rotationRad: 0`
+  — front/back and left/right are already expressed in the shot's own downrange/offline frame, so
+  no extra rotation is needed on top of the bearing-based rotation `CourseMap` applies when drawing
+  it.
+- **Actual** (`computeActualDispersion(clubId)`, gated by `Club.useActualDispersion`): pulls every
+  recorded `Shot` for that club with both an `endPoint` and an `aimPointOverride` (set during
+  post-round review, §11), projects each end point into its own start→aim bearing's
+  (downrange, offline) frame via `toDownrangeOffline`, and fits a 90%-confidence ellipse across all
+  of them. Shots without a recorded aim point are skipped — there's no meaningful "offline" axis
+  without knowing what was being aimed at. Falls back to manual values when there isn't enough
+  actual history yet.
+- `RoundMapPage` adds a club-picker chip row (behind a 📐 pill button) that sets `activeClubId`;
+  an effect resolves it to a `DispersionEllipseSpec` and passes it to `CourseMap`, which draws it as
+  a filled+outlined polygon (`DISPERSION_SOURCE_ID`) centered on `target` and oriented along the
+  live origin→target bearing — `fromDownrangeOffline` (the inverse of the projection above) turns
+  40 sampled ellipse-boundary points back into map coordinates. It's centered on the *already*
+  draggable target/pin rather than being independently draggable — moving the pin moves the
+  ellipse with it for free.
+- Settings page (`SettingsPage.tsx`) is a simple per-club table (front/back yards, left/right
+  yards, "use actual" checkbox), direct-writing on blur/change via
+  `courseRepo.updateClubDispersion` — low-frequency editing, no debounce needed.
+- **Gotcha**: `useLiveQuery` callbacks run in a Dexie **read-only** transaction — calling
+  `ensureDefaultClubs()` (a write) from inside one throws `ReadOnlyError` and silently blanks the
+  whole component (React error boundary territory). Seeding has to happen in a plain `useEffect` on
+  mount; `useLiveQuery` stays a pure read (`listClubs()`). Same rule applies anywhere else a
+  `useLiveQuery` callback is tempted to seed/upsert as a side effect.
 
 ## Course Import — Overpass → Dexie
 
@@ -445,8 +542,8 @@ ad-hoc/one-off imports that don't warrant a code change.
   by the *next* shot's start (or by the green centroid on hole-out — real per-round pin positions
   still TODO). Course polygons are intentionally not rendered on the in-round map (user preference:
   satellite imagery only); they exist solely to power lie detection.
-- Remaining round-tracking gaps: per-round pin placement UI (§ Rounds), round review screen
-  (breadcrumbs/shot markers), stats/SG engine, dispersion views, in-app course editor.
+- Remaining round-tracking gaps: stats/SG engine, in-app course editor. Per-round pin placement,
+  round review (§11), and dispersion views (§16) are done.
 - Target device is Pixel 9 Pro / Chrome on Android, which has solid Background Sync API and
   Geolocation support — sync worker can lean on that as the primary path, with a polling fallback
   kept only for cheap future-proofing if this ever runs on another browser/device.

@@ -70,6 +70,24 @@ export function toDownrangeOffline(
   };
 }
 
+/**
+ * Inverse of toDownrangeOffline: turns a (downrange, offline) offset from an origin, along a
+ * given bearing, back into a LatLng — e.g. for drawing a dispersion ellipse (computed in a
+ * shot's own downrange/offline frame) back onto the map. The forward rotation matrix
+ * [[sinθ,cosθ],[cosθ,-sinθ]] is its own inverse, so this is the same formula as the forward
+ * transform in toDownrangeOffline, just solved the other direction.
+ */
+export function fromDownrangeOffline(origin: LatLng, targetBearingDeg: number, downrangeYards: number, offlineYards: number): LatLng {
+  const downrangeM = downrangeYards * METERS_PER_YARD;
+  const offlineM = offlineYards * METERS_PER_YARD;
+  const theta = toRad(targetBearingDeg);
+
+  const east = downrangeM * Math.sin(theta) + offlineM * Math.cos(theta);
+  const north = downrangeM * Math.cos(theta) - offlineM * Math.sin(theta);
+
+  return fromLocalMeters(origin, east, north);
+}
+
 /** Inverse of toLocalMeters: turns an (east, north) offset from an origin back into a LatLng. */
 export function fromLocalMeters(origin: LatLng, east: number, north: number): LatLng {
   const lat = origin.lat + toDeg(north / EARTH_RADIUS_M);

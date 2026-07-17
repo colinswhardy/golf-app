@@ -1,5 +1,18 @@
 * {
   box-sizing: border-box;
+  /* Disable text-selection popups/highlighting globally — this is a touch-driven map app, not a
+     document; double-taps on map dots/buttons should never trigger the OS text-selection menu. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Draggable map dots (measure markers, the target/pin marker) are wrapped in an invisible 44px
+   touch target so a thumb doesn't obscure the 16px visual dot it's dragging; while pressed, the
+   visual dot pops up 30px above the touch point and turns green so it stays visible. */
+.map-touch-target:active .map-touch-dot {
+  transform: translateY(-30px) !important;
+  background: #22c55e !important;
+  border-color: #16a34a !important;
 }
 
 html, body, #root {

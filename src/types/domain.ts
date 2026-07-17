@@ -39,6 +39,9 @@ export interface Hole {
   number: number;
   par: number;
   defaultYardage: number | null;
+  /** Freeform per-hole notes (yardage reminders, strategy, etc), persisted so they reload the
+   * next time this course/hole is played — not tied to a specific round. */
+  notes?: string | null;
   updatedAt: string;
 }
 
@@ -61,6 +64,13 @@ export interface Club {
   id: string;
   name: string;
   sortOrder: number;
+  /** Manual dispersion overrides (yards), used when useActualDispersion is false or there isn't
+   * enough shot history yet to compute an actual ellipse. */
+  manualFrontBackYards?: number | null;
+  manualLeftRightYards?: number | null;
+  /** When true, the dispersion overlay is computed from this club's actual recorded shots
+   * (see lib/dispersion.ts) instead of the manual front/back + left/right values. */
+  useActualDispersion?: boolean;
   updatedAt: string;
 }
 
@@ -72,6 +82,8 @@ export interface Round {
   updatedAt: string;
 }
 
+export type FairwayResult = "hit" | "left" | "right" | "short" | "long";
+
 export interface RoundHole {
   id: string;
   roundId: string;
@@ -81,6 +93,9 @@ export interface RoundHole {
   /** One entry per putt, in feet; null entry = distance not recorded. First putt = SG-putting input. */
   puttDistancesFeet: (number | null)[] | null;
   pinLocation: LatLng | null; // null = assume green-center for this hole/round
+  /** Tee shot result relative to the fairway, Par 4+ only. Null = not recorded (e.g. Par 3s, or
+   * unrecorded older rounds). */
+  fairwayResult?: FairwayResult | null;
   updatedAt: string;
 }
 

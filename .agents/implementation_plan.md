@@ -1,71 +1,89 @@
-# CaddyShot Feature Upgrades: Draggable Pins, Mappings, and Grint UI
+# CaddyShot Feature Upgrades: Advanced Math, Map UX, Hole Notes, and Dispersion
 
-This plan implements:
-1. **Draggable Greens/Pins**: Allows holding and dragging the red green-target marker on the map to set a custom pin location.
-2. **Persistent Pin Locations**: Saves custom target locations to the `pinLocation` field in IndexedDB's `roundHoles` table. The map loads `pinLocation ?? greenCentroid` automatically.
-3. **Green & Tee Association Fix**: Resolves the bug where Hole 2 uses Green 1 and Hole 3 uses Green 2 by matching greens and tees to centerline **end/start points** instead of perpendicular distances.
-4. **Grint-Style UI Redesign**: Floating header capsule, circular back button, front/center/back yardage HUD card, right vertical utility pill, and bottom profile bar.
-5. **Layup Line Dot Spawning & 5-Dot Limit**: Allows tapping anywhere on active line segments to spawn layup dots, capped at 5 maximum.
+Overhaul multiple complex math and UI logic flows to add segment-based layup measurements, water/bunker hazards checking, caddy notes, touch-drag optimizations, and dispersion overlays.
 
 ---
 
-## 🗺️ Verification: Scorecard Match (Innerkip Highlands)
-The official yardages for the first three holes at Innerkip are:
-* **Hole 1**: 397 yards
-* **Hole 2**: 142 yards (Par 3)
-* **Hole 3**: 390 yards
+## 🧭 Concept Answers for the User
 
-In the previous bug, Hole 2 incorrectly matched Green 1, and Hole 3 incorrectly matched Green 2 (the par-3 green located ~135 yards from Tee 3). By comparing centerline endpoints rather than perpendicular vectors:
-* **Hole 2** matches Green 2 (~142 yards from Tee 2).
-* **Hole 3** matches Green 3 (~386 yards from Tee 3).
-This ensures distances match the scorecard perfectly!
+### 1. Dispersion Pattern & Ellipse Status Update
+* **Current Backend**: Standard deviation and covariance calculations are complete in [geo.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/geo.ts) to construct 90% confidence ellipses from recorded shots.
+* **This Upgrade Plan**: We are defining the UI layers:
+  1. **Map Overlay**: Draws a shaded 90% confidence ellipse around your target pin (or aim point), showing where your shots will land. You can drag this overlay around to find the safest aim path.
+  2. **Settings Customization**: A Settings page where you can edit your manual dispersion parameters (e.g. 7-Iron dispersion: ±10 yards long/short, ±8 yards left/right) and toggle between your manual values vs. real app-recorded data.
 
----
-
-## 💊 Right-Side Vertical Utility Pill Breakdown
-
-The vertical actions pill on the right side contains these 4 buttons:
-1. **🗺️ Map Style**: Toggles between Satellite imagery (standard) and Vector Map views for visibility.
-2. **🎯 Reset Pin**: Resets the target marker position back to the green's center point.
-3. **🏌️ Log Shot**: Opens the quick-tap lie/club grid to record a shot at your location.
-4. **📋 Scorecard**: Opens the full-round scorecard spreadsheet to view/edit scores.
+### 2. Fast-Response Touch Dragging & Offsets
+To prevent your thumb from blocking the dot you are positioning:
+* We wrap the visual dot (`16px`) in an invisible `44px` touch target.
+* When active (`:active`), the visual dot pops up **30px above your finger** and turns green so you can see exactly where it is being placed.
+* Text copy/pasting selection is disabled globally (`user-select: none`) to prevent accidental popups on double-taps.
 
 ---
 
 ## Proposed Changes
 
-### 1. Draggable Greens & Pin Locations
+### 1. Segment-to-Segment Layup Math
 
 #### [MODIFY] [CourseMap.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/components/CourseMap.tsx)
-* **Expose Pin Callbacks**: Accept `onTargetChange?: (pt: LatLng) => void` as a prop.
-* **Draggable targetMarker**: Change `targetMarkerRef` initialization to set `draggable: true`.
-* **Drag Listeners**:
-  - Bind `drag` to update `target` coordinates in local state, updating lines and HUD labels dynamically.
-  - Bind `dragend` to trigger the `onTargetChange` callback to persist the new coordinates.
-
-#### [MODIFY] [RoundMapPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/RoundMapPage.tsx)
-* **Resolve Pin Coordinate**: Load `activeTarget = roundHole?.pinLocation ?? greenCentroid`. Pass `activeTarget` as the `initialTarget` prop to `<CourseMap>`.
-* **Save Target Position**: Bind `onTargetChange` to update the `pinLocation` field of the active `roundHole` row in Dexie:
-  ```typescript
-  await db.roundHoles.update(roundHoleId, { pinLocation: newPin });
-  ```
+* Update `updateLineAndLabels()` to calculate segment-to-segment distances:
+  - First dot distance: from `origin` (tee/GPS) to Dot 1.
+  - Second dot distance: from Dot 1 to Dot 2 (instead of Tee to Dot 2).
+  - Dot $i$ distance: from Dot $i-1$ to Dot $i$.
 
 ---
 
-### 2. Accurate Green & Tee Feature Mapping
+### 2. Clean Teebox Options
 
-#### [MODIFY] [importOverpass.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/importOverpass.ts)
-* **Hole-Green End Matching**: If a polygon has `golf=green`, assign it to the hole whose centerline's **end coordinate** is closest to the green's centroid.
-* **Hole-Tee Start Matching**: If a polygon has `golf=tee`, assign it to the hole whose centerline's **start coordinate** is closest to the tee's centroid.
+#### [MODIFY] [RoundMapPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/RoundMapPage.tsx)
+* **Exclude generic "Tee"**: When populating the teebox dropdown, if there are specific color sets available (e.g., `Blue`, `White`, `Gold`), filter out the generic `"Tee"` option. If no color sets are available, fallback to `"Tee"`.
 
-#### [MODIFY] [seedCourses.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/seedCourses.ts)
-* **Re-seed Trigger**: Add a localStorage key `caddyshot_reseeded_v2`. If not set, clear the courses table of bundled courses and trigger a fresh seed to populate the corrected coordinates.
+---
+
+### 3. Hazard & Bunker Distance Checks
+
+#### [MODIFY] [CourseMap.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/components/CourseMap.tsx)
+* **Water Intersection Check**: Test if the current aim line crosses any water features (`featureType: "hazard"`).
+  - Use `@turf/line-intersect` to find the crossing points.
+  - Find the closest intersection to the user and draw a warning label on the map and HUD: `Water: XXXy`.
+* **Bunker Front/Middle/Back Card**:
+  - Add click handlers on bunker polygons (`bunker_greenside`, `bunker_fairway`).
+  - When clicked, calculate and display Front (closest boundary point to user), Middle (centroid), and Back (furthest boundary point) distances in a floating capsule.
+
+---
+
+### 4. Fast Green-Putter Logging & Fairway Misses
+
+#### [MODIFY] [RoundSheets.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/components/RoundSheets.tsx)
+* **Instant Green Save**: If you tap "Green" as the lie (or if it is auto-detected), immediately trigger `onSave` with `"Putter"` and close the sheet (0 clicks in club selection).
+* **Fairway Miss Selector**: On the hole scoring sheet (for Par 4+ holes), render a 5-way selector: `🎯 Hit | ⬅️ Left | ➡️ Right | ⬇️ Short | ⬆️ Long` and save it to the `RoundHole` object.
+
+---
+
+### 5. Persistent Per-Hole Caddy Notes
+
+#### [MODIFY] [domain.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/types/domain.ts)
+* Add `notes?: string | null` to the `Hole` interface.
+
+#### [MODIFY] [RoundMapPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/RoundMapPage.tsx)
+* **Notes Card**: Render an expandable notes tile in the header.
+* **Notes Auto-Save**: Save notes directly to the `Hole` row in Dexie when modified, so they load automatically the next time you play the course.
+
+---
+
+### 6. Dispersion Map Overlay & Settings
+
+#### [MODIFY] [SettingsPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/SettingsPage.tsx)
+* Build a table of clubs showing columns for **Manual Dispersion** (Front/Back Range, Left/Right Range) and **Actual Dispersion** (calculated from recorded shots). Let users edit these ranges and select which data source to use.
+
+#### [MODIFY] [CourseMap.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/components/CourseMap.tsx)
+* Draw a semi-transparent, draggable ellipse overlay centered on your target pin. Rotate and scale the ellipse based on the active club's dispersion metrics.
 
 ---
 
 ## Verification Plan
 
 ### Manual Verification
-1. **Draggable Pin test**: Open the map. Hold down on the red green-target marker and drag it. Verify that the line and distances update in real-time.
-2. **Pin Persistence**: Move the pin, switch holes, then come back to the original hole. Verify the pin remains at your custom dragged location.
-3. **Green Mappings**: Open Innerkip. Verify Hole 2 green distance is ~142 yards and Hole 3 green distance is ~386 yards.
+1. **Green Auto-Putter**: Verify tapping "Green" instantly logs the shot and closes the selector.
+2. **Notes Persistence**: Open Hole 1, type a note, refresh the page, and confirm it is still there.
+3. **Segment Yardages**: Confirm dot labels show segment lengths (e.g. Tee to Dot 1 is 220, Dot 1 to Dot 2 is 100).
+4. **Touch Drag Offset**: Drag a map dot. Verify the visual circle shifts 30px above your thumb and turns green.
