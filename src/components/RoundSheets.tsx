@@ -22,7 +22,13 @@ export function ShotSheet(props: {
   onSave: (clubId: string | null, lie: Lie) => void;
   onClose: () => void;
 }) {
-  const [lie, setLie] = useState<Lie | null>(props.shotNumber === 1 ? "tee" : null);
+  // Shot 1 always skips the lie tap (it's the tee). Auto-detected "green" also skips it —
+  // putting is overwhelmingly the likely club there, so jump straight to club tiles with
+  // Putter pre-highlighted; tapping it (or overriding to any other club) saves instantly.
+  const isFirstShot = props.shotNumber === 1;
+  const isOnGreen = props.detectedLie === "green";
+  const [lie, setLie] = useState<Lie | null>(isFirstShot ? "tee" : isOnGreen ? "green" : null);
+  const putter = props.clubs.find((c) => c.name === "Putter");
 
   return (
     <Sheet title={`Shot ${props.shotNumber}`} onClose={props.onClose}>
@@ -42,7 +48,11 @@ export function ShotSheet(props: {
           <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>Club</div>
           <div style={clubGridStyle}>
             {props.clubs.map((c) => (
-              <button key={c.id} onClick={() => props.onSave(c.id, lie)} style={tileStyle}>
+              <button
+                key={c.id}
+                onClick={() => props.onSave(c.id, lie)}
+                style={{ ...tileStyle, ...(lie === "green" && c.id === putter?.id ? tileActiveStyle : {}) }}
+              >
                 {c.name}
               </button>
             ))}
@@ -215,6 +225,12 @@ const tileStyle: React.CSSProperties = {
   borderRadius: 12,
   fontSize: 14,
   cursor: "pointer"
+};
+
+const tileActiveStyle: React.CSSProperties = {
+  background: "#f5d90a",
+  color: "#111",
+  borderColor: "#f5d90a"
 };
 
 const distanceInputStyle: React.CSSProperties = {

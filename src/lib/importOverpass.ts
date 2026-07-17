@@ -179,6 +179,25 @@ export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCours
     teeBoxes.push({ holeNumber: nearest.number, name, location: centroid });
   }
 
+  // --- 7. Fallback: any hole with no golf=tee polygon gets a tee box synthesized from the
+  // first coordinate of its centerline, so the map always has a line/camera origin — real
+  // courses' OSM data sometimes maps hole centerlines without ever mapping tee polygons.
+  const holesWithTeeBox = new Set(teeBoxes.map((t) => t.holeNumber));
+  const fallbackTeeHoles: number[] = [];
+  for (let n = 1; n <= maxHoleNumber; n++) {
+    if (holesWithTeeBox.has(n)) continue;
+    const line = holeLineByNumber.get(n);
+    if (!line) continue;
+    const [lng, lat] = line.geometry.coordinates[0];
+    teeBoxes.push({ holeNumber: n, name: "Tee (approx.)", location: { lat, lng } });
+    fallbackTeeHoles.push(n);
+  }
+  if (fallbackTeeHoles.length) {
+    warnings.push(
+      `Holes ${fallbackTeeHoles.join(", ")} have no golf=tee polygon in OSM — used the centerline's starting point as an approximate tee location instead.`
+    );
+  }
+
   return {
     name,
     location,

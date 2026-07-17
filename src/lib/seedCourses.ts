@@ -12,12 +12,55 @@ const BUNDLED_COURSES = [
   { name: "Innerkip Highlands Golf Club", file: "courses/innerkip-highlands.geojson" }
 ];
 
+async function courseHasTeeBoxes(courseId: string): Promise<boolean> {
+  const versionIds = (await db.courseVersions.where("courseId").equals(courseId).toArray()).map((v) => v.id);
+  if (!versionIds.length) return false;
+  const holeIds = (await db.holes.where("courseVersionId").anyOf(versionIds).toArray()).map((h) => h.id);
+  if (!holeIds.length) return false;
+  return (await db.teeBoxes.where("holeId").anyOf(holeIds).count()) > 0;
+}
+
+// Deletes a course and everything under it (versions, holes, features, tee boxes) so
+// seedBundledCourses's normal "not present" path re-imports it fresh from the (now-fixed)
+// parser. Used for the one-time 0-tee-box migration below, not a general-purpose delete.
+async function wipeCourse(courseId: string): Promise<void> {
+  await db.transaction("rw", [db.courses, db.courseVersions, db.holes, db.holeFeatures, db.teeBoxes], async () => {
+    const versionIds = (await db.courseVersions.where("courseId").equals(courseId).toArray()).map((v) => v.id);
+    const holeIds = versionIds.length ? (await db.holes.where("courseVersionId").anyOf(versionIds).toArray()).map((h) => h.id) : [];
+    if (holeIds.length) {
+      await db.holeFeatures.where("holeId").anyOf(holeIds).delete();
+      await db.teeBoxes.where("holeId").anyOf(holeIds).delete();
+      await db.holes.where("id").anyOf(holeIds).delete();
+    }
+    if (versionIds.length) await db.courseVersions.where("id").anyOf(versionIds).delete();
+    await db.courses.delete(courseId);
+  });
+}
+
+// Single-flight guard: App.tsx calls seedBundledCourses() from a fire-and-forget mount
+// effect, and React StrictMode double-invokes effects in dev — two concurrent calls would
+// each see "course not present yet" and both import it, since saveImportedCourse's
+// copy-on-write versioning always creates a new version rather than deduping against an
+// identical existing one. A second concurrent call just awaits the first's in-flight result.
+let seedingPromise: Promise<void> | null = null;
+
 /**
  * Imports any bundled course that isn't already in Dexie. Safe to call on every
  * app start — courses already present (by name) are skipped, so this never
- * creates duplicate versions on repeat runs.
+ * creates duplicate versions on repeat runs. Courses already present but with zero
+ * tee boxes (from before the OSM parser's centerline fallback existed) get wiped and
+ * re-imported so they pick up the fix rather than staying stuck without one forever.
  */
-export async function seedBundledCourses(): Promise<void> {
+export function seedBundledCourses(): Promise<void> {
+  if (!seedingPromise) {
+    seedingPromise = seedBundledCoursesOnce().finally(() => {
+      seedingPromise = null;
+    });
+  }
+  return seedingPromise;
+}
+
+async function seedBundledCoursesOnce(): Promise<void> {
   // 1. Upgrade existing seeded default courses to ensure they have the isFeatured property
   try {
     const defaultCourseNames = BUNDLED_COURSES.map((c) => c.name);
@@ -36,10 +79,14 @@ export async function seedBundledCourses(): Promise<void> {
     try {
       const existing = await db.courses.where("name").equals(entry.name).first();
       if (existing) {
-        if (existing.isFeatured === undefined) {
-          await db.courses.update(existing.id, { isFeatured: true });
+        if (await courseHasTeeBoxes(existing.id)) {
+          if (existing.isFeatured === undefined) {
+            await db.courses.update(existing.id, { isFeatured: true });
+          }
+          continue;
         }
-        continue;
+        await wipeCourse(existing.id);
+        // falls through to the normal import below, re-fetching + re-parsing this course
       }
 
       const res = await fetch(`${import.meta.env.BASE_URL}${entry.file}`);

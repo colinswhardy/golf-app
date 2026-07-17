@@ -1,70 +1,76 @@
-# CaddyShot Feature Enhancements: Map Layups, Fast Logging, & Header Tweaks
+# CaddyShot Core Overhauls: Map Fixes, Auto-Putter, and OSM Mapping Rules
 
-Overhaul multiple core layout and tracking logic items in the CaddyShot app to implement segmented line math, fast lie-to-club selector tiles, custom club seeding, and cleaner headers.
+This plan addresses:
+1. **HUD Overlap Fix**: Moves the Mapbox HUD distance overlay below the absolute header.
+2. **Auto-Select Putter on Green**: Automatically defaults the club to Putter when the ball lies on the green, reducing logging friction to a single tap.
+3. **OSM Tee Box fallback**: Automatically derives fallback tee box coordinates from the start point of `golf=hole` centerlines if no `golf=tee` polygons exist in the imported data (fixing Innerkip and Tarandowah loading issues).
+4. **Tee Box Visual Marker**: Adds a distinct tee box dot on the map at the hole's origin so the line doesn't start from empty space.
+5. **GPS Logging Explanation**: Explains how GPS auto-saving coordinates are captured at the start of each shot.
+6. **OpenStreetMap Mapping Guidelines**: Documents the OSM tag structure required for custom imports.
+
+---
+
+## 🧭 Concept Answers for the User
+
+### 1. GPS Auto-Saving: Start vs End Coordinates
+The app auto-saves coordinates at the **start** of each shot (i.e. where you hit the ball from):
+* When you log **Shot 1**, it records your location on the tee box as the `startPoint` of Shot 1.
+* When you log **Shot 2**, it captures your current coordinate (where the ball landed) as the `startPoint` of Shot 2, and automatically updates the `endPoint` of Shot 1 to match it.
+* When you **Hole Out**, it captures the green pin location as the `endPoint` of your final shot.
+
+### 2. Why the Tee Line and Dot Weren't Displaying
+Because the imported GeoJSON files for **Innerkip** and **Tarandowah** did not contain explicit `golf=tee` polygon features. Without them:
+* The database had no tee box coordinates (`fallbackOrigin` was `null`).
+* The map did not know where the tee was, so it defaulted to centering on the green, could not calculate the rotation bearing from tee to green, and could not draw a line.
+* **The Fix**: We will update the parser to automatically generate a fallback tee box using the **first coordinate of the hole centerline** if no tee polygon is found.
 
 ---
 
 ## Proposed Changes
 
-### 1. Header Cleanup & Yardage Unit
-
-#### [MODIFY] [RoundMapPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/RoundMapPage.tsx)
-* **Remove Redundant Course Name**: Delete or hide line 150 (`{course && <div style={{ fontSize: 11, opacity: 0.7 }}>{course.name}</div>}`) inside the header block.
-* **Remove Floating Close Button**: Delete lines 136-138 (the floating absolute `✕` link).
-* **Format Distance Unit**: Update line 148 to say `Yards` instead of `y` (e.g. `currentHole.defaultYardage ? " · " + currentHole.defaultYardage + " Yards" : ""`).
-
----
-
-### 2. Robust GPS Shot Saving
-
-#### [MODIFY] [RoundMapPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/RoundMapPage.tsx)
-* **Always-Enabled Shot Button**: Remove `!lastPositionRef.current` check from the disabled attribute of the "Shot" action button (around line 188) to prevent locking the interface when indoors or before GPS lock.
-* **GPS Fallback**: Update the `handleSaveShot` function to fallback to `fallbackOrigin` (tee box) if `lastPositionRef.current` is null, ensuring the shot coordinate is still saved for strokes gained baselines.
-
----
-
-### 3. Map Segmented Layup Lines & Distance Indicators
+### 1. HUD Positioning & Overlap Fix
 
 #### [MODIFY] [CourseMap.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/components/CourseMap.tsx)
-* **Segmented Pathing**: Change the Mapbox LineString source dataset update logic to route through all placed measure dots.
-  - Sort all placed markers by their distance from `origin` (tee/GPS).
-  - Create the coordinate path array: `[origin, ...sortedDots, target]`.
-* **Dynamic Distance Labels**: Overhaul the distance tags on measuring dots to read `XXXy / YYYy`:
-  - `XXXy` = Distance from origin (user/tee) to the dot.
-  - `YYYy` = Distance from the dot to the next dot in the sorted sequence, or the green target if it is the last dot.
-* **Events update**: Run the segmented line updates on marker `drag`, double-click deletion, and initialization.
+* **HUD Styles**: Update `hudStyle` at the bottom of the file to use `top: 76px` instead of `top: 12px`, placing it cleanly below the header.
+* **Tee Box Marker**: Add a `teeMarkerRef` state. If `fallbackOrigin` is present, create a white circle marker with a dark green border at `fallbackOrigin` and add it to the map.
+```typescript
+// Tee marker design style
+"width:12px;height:12px;border-radius:50%;background:#ffffff;border:3px solid #2f5c3d;box-shadow:0 0 4px rgba(0,0,0,.4);"
+```
 
 ---
 
-### 4. Custom Club Seeding
-
-#### [MODIFY] [courseRepo.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/courseRepo.ts)
-* **Club Schema Reset**: Update `ensureDefaultClubs()` to check if the old default clubs (like `3 Wood` or `PW`) are loaded in the database. If so, wipe the `clubs` table to trigger a migration.
-* **Seed Custom Wedge List**: Re-seed the database with the requested list:
-  `Driver, 5 Wood, 4 Iron, 5 Iron, 6 Iron, 7 Iron, 8 Iron, 9 Iron, 50°, 56°, 60°, Putter`.
-
----
-
-### 5. Quick-Tap Lie & Club Selector Tiles
+### 2. Auto-Select Putter on Green
 
 #### [MODIFY] [RoundSheets.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/components/RoundSheets.tsx)
-* **Fast Select Flow**: Re-architect `ShotSheet` to work in two steps:
-  - **Shot 1**: Skip Lie selection entirely (auto-saves as `"tee"`). Only display Club tiles.
-  - **Shot > 1**:
-    1. **Step 1 (Lie Tile Grid)**: Display a 2-column grid of tiles with 6 options: `Fairway, Rough, Sand Bunker, Water Hazard, Fringe, Green`.
-    2. **Step 2 (Club Tile Grid)**: Upon tapping a lie, save it to state and transition directly to a 3-column grid of Club tiles.
-    3. **Instant Save**: Tapping a club instantly triggers `onSave` (no manual "Save" click needed!).
-* **Bunker Resolution**:
-  - Tapping "Sand Bunker" outputs `bunker_greenside` to the handler.
-  - In `handleSaveShot` inside [RoundMapPage.tsx](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/pages/RoundMapPage.tsx), resolve `bunker_greenside` to `bunker_fairway` if the shot's distance to `greenCentroid` is greater than 40 yards.
+* **Auto-Putter**: In `ShotSheet`, check if `props.detectedLie === "green"`. If so:
+  - Initialize the selector state step directly to `"club"`.
+  - Automatically highlight the `"Putter"` club as selected. Tapping it (or any other club) instantly logs and saves.
+  - If a user changes the lie from "Green" to another lie, reset the auto-selected club.
 
 ---
 
-## Verification Plan
+### 3. OSM Centerline-to-Tee Fallbacks
 
-### Manual Verification
-1. **Club List Verify**: Open the app and verify the seeded club list has updated, replacing `3 Wood` and wedges with `5 Wood` and `50°/56°/60°`.
-2. **Shot 1 Flow**: Open a round, tap "Shot 1". Verify that the lie selection step is skipped and only club tiles appear. Tapping a club should save the shot immediately.
-3. **Shot > 1 Flow**: Tap "Shot 2". Verify that the 6 lie tiles appear in a grid. Tapping a lie should instantly switch to the 12-club grid. Tapping a club should save the shot immediately.
-4. **Header Cleanup**: Confirm the floating `✕` button is gone, "Yards" is written out, and the course name is removed from the header.
-5. **Segmented Map Lines**: Tap on the line to place a dot. Drag the dot and confirm the line breaks and follows your dot instead of passing straight to the green. Confirm the dot label reads e.g. `220y / 150y`.
+#### [MODIFY] [importOverpass.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/importOverpass.ts)
+* **Parser Fallback**: In `parseOverpassGeoJson()`, after processing polygon tee boxes, loop through holes 1 to `maxHoleNumber`. If a hole does not have a tee box assigned, check if it has a centerline (`golf=hole` LineString). If so, extract the first coordinate of the LineString and add it as a fallback tee box coordinate.
+
+#### [MODIFY] [seedCourses.ts](file:///C:/Users/Colin%27s%20PC/Documents/Projects/golf-app/src/lib/seedCourses.ts)
+* **Database Seed Migration**: In `seedBundledCourses()`, add a check for existing courses. If an existing bundled course has **0 tee boxes** in the database, wipe the course version and associated records from Dexie so it re-seeds from the updated GeoJSON parser on next load.
+
+---
+
+## 🛠️ OpenStreetMap (OSM) Tagging Guidelines
+
+To ensure your custom course imports work perfectly, map them in OpenStreetMap using the following tagging structure:
+
+| Feature | OSM Tag Requirement | Geometry Type | Notes |
+| :--- | :--- | :--- | :--- |
+| **Course Boundary** | `leisure=golf_course` | Polygon / Relation | Must include a `name=*` tag. |
+| **Holes Centerline** | `golf=hole` | LineString | **CRITICAL**: Must include `ref=<number>` (e.g. `ref=1`) and `par=*`. The first node represents the tee box, and the last node represents the green. |
+| **Tee Boxes** | `golf=tee` | Polygon | Name by adding `teebox=blue;white`. Placed at the start of the centerline. |
+| **Greens** | `golf=green` | Polygon | Placed at the end of the centerline. |
+| **Fairways** | `golf=fairway` | Polygon | Drawn along the hole path. |
+| **Fringe / Apron** | `golf=fringe` | Polygon | Surrounding the green. |
+| **Sand Bunkers** | `golf=bunker` | Polygon | Classified as greenside if within 30 yards of a green. |
+| **Water Hazards** | `golf=water_hazard` | Polygon | Represents lakes, ponds, or lateral hazards. |

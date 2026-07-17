@@ -30,6 +30,7 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const meMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const targetMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const teeMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const measureMarkersRef = useRef<Map<string, { marker: mapboxgl.Marker; label: HTMLDivElement }>>(new Map());
 
   const [me, setMe] = useState<LatLng | null>(null);
@@ -121,6 +122,18 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
     return () => {
       map.remove();
       mapRef.current = null;
+      // Every marker below is .addTo(map)'d and dies with it — reset their refs too, or the
+      // marker effects (which only create when ref.current is null) would see a stale ref
+      // pointing at a marker orphaned from the now-destroyed map and just reposition it
+      // instead of creating a fresh one attached to whatever map comes next. Matters because
+      // React StrictMode mounts every component twice in dev (mount -> cleanup -> mount
+      // again) to surface exactly this kind of bug — and unlike `me` (null on first mount,
+      // so nothing's created yet to go stale), fallbackOrigin/target are already real data
+      // by the time CourseMap first mounts, so tee/target markers hit it immediately.
+      meMarkerRef.current = null;
+      teeMarkerRef.current = null;
+      targetMarkerRef.current = null;
+      measureMarkersRef.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -207,6 +220,22 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
     }
   }, [me]);
 
+  // --- Tee box marker: a fixed dot at fallbackOrigin so the line has a visible start point
+  // even when origin is live GPS (which moves) instead of the tee itself ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !fallbackOrigin) return;
+
+    if (!teeMarkerRef.current) {
+      const el = document.createElement("div");
+      el.style.cssText =
+        "width:12px;height:12px;border-radius:50%;background:#ffffff;border:3px solid #2f5c3d;box-shadow:0 0 4px rgba(0,0,0,.4);";
+      teeMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat([fallbackOrigin.lng, fallbackOrigin.lat]).addTo(map);
+    } else {
+      teeMarkerRef.current.setLngLat([fallbackOrigin.lng, fallbackOrigin.lat]);
+    }
+  }, [fallbackOrigin]);
+
   // --- Target marker + line + camera (tee-at-bottom, tilted view) ---
   useEffect(() => {
     const map = mapRef.current;
@@ -276,7 +305,7 @@ export function CourseMap({ initialTarget, fallbackOrigin, onPositionChange }: C
 
 const hudStyle: React.CSSProperties = {
   position: "absolute",
-  top: 12,
+  top: 76,
   left: 12,
   background: "rgba(11,15,12,0.75)",
   color: "#eef2ef",

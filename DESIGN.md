@@ -216,6 +216,14 @@ bunker polygon later.
   brief dead spots — not a durable pre-downloaded offline pack. Worth revisiting if you ever hit a
   course dead-zone that this doesn't cover.
 - **Usage**: at ~3 rounds/week solo use, map loads stay comfortably inside Mapbox's free tier.
+- **Marker refs and StrictMode**: every marker-creating effect must reset its own ref to `null` in
+  the map-init effect's cleanup (alongside `map.remove()`), not just on its own dependency change.
+  React StrictMode mounts every component twice in dev (mount → cleanup → mount again); the map-init
+  cleanup destroys the whole map, but a marker ref left pointing at a marker orphaned from that dead
+  map makes the marker effect take its "already created, just reposition" branch instead of creating
+  a fresh one attached to the real map — so it never appears. GPS-derived markers (`me`) usually dodge
+  this by accident (still `null` on the very first synchronous mount), but anything already real at
+  mount time (tee, target) hits it immediately.
 
 ## 9. In-Round Measuring Tool
 
@@ -265,7 +273,14 @@ persistence). Key decisions, since they weren't fully nailed down in the schema 
 - **Tee boxes**: `golf=tee` polygons produce *two* things — a `hole_features` row (feature_type
   `tee`, real polygon, for rendering) and a `tee_boxes` row (centroid point, name from the `teebox`
   color tag, semicolon-joined if a tee serves multiple colors) for later "which tee are you playing"
-  selection.
+  selection. Any hole that ends up with **no** tee box this way (real courses sometimes have
+  `golf=hole` centerlines mapped without ever mapping `golf=tee` polygons — true for most of
+  Innerkip/Tarandowah) gets one synthesized from the first coordinate of its centerline instead,
+  named `"Tee (approx.)"` so it's identifiable as a fallback rather than real OSM data. Without
+  *some* tee box the round map has no origin to draw the tee→green line/camera from and gets stuck
+  on "Loading course…" — `seedBundledCourses()` also wipes and re-imports any bundled course it
+  finds with zero tee boxes, so this fallback retroactively fixes installs seeded before it existed.
+  A hole with no centerline at all still can't get one, though — see `docs/osm-editing-guide.md`.
 - **Re-importing** a course with a name that already exists adds a new `course_versions` row under
   the same course (copy-on-write, per §7) rather than duplicating it.
 
