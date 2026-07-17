@@ -14,6 +14,8 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       devOptions: { enabled: true },
+      // Default precache limit is 2 MiB; our main bundle (mostly Mapbox GL) is ~2.2 MB.
+      workbox: { maximumFileSizeToCacheInBytes: 6 * 1024 * 1024 },
       manifest: {
         name: "Golf",
         short_name: "Golf",
