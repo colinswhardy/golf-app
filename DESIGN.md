@@ -356,9 +356,10 @@ bunkers are used purely as invisible geometry, in two different ways:
   `turf.lineString`, converts each `hazard`-type `HoleFeature` polygon to its boundary line via
   `turf.polygonToLine`, and checks `turf.lineIntersect` against each. The *closest* crossing to
   origin (if any) is reported two ways: `onWaterWarning?(yards)` for the parent to show its own HUD
-  badge (`RoundMapPage` renders "💧 Water: XXXy"), and a small blue Mapbox `Marker` placed directly
-  at the crossing point on the map itself (not a GeoJSON layer — it's a single text label, a DOM
-  marker is simpler than a symbol layer for that).
+  row (`RoundMapPage` renders "⚠️ Water: XXXy" as the last row of its bottom-left HUD, §17), and a
+  small circular red Mapbox `Marker` with a white "!" placed directly at the crossing point on the
+  map itself — no yardage text on the marker itself, by design; that's the HUD's job. A DOM marker
+  is simpler than a symbol layer for a single, occasionally-repositioned icon like this.
 - **Bunkers**: an invisible (`fill-opacity: 0`) GeoJSON fill layer (`BUNKER_SOURCE_ID`) holds every
   `bunker_greenside`/`bunker_fairway` feature for the current hole — invisible but still
   hit-testable via `map.queryRenderedFeatures`, same trick used for hazard-free click detection
@@ -399,9 +400,10 @@ Par 3); `RoundMapPage.handleSaveHole` threads the selected value through to
 
 `Hole.notes?: string | null` — tied to the **hole** (course-level data), not the round, so a note
 written once ("water short-right, take one more club") reloads automatically the next time that
-course/hole is played, regardless of which round. Editable via a toggleable textarea in
-`RoundMapPage`'s header; writes are debounced 600ms after the last keystroke
-(`lib/courseRepo.updateHoleNotes`) rather than requiring an explicit save action.
+course/hole is played, regardless of which round. Editable via a togglable textarea popover opened
+by a `📝` button in the right-side utility pill (originally lived in the header — moved to the pill
+so it groups with the rest of the round-map tools, §17); writes are debounced 600ms after the last
+keystroke (`lib/courseRepo.updateHoleNotes`) rather than requiring an explicit save action.
 
 ## 16. Dispersion Overlay & Settings
 
@@ -435,6 +437,41 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
   whole component (React error boundary territory). Seeding has to happen in a plain `useEffect` on
   mount; `useLiveQuery` stays a pure read (`listClubs()`). Same rule applies anywhere else a
   `useLiveQuery` callback is tempted to seed/upsert as a side effect.
+
+## 17. Round Map Layout — Bottom-Left HUD & Automatic Fairway Layup
+
+- **Bottom-left HUD**: the green front/center/back distance card, the pace timer, and (when
+  present) the water warning row all live in one stacked translucent container
+  (`bottomLeftHudStyle`) positioned `bottom: 76` / `left: 12` — just above the bottom profile bar,
+  using the same "76px clearance" convention `teeSelectorStyle` already used on the opposite
+  corner. Previously the distance card sat top-left and the water warning was a separate top-center
+  badge; consolidating them bottom-left keeps the top of the screen (header + right pill) free of
+  secondary chrome.
+- **Notes popover placement**: `notesBoxStyle` is `top: 76` / `right: 64` — vertically aligned with
+  the right pill's first button, offset left just enough to clear the pill's own width, so opening
+  notes reads as "a panel next to the tool that opened it" rather than a disconnected overlay.
+- **Automatic fairway layup dot**: on mount, if the current hole has a `fairway`-type
+  `HoleFeature` and no measure dots exist yet, `CourseMap` places one automatically at the fairway
+  centroid *projected onto the tee→green line* (`nearestPointOnSegment`) — a sensible starting
+  layup suggestion, still fully draggable/deletable like any manually-placed dot afterward.
+  - **No real centerline at round-time**: OSM's `golf=hole` centerline geometry (§ Course Import)
+    is used only transiently during import — it's never persisted as a `HoleFeature` or any other
+    Dexie row, only its *derived* outputs (yardage, par, tee/green hole-assignment) survive. Rather
+    than adding a new persisted geometry type just for this one feature, the straight tee→green
+    line (already computed every render as the aim line) stands in for "the centerline" — a
+    pragmatic scope call, not a literal reproduction of the original mapped path.
+  - **Stale-hole-data guard**: this is a *one-shot* placement (guarded by a ref, unlike the
+    bunker/water logic which safely re-derives on every `holeFeatures` change), so placing it
+    during the same transient stale-data window documented in §10/§8 would *permanently* lock in
+    the wrong hole's fairway dot for that mount — worse than those other cases, which self-correct.
+    To avoid needing a second staleness-guard mechanism inside `CourseMap` (which only receives a
+    trimmed `{featureType, geometry}[]` shape without `holeId`), the projection is computed in
+    `RoundMapPage` instead, reusing the exact same `holeFeatures.every(f => f.holeId ===
+    currentHole.id)` guard already proven for `greenCentroid`/`fallbackOrigin`, and passed down as
+    a single ready-made `autoLayupPoint: LatLng | null` prop. `CourseMap` only needs to know "place
+    this point once when it shows up," not re-derive freshness itself. Also depends only on stable
+    per-hole values (tee, green) rather than live GPS, so it doesn't re-fire on every position tick
+    the way a naive `[origin, target, holeFeatures]` dependency array would have.
 
 ## Course Import — Overpass → Dexie
 

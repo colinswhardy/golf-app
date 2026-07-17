@@ -61,6 +61,12 @@ interface CourseMapProps {
    * (so dragging the pin — already draggable — moves the ellipse with it) and oriented along the
    * current origin->target bearing. Omit/null to hide. */
   dispersionEllipse?: DispersionEllipseSpec | null;
+  /** A one-time suggested layup dot (e.g. the fairway midpoint projected onto the tee->green
+   * line) placed automatically on mount if no measure dots exist yet. Still draggable/deletable
+   * like any other measure dot afterward — this only seeds its initial position. Parent is
+   * responsible for stale-hole-data guarding (same pattern as fallbackOrigin/initialTarget)
+   * before passing this, since CourseMap only acts on it once per mount. */
+  autoLayupPoint?: LatLng | null;
 }
 
 /**
@@ -82,7 +88,8 @@ export function CourseMap({
   onSettingTargetChange,
   mapStyle,
   hideInternalHud,
-  dispersionEllipse
+  dispersionEllipse,
+  autoLayupPoint
 }: CourseMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -248,6 +255,7 @@ export function CourseMap({
       waterMarkerRef.current = null;
       measureMarkersRef.current.clear();
       isDraggingTargetRef.current = false;
+      autoLayupPlacedRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -376,17 +384,19 @@ export function CourseMap({
       return;
     }
 
+    // Minimalist marker only — no yardage text on the line itself; the distance is exposed via
+    // onWaterWarning above for a parent HUD to render instead.
     if (!waterMarkerRef.current) {
       const el = document.createElement("div");
       el.style.cssText =
-        "background:rgba(37,99,235,.92);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.4);";
+        "width:22px;height:22px;border-radius:50%;background:#dc2626;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);";
+      el.textContent = "!";
       waterMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "center" })
         .setLngLat([closest.point.lng, closest.point.lat])
         .addTo(map);
     } else {
       waterMarkerRef.current.setLngLat([closest.point.lng, closest.point.lat]);
     }
-    waterMarkerRef.current.getElement().textContent = `Water: ${closest.yards}y`;
   }
 
   // Draws dispersionEllipse (already computed in the shot's own downrange/offline frame by the
@@ -611,6 +621,18 @@ export function CourseMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispersionEllipse, target, origin]);
 
+  // Places one suggested layup dot at autoLayupPoint the first time it's available this mount —
+  // guarded by a ref (not just "no dots yet") so it fires exactly once per hole and never fights
+  // a dot the user has since dragged away or deleted. autoLayupPoint depends on stable per-hole
+  // values (tee/green), not live GPS, so this doesn't re-fire on every position tick.
+  const autoLayupPlacedRef = useRef(false);
+  useEffect(() => {
+    if (autoLayupPlacedRef.current || !autoLayupPoint) return;
+    autoLayupPlacedRef.current = true;
+    if (measureMarkersRef.current.size === 0) addMeasureMarker(autoLayupPoint);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLayupPoint]);
+
   if (!TOKEN) {
     return (
       <div style={{ padding: 24, color: "#eef2ef" }}>
@@ -663,9 +685,12 @@ export function CourseMap({
   );
 }
 
+// Bottom-left (not top) so it never competes with the header/HUD chrome real callers (e.g.
+// RoundMapPage) render at the top — matches where those callers put their own equivalent cards.
+// Only ever visible when hideInternalHud is omitted, i.e. demo mode.
 const hudStyle: React.CSSProperties = {
   position: "absolute",
-  top: 76,
+  bottom: 16,
   left: 12,
   background: "rgba(11,15,12,0.75)",
   color: "#eef2ef",

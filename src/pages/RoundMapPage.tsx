@@ -16,7 +16,7 @@ import {
 import { detectLie } from "../lib/lie";
 import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE, type DispersionEllipseSpec } from "../components/CourseMap";
 import { HoleScoreSheet, ScorecardSheet, ShotSheet, relativeToParLabel } from "../components/RoundSheets";
-import { distanceMeters, distanceYards } from "../lib/geo";
+import { distanceMeters, distanceYards, nearestPointOnSegment } from "../lib/geo";
 import { getClubDispersion } from "../lib/dispersion";
 import type { Club, FairwayResult, LatLng, Lie, Round } from "../types/domain";
 
@@ -256,6 +256,19 @@ export function RoundMapPage() {
     return backmost.location;
   }, [teeBoxes, selectedTeeName, greenCentroid, currentHole]);
 
+  // Suggested first layup dot: the fairway centroid, projected onto the tee->green line (the
+  // closest thing this app has to a real hole centerline at round-time — see DESIGN.md). Same
+  // stale-hole-data guard as greenCentroid/fallbackOrigin above, since CourseMap only acts on
+  // this once per mount.
+  const fairwayLayupPoint = useMemo(() => {
+    if (!holeFeatures?.length || !currentHole || !fallbackOrigin || !greenCentroid) return null;
+    if (!holeFeatures.every((f) => f.holeId === currentHole.id)) return null;
+    const fairway = holeFeatures.find((f) => f.featureType === "fairway");
+    if (!fairway) return null;
+    const centroid = centroidLatLng(fairway.geometry);
+    return nearestPointOnSegment(fallbackOrigin, greenCentroid, centroid).point;
+  }, [holeFeatures, currentHole, fallbackOrigin, greenCentroid]);
+
   const maxHoleNumber = holes?.length ? Math.max(...holes.map((h) => h.number)) : 18;
 
   async function handleStartRound() {
@@ -326,9 +339,6 @@ export function RoundMapPage() {
               {currentHole.defaultYardage ? ` · ${currentHole.defaultYardage} Yards` : ""}
             </div>
           </div>
-          <button onClick={() => setNotesOpen((v) => !v)} style={navButtonStyle} aria-label="Hole notes">
-            {notesDraft ? "📝" : "🗒️"}
-          </button>
           <button
             onClick={() => setHoleNumber((n) => Math.min(maxHoleNumber, n + 1))}
             disabled={holeNumber >= maxHoleNumber}
@@ -339,23 +349,8 @@ export function RoundMapPage() {
         </div>
       )}
 
-      {!isDemo && currentHole && notesOpen && (
-        <div style={notesBoxStyle}>
-          <textarea
-            value={notesDraft}
-            onChange={(e) => setNotesDraft(e.target.value)}
-            placeholder="Notes for this hole (yardages, strategy, hazards)…"
-            style={notesTextareaStyle}
-            rows={3}
-            autoFocus
-          />
-        </div>
-      )}
-
-      {!isDemo && waterWarningYards !== null && <div style={waterWarningStyle}>💧 Water: {waterWarningYards}y</div>}
-
       {!isDemo && currentHole && (
-        <div style={leftCapsuleStyle}>
+        <div style={bottomLeftHudStyle}>
           <div style={distanceRowStyle}>
             <span style={distanceLabelStyle}>BACK</span>
             <span>{backDistance ?? "—"}</span>
@@ -371,6 +366,7 @@ export function RoundMapPage() {
           <div style={paceTimerStyle}>
             {elapsedMinutes}m · Hole {currentHole.number}
           </div>
+          {waterWarningYards !== null && <div style={waterWarningRowStyle}>⚠️ Water: {waterWarningYards}y</div>}
         </div>
       )}
 
@@ -390,6 +386,13 @@ export function RoundMapPage() {
           >
             🗺️
           </button>
+          <button
+            onClick={() => setNotesOpen((v) => !v)}
+            style={{ ...pillButtonStyle, ...(notesOpen ? pillButtonActiveStyle : {}) }}
+            aria-label="Hole notes"
+          >
+            📝
+          </button>
           <button onClick={() => setOpenSheet("scorecard")} style={pillButtonStyle} aria-label="Scorecard">
             📋
           </button>
@@ -400,6 +403,19 @@ export function RoundMapPage() {
           >
             📐
           </button>
+        </div>
+      )}
+
+      {!isDemo && currentHole && notesOpen && (
+        <div style={notesBoxStyle}>
+          <textarea
+            value={notesDraft}
+            onChange={(e) => setNotesDraft(e.target.value)}
+            placeholder="Notes for this hole (yardages, strategy, hazards)…"
+            style={notesTextareaStyle}
+            rows={3}
+            autoFocus
+          />
         </div>
       )}
 
@@ -449,6 +465,7 @@ export function RoundMapPage() {
           mapStyle={mapStyle}
           hideInternalHud
           dispersionEllipse={dispersionEllipse}
+          autoLayupPoint={fairwayLayupPoint}
         />
       ) : (
         <div style={{ padding: 24, color: "#eef2ef" }}>Loading course…</div>
@@ -572,9 +589,12 @@ const navButtonStyle: React.CSSProperties = {
   cursor: "pointer"
 };
 
-const leftCapsuleStyle: React.CSSProperties = {
+// Bottom-left, just above the bottom profile bar (same "bottom: 76" convention as
+// teeSelectorStyle below) — stacks the green front/center/back distances, pace timer, and (when
+// active) the water warning row in one translucent container.
+const bottomLeftHudStyle: React.CSSProperties = {
   position: "absolute",
-  top: 76,
+  bottom: 76,
   left: 12,
   zIndex: 2,
   display: "flex",
@@ -709,13 +729,14 @@ const roundButtonStyle: React.CSSProperties = {
   cursor: "pointer"
 };
 
+// Adjacent to (just left of) the right-side utility pill, at the same top offset as its first
+// button, rather than the header — opened via the pill's own 📝 button.
 const notesBoxStyle: React.CSSProperties = {
   position: "absolute",
-  top: 56,
-  left: "50%",
-  transform: "translateX(-50%)",
+  top: 76,
+  right: 64,
   zIndex: 2,
-  width: "min(340px, 84vw)",
+  width: "min(280px, 78vw)",
   background: "rgba(11,15,12,0.92)",
   border: "1px solid #2f5c3d",
   borderRadius: 12,
@@ -734,18 +755,13 @@ const notesTextareaStyle: React.CSSProperties = {
   resize: "vertical"
 };
 
-const waterWarningStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 130,
-  left: "50%",
-  transform: "translateX(-50%)",
-  zIndex: 2,
-  background: "rgba(37,99,235,.92)",
-  color: "#fff",
+const waterWarningRowStyle: React.CSSProperties = {
+  marginTop: 6,
+  paddingTop: 6,
+  borderTop: "1px solid rgba(255,255,255,0.2)",
   fontSize: 12,
   fontWeight: 700,
-  padding: "5px 12px",
-  borderRadius: 999,
+  color: "#fca5a5",
   whiteSpace: "nowrap"
 };
 
