@@ -12,8 +12,29 @@ const DISPERSION_SOURCE_ID = "dispersion-ellipse";
 const ON_LINE_TOLERANCE_METERS = 8;
 const FAR_FROM_HOLE_METERS = 300;
 const MAX_MEASURE_DOTS = 5;
+// ~1cm on a typical phone screen — how far above the actual touch point a dragged marker's REAL
+// coordinate sits, not just a visual nudge, so a thumb never obscures the spot it's about to drop
+// a dot/pin on. See applyTouchDragOffset below.
+const TOUCH_DRAG_OFFSET_PX = 50;
 export const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
 export const OUTDOORS_STYLE = "mapbox://styles/mapbox/outdoors-v12";
+
+// Mathematically offsets a dragged marker's REAL geographic position 50px up the screen from
+// wherever the pointer actually is: project the marker's current (pointer-driven) LngLat to
+// screen pixels, subtract TOUCH_DRAG_OFFSET_PX from Y, unproject back, and snap the marker there.
+// Unlike a CSS transform (which only nudges the rendered position, leaving the marker's actual
+// coordinate under the thumb), this changes what the marker IS — the line/labels/dispersion
+// ellipse and the eventual drop point all follow the offset position, not the raw touch point.
+// Safe to call on every "drag" tick: Mapbox's own marker-drag math bases each tick's raw position
+// on the pointer's cumulative delta from drag-start, not on wherever this last snapped the marker
+// to, so repeated calls don't compound/drift.
+function applyTouchDragOffset(map: mapboxgl.Map, marker: mapboxgl.Marker): LatLng {
+  const raw = marker.getLngLat();
+  const px = map.project(raw);
+  const offset = map.unproject([px.x, px.y - TOUCH_DRAG_OFFSET_PX]);
+  marker.setLngLat(offset);
+  return { lat: offset.lat, lng: offset.lng };
+}
 
 export interface BunkerYardages {
   front: number;
@@ -214,7 +235,7 @@ export function CourseMap({
       map.fitBounds(bounds, {
         bearing: initialBearing,
         pitch: initialPitch,
-        padding: { top: 80, bottom: 120, left: 50, right: 50 },
+        padding: { top: 120, bottom: 180, left: 60, right: 60 },
         duration: 0
       });
     }
@@ -552,6 +573,8 @@ export function CourseMap({
       .addTo(map);
 
     marker.on("drag", () => {
+      const dragMap = mapRef.current;
+      if (dragMap) applyTouchDragOffset(dragMap, marker);
       updateLineAndLabels();
       updateDispersionEllipse();
     });
@@ -608,8 +631,9 @@ export function CourseMap({
         .addTo(map);
 
       marker.on("drag", () => {
-        const pos = marker.getLngLat();
-        setTeeOverride({ lat: pos.lat, lng: pos.lng });
+        const dragMap = mapRef.current;
+        if (!dragMap) return;
+        setTeeOverride(applyTouchDragOffset(dragMap, marker));
       });
 
       teeMarkerRef.current = marker;
@@ -648,11 +672,14 @@ export function CourseMap({
           isDraggingTargetRef.current = true;
         });
         marker.on("drag", () => {
-          const pos = marker.getLngLat();
-          setTarget({ lat: pos.lat, lng: pos.lng });
+          const dragMap = mapRef.current;
+          if (!dragMap) return;
+          setTarget(applyTouchDragOffset(dragMap, marker));
         });
         marker.on("dragend", () => {
           isDraggingTargetRef.current = false;
+          // Already offset by the last "drag" tick's applyTouchDragOffset call above — dragend
+          // just reads and finalizes that same settled position, no need to recompute it.
           const pos = marker.getLngLat();
           const point = { lat: pos.lat, lng: pos.lng };
           setTarget(point);

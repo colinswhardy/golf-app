@@ -6,12 +6,15 @@
   -webkit-user-select: none;
 }
 
-/* Draggable map dots (measure markers, the target/pin marker) are wrapped in an invisible 44px
-   touch target so a thumb doesn't obscure the 16px visual dot it's dragging; while pressed, the
-   visual dot pops up 55px above the touch point, grows slightly, and turns green so it stays
-   visible under the finger. */
+/* Draggable map dots (measure markers, the target/pin marker, the tee marker) are wrapped in an
+   invisible 44px touch target so a thumb doesn't obscure the 16px visual dot it's dragging. The
+   dot's actual geographic position is mathematically offset 50px above the real touch point during
+   a drag (CourseMap.tsx's applyTouchDragOffset, via map.project/unproject) — Mapbox renders the
+   marker at whatever screen position its coordinate projects to, so the dot visually sits at that
+   offset for free; no CSS transform needed to fake the lift (a transform on top of the real
+   coordinate offset would double it). Just a color change while pressed, so it still reads as
+   "actively dragging" under the finger. */
 .map-touch-target:active .map-touch-dot {
-  transform: translateY(-55px) scale(1.25) !important;
   background: #22c55e !important;
   border-color: #16a34a !important;
 }

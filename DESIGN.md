@@ -211,7 +211,7 @@ bunker polygon later.
   early would permanently lock the camera onto a null/flat fallback.
   - **Auto-fit zoom**: instead of a fixed `zoom: 17` (too tight on long Par 5s, too loose on short
     Par 3s), the constructor calls `map.fitBounds([fallbackOrigin, initialTarget], { bearing,
-    pitch, padding: { top: 80, bottom: 120, left: 50, right: 50 }, duration: 0 })` right after
+    pitch, padding: { top: 120, bottom: 180, left: 60, right: 60 }, duration: 0 })` right after
     creation — asymmetric padding biases the fit so the tee sits nearer the bottom and the green
     nearer the top. `duration: 0` keeps it instant (no fly-in animation), matching the "no visible
     spin/tilt on the first frame" goal the pre-rotated constructor options already established.
@@ -257,18 +257,33 @@ bunker polygon later.
     bunker hit-test layer, dispersion ellipse) are (re-)added by one named `ensureSources()`,
     re-run on both the initial `"load"` and `"style.load"` after every switch, rather than assuming
     Mapbox's cross-style diffing preserves them.
-- **Touch targets**: every draggable map dot (measure markers, the target/pin marker) is a
-  44×44px invisible flex-centered `.map-touch-target` div — the actual Mapbox marker element
-  Mapbox positions/tracks — wrapping a smaller visual `.map-touch-dot` (16px for measure dots,
-  14px for the target). A thumb covers the 44px target without obscuring its own view of the
-  smaller dot inside it. `src/index.css`'s `.map-touch-target:active .map-touch-dot` rule (with
-  `!important`, since it overrides the dot's own inline `style.cssText`) pops the visual dot up
-  55px, grows it 1.25x, and turns it green while pressed, so it stays visible under the finger
-  during a drag. `user-select: none` is set globally in `index.css` too — this is a touch-driven
-  map app, not a document, so double-taps must never trigger the OS text-selection menu.
+- **Touch targets**: every draggable map dot (measure markers, the target/pin marker, the tee
+  marker) is a 44×44px invisible flex-centered `.map-touch-target` div — the actual Mapbox marker
+  element Mapbox positions/tracks — wrapping a smaller visual `.map-touch-dot` (16px for measure
+  dots, 14px for the target, 12px for the tee). A thumb covers the 44px target without obscuring
+  its own view of the smaller dot inside it.
+  - **Mathematical drag offset** (`applyTouchDragOffset`): while dragging, the marker's *actual
+    geographic coordinate* — not just its rendered position — is kept 50px above the real touch
+    point. On every `drag` tick: `map.project(marker.getLngLat())` to get the pointer-driven
+    position in screen pixels, subtract 50 from Y, `map.unproject()` back to a LngLat, and
+    `marker.setLngLat()` there. Since Mapbox renders a marker at whatever screen position its
+    coordinate projects to, this makes the visual dot sit 50px above the finger for free — no CSS
+    transform needed, and critically, the marker's *real* position (what `dragend`/the line/the
+    dispersion ellipse all read) matches what's on screen, unlike a purely cosmetic CSS offset
+    would. Safe to call every tick: Mapbox's own marker-drag math bases each tick's "natural"
+    position on the pointer's cumulative delta from drag-start, not on wherever
+    `applyTouchDragOffset` last snapped the marker to, so repeated calls don't compound or drift.
+    Applied uniformly to the tee, target/pin, and measure-dot markers. `src/index.css`'s
+    `.map-touch-target:active .map-touch-dot` rule now only changes the dot's color to green while
+    pressed (an earlier version also applied `translateY(-55px) scale(1.25)` via CSS — removed,
+    since stacking a CSS transform on top of the *real* coordinate offset above would double it).
+  - `user-select: none` is set globally in `index.css` too — this is a touch-driven map app, not a
+    document, so double-taps must never trigger the OS text-selection menu.
 - **Draggable target marker (custom pin locations)**: the red target marker is `draggable: true`;
-  `drag` calls `setTarget()` on every tick (same render path as tap-to-set, so the line/labels/
-  `onDistanceUpdate` all update live with no special-casing), while `dragstart`/`dragend` toggle an
+  `drag` calls `setTarget(applyTouchDragOffset(...))` on every tick (same render path as
+  tap-to-set, so the line/labels/`onDistanceUpdate` all update live with no special-casing —
+  `setTarget` doesn't know or care its argument is offset from the raw touch point, see the touch
+  targets bullet above), while `dragstart`/`dragend` toggle an
   `isDraggingTargetRef` that suppresses the camera's `easeTo` re-orientation for the duration —
   without it, the map would spin/re-tilt continuously as you drag instead of just following the
   pin. `dragend` re-enables the camera (settling it once, smoothly, to face the final position) and
@@ -276,7 +291,8 @@ bunker polygon later.
   `roundHoles.pinLocation`. Tap-to-set-target (§10) fires the same callback, so either way of moving
   the pin persists.
 - **Draggable tee marker (never persisted)**: unlike the target/measure markers, the tee marker's
-  drag only updates a local `teeOverride` state — there's no `onTeeChange`-style callback and
+  drag only updates a local `teeOverride` state (also via `applyTouchDragOffset`, same as the
+  target marker) — there's no `onTeeChange`-style callback and
   nothing is written to Dexie. `origin` resolves as `usingLiveGps ? me : (teeOverride ??
   fallbackOrigin ?? me)`, so a drag temporarily re-anchors the line/yardages/camera (e.g. playing
   from just off the mapped tee marker) without corrupting the real tee-box data. `teeOverride`
@@ -691,7 +707,11 @@ persistence). Key decisions, since they weren't fully nailed down in the schema 
   the *current* hole (naming can be inconsistent hole-to-hole in the source data) or nothing's been
   chosen yet, it falls back to the **backmost** tee box — furthest from the green centroid — rather
   than an arbitrary array order, on the theory that "furthest from the green" is a more useful
-  default than "whichever happened to be seeded first."
+  default than "whichever happened to be seeded first." The selector dropdown itself only renders
+  pre-round (`!round`) — it's a setup-time control, not something you'd want to fiddle with mid-hole.
+  Since `startRound()` creates the `Round` row with `status: "in_progress"` from the moment it
+  resolves, `round` transitions `null` → non-null at exactly "round starts," so this one gate
+  already covers "hide once the round is active" without needing a separate status check.
 - **Re-seeding on a fix**: `seedBundledCourses()` has two independent triggers for wiping and
   re-importing an already-present bundled course, since neither alone catches every case a fix
   might need: (1) zero tee boxes present (detects the tee-box-fallback gap above), and (2) a
