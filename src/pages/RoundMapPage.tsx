@@ -16,9 +16,11 @@ import {
 } from "../lib/roundRepo";
 import { detectLie } from "../lib/lie";
 import { classifyFairwayResult } from "../lib/fairway";
-import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE } from "../components/CourseMap";
+import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE, type DispersionEllipseSpec } from "../components/CourseMap";
 import { HoleScoreSheet, ScorecardSheet, ShotSheet, relativeToParLabel } from "../components/RoundSheets";
 import { bearingDegrees, distanceMeters, distanceYards, fromDownrangeOffline } from "../lib/geo";
+import { getClubDispersion } from "../lib/dispersion";
+import { isGpsEnabled } from "../lib/settings";
 import type { Club, FairwayResult, LatLng, Lie, Round, RoundHole } from "../types/domain";
 
 const GREENSIDE_BUNKER_MAX_YARDS = 40;
@@ -119,7 +121,30 @@ export function RoundMapPage() {
   const [centerDistance, setCenterDistance] = useState<number | null>(null);
   const [waterWarningYards, setWaterWarningYards] = useState<number | null>(null);
 
-  // (Dispersion overlay removed)
+  // --- Dispersion overlay: pick a club, show its (manual or actual, per the club's own flag)
+  // shot ellipse. CourseMap centers it on the dot in play for the current shot (nearest layup dot
+  // for shot 1, second for shot 2, the green/pin for shot 3+ — see getDispersionCenter there). ---
+  const [dispersionPickerOpen, setDispersionPickerOpen] = useState(false);
+  const [activeClubId, setActiveClubId] = useState<string | null>(null);
+  const [dispersionEllipse, setDispersionEllipse] = useState<DispersionEllipseSpec | null>(null);
+  useEffect(() => {
+    const club = clubs.find((c) => c.id === activeClubId);
+    if (!club) {
+      setDispersionEllipse(null);
+      return;
+    }
+    let cancelled = false;
+    getClubDispersion(club).then((spec) => {
+      if (!cancelled) setDispersionEllipse(spec);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeClubId, clubs]);
+
+  // Live GPS on/off (Settings toggle). Read once on mount — flipping it takes effect next time the
+  // round map is opened, which is fine for a rarely-touched preference.
+  const [gpsEnabled] = useState(isGpsEnabled);
 
   // --- Per-hole notes: freeform text tied to the hole (not the round), auto-saved on a short
   // debounce so there's no explicit save action to remember to tap ---
@@ -423,7 +448,7 @@ export function RoundMapPage() {
           </div>
           <div style={distanceRowStyle}>
             <span style={distanceLabelStyle}>CTR</span>
-            <span style={{ fontSize: 18, fontWeight: 700 }}>{centerDistance ?? "—"}</span>
+            <span style={{ fontSize: 34, fontWeight: 800 }}>{centerDistance ?? "—"}</span>
           </div>
           <div style={distanceRowStyle}>
             <span style={distanceLabelStyle}>FRONT</span>
@@ -459,8 +484,21 @@ export function RoundMapPage() {
           >
             📝
           </button>
-          <button onClick={() => setOpenSheet("scorecard")} style={pillButtonStyle} aria-label="Scorecard" title="Score Summary">
-            📋
+          <button
+            onClick={() => setDispersionPickerOpen((v) => !v)}
+            style={{ ...pillButtonStyle, ...(dispersionEllipse ? pillButtonActiveStyle : {}) }}
+            aria-label="Dispersion overlay"
+            title="Shot Dispersion"
+          >
+            📐
+          </button>
+          <button
+            onClick={() => setOpenSheet("scorecard")}
+            style={{ ...pillButtonStyle, fontSize: 16, fontWeight: 800 }}
+            aria-label="Scorecard"
+            title="Score Summary"
+          >
+            {round ? relativeToParLabel(relativeScore) : "–"}
           </button>
         </div>
       )}
@@ -482,6 +520,37 @@ export function RoundMapPage() {
         <button onClick={() => setNotesOpen(true)} style={notesPreviewStyle}>
           📝 Notes: {currentHole.notes}
         </button>
+      )}
+
+      {!isDemo && currentHole && dispersionPickerOpen && (
+        <div style={clubPickerStyle}>
+          <div style={clubPickerHeaderStyle}>
+            <span>Dispersion</span>
+            <button
+              onClick={() => setDispersionPickerOpen(false)}
+              style={clubPickerCloseStyle}
+              aria-label="Close dispersion picker"
+              title="Close"
+            >
+              ✕
+            </button>
+          </div>
+          <button
+            onClick={() => setActiveClubId(null)}
+            style={{ ...clubChipStyle, ...(activeClubId === null ? clubChipActiveStyle : {}) }}
+          >
+            None
+          </button>
+          {clubs.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setActiveClubId(c.id)}
+              style={{ ...clubChipStyle, ...(activeClubId === c.id ? clubChipActiveStyle : {}) }}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
       )}
 
       {/* Tap-away dismissal: a genuine TAP (minimal movement between pointerdown and pointerup)
@@ -529,8 +598,10 @@ export function RoundMapPage() {
             onSettingTargetChange={setSettingTarget}
             mapStyle={mapStyle}
             hideInternalHud
+            dispersionEllipse={dispersionEllipse}
             autoLayupPoint={fairwayLayupPoint}
             currentShotNumber={shotCount + 1}
+            gpsEnabled={gpsEnabled}
           />
         ) : (
           <div style={{ padding: 24, color: "#eef2ef" }}>Loading course…</div>
@@ -563,8 +634,8 @@ export function RoundMapPage() {
           <div style={profileRowStyle}>
             <div style={avatarStyle}>{PLAYER_INITIALS}</div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{PLAYER_NAME}</div>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>{round ? relativeToParLabel(relativeScore) : "Not started"}</div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>{PLAYER_NAME}</div>
+              <div style={{ fontSize: 13, opacity: 0.7 }}>{round ? relativeToParLabel(relativeScore) : "Not started"}</div>
             </div>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -646,9 +717,9 @@ const holeHeaderStyle: React.CSSProperties = {
   background: "#000000",
   border: "1px solid #16a34a",
   color: "#eef2ef",
-  padding: "7px 16px",
+  padding: "8px 18px",
   borderRadius: 999,
-  fontSize: 13,
+  fontSize: 18,
   fontWeight: 600,
   letterSpacing: 0.3,
   whiteSpace: "nowrap"
@@ -658,8 +729,8 @@ const navButtonStyle: React.CSSProperties = {
   background: "none",
   border: "none",
   color: "#eef2ef",
-  fontSize: 22,
-  padding: "0 6px",
+  fontSize: 28,
+  padding: "0 8px",
   cursor: "pointer"
 };
 
@@ -688,13 +759,16 @@ const distanceRowStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  lineHeight: 1.2
+  lineHeight: 1.2,
+  fontSize: 24,
+  fontWeight: 600
 };
 
 const distanceLabelStyle: React.CSSProperties = {
-  fontSize: 10,
+  fontSize: 13,
   opacity: 0.7,
-  letterSpacing: 0.5
+  letterSpacing: 0.5,
+  fontWeight: 400
 };
 
 const rightPillStyle: React.CSSProperties = {
@@ -711,13 +785,13 @@ const rightPillStyle: React.CSSProperties = {
 };
 
 const pillButtonStyle: React.CSSProperties = {
-  width: 40,
-  height: 40,
+  width: 48,
+  height: 48,
   borderRadius: "50%",
   background: "#1a3a24",
   border: "1px solid #2f5c3d",
   color: "#eef2ef",
-  fontSize: 17,
+  fontSize: 21,
   cursor: "pointer"
 };
 
@@ -748,8 +822,8 @@ const teeSelectStyle: React.CSSProperties = {
   color: "#eef2ef",
   border: "1px solid #2f5c3d",
   borderRadius: 999,
-  padding: "4px 10px",
-  fontSize: 13
+  padding: "6px 12px",
+  fontSize: 16
 };
 
 const bottomBarStyle: React.CSSProperties = {
@@ -775,24 +849,24 @@ const profileRowStyle: React.CSSProperties = {
 };
 
 const avatarStyle: React.CSSProperties = {
-  width: 34,
-  height: 34,
+  width: 40,
+  height: 40,
   borderRadius: "50%",
   background: "#2f5c3d",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: 13,
+  fontSize: 16,
   fontWeight: 700
 };
 
 const roundButtonStyle: React.CSSProperties = {
-  padding: "10px 16px",
+  padding: "12px 18px",
   background: "#1a3a24",
   color: "#eef2ef",
   border: "1px solid #2f5c3d",
   borderRadius: 999,
-  fontSize: 14,
+  fontSize: 18,
   cursor: "pointer"
 };
 
@@ -826,9 +900,9 @@ const notesPreviewStyle: React.CSSProperties = {
   background: "#000000",
   border: "1px solid #16a34a",
   color: "#eef2ef",
-  padding: "7px 14px",
+  padding: "8px 16px",
   borderRadius: 999,
-  fontSize: 12,
+  fontSize: 15,
   cursor: "pointer"
 };
 
@@ -848,9 +922,67 @@ const waterWarningRowStyle: React.CSSProperties = {
   marginTop: 6,
   paddingTop: 6,
   borderTop: "1px solid rgba(255,255,255,0.2)",
-  fontSize: 12,
+  fontSize: 15,
   fontWeight: 700,
   color: "#fca5a5",
   whiteSpace: "nowrap"
+};
+
+// Dispersion club picker — a vertical chip list under the right pill, with a header row carrying
+// an explicit ✕ close button (the 📐 pill toggles it too, but a close control inside the panel is
+// the obvious way to dismiss it once a club's been chosen).
+const clubPickerStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 130,
+  right: 12,
+  zIndex: 3,
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  maxHeight: "min(320px, 50vh)",
+  overflowY: "auto",
+  background: "rgba(11,15,12,0.94)",
+  border: "1px solid #2f5c3d",
+  borderRadius: 12,
+  padding: 8
+};
+
+const clubPickerHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  color: "#eef2ef",
+  fontSize: 13,
+  fontWeight: 700,
+  padding: "0 2px 4px",
+  borderBottom: "1px solid #2f5c3d"
+};
+
+const clubPickerCloseStyle: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  color: "#eef2ef",
+  fontSize: 16,
+  lineHeight: 1,
+  cursor: "pointer",
+  padding: "2px 4px"
+};
+
+const clubChipStyle: React.CSSProperties = {
+  padding: "8px 14px",
+  background: "#1a3a24",
+  color: "#eef2ef",
+  border: "1px solid #2f5c3d",
+  borderRadius: 999,
+  fontSize: 14,
+  cursor: "pointer",
+  whiteSpace: "nowrap"
+};
+
+const clubChipActiveStyle: React.CSSProperties = {
+  background: "#f5d90a",
+  color: "#111",
+  border: "1px solid #f5d90a"
 };
 

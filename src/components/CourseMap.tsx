@@ -10,8 +10,17 @@ const LINE_SOURCE_ID = "target-line";
 const BUNKER_SOURCE_ID = "bunkers";
 const DISPERSION_SOURCE_ID = "dispersion-ellipse";
 const ON_LINE_TOLERANCE_METERS = 8;
-const FAR_FROM_HOLE_METERS = 300;
+// Live GPS substitutes for the tee-box origin only when the device is within this many meters of
+// the hole's tee (2000 yards ≈ 1828.8 m). Beyond that — browsing a hole you're nowhere near — the
+// line/camera anchor to the saved tee instead, so a stray faraway GPS fix can't yank the whole
+// hole layout to your couch. (Was a much tighter 300m; widened per the "use my real position
+// whenever I'm anywhere on/near the course" request.)
+const GPS_ACTIVE_MAX_METERS = 1828.8;
 const MAX_MEASURE_DOTS = 5;
+// Two measure dots whose on-screen centers land within this many pixels of each other are treated
+// as the same point — the later one is auto-removed so dragging dots on top of each other (or
+// tapping to add one right where another sits) collapses to a single dot rather than a pile.
+const DEDUPE_PX = 26;
 // ~1cm on a typical phone screen — how far above the actual touch point a dragged marker's REAL
 // coordinate sits, not just a visual nudge, so a thumb never obscures the spot it's about to drop
 // a dot/pin on. See applyTouchDragOffset below.
@@ -92,6 +101,10 @@ interface CourseMapProps {
    * ellipse centers on: the nearest-to-origin measure dot for shot 1, the second-nearest for
    * shot 2, the green/pin target for shot 3+. Omit/1 if unknown. */
   currentShotNumber?: number;
+  /** When false, live GPS is ignored entirely — the blue-dot watch never starts and the
+   * line/camera always anchor to the saved tee (fallbackOrigin), matching the Settings "use
+   * saved tees instead of GPS" toggle. Defaults to true. */
+  gpsEnabled?: boolean;
 }
 
 /**
@@ -115,7 +128,8 @@ export function CourseMap({
   hideInternalHud,
   dispersionEllipse,
   autoLayupPoint,
-  currentShotNumber
+  currentShotNumber,
+  gpsEnabled = true
 }: CourseMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -154,7 +168,8 @@ export function CourseMap({
   // check itself stays against the REAL fallbackOrigin (not a dragged one) since it's about
   // real-world position validity; teeOverride only substitutes for the line/camera origin once
   // we've already decided live GPS isn't in play.
-  const usingLiveGps = !!me && (!fallbackOrigin || distanceMeters(me, fallbackOrigin) <= FAR_FROM_HOLE_METERS);
+  const usingLiveGps =
+    gpsEnabled && !!me && (!fallbackOrigin || distanceMeters(me, fallbackOrigin) <= GPS_ACTIVE_MAX_METERS);
   const origin = usingLiveGps ? me : (teeOverride ?? fallbackOrigin ?? me);
 
   const stateRef = useRef({
@@ -183,7 +198,14 @@ export function CourseMap({
   };
 
   // --- Geolocation: watch position for the blue dot ---
+  // Skipped entirely when gpsEnabled is false (Settings toggle) — no watch, no blue dot, and `me`
+  // stays null so `origin` falls back to the saved tee. Clearing `me` on disable also makes the
+  // change take effect live if the toggle flips while a hole is open.
   useEffect(() => {
+    if (!gpsEnabled) {
+      setMe(null);
+      return;
+    }
     if (!navigator.geolocation) {
       setGeoError("Geolocation not supported in this browser.");
       return;
@@ -199,7 +221,7 @@ export function CourseMap({
       { enableHighAccuracy: true, maximumAge: 1000 }
     );
     return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
+  }, [gpsEnabled]);
 
   // --- Map init ---
   useEffect(() => {
@@ -565,8 +587,10 @@ export function CourseMap({
     el.appendChild(dot);
 
     const label = document.createElement("div");
+    // Font ~2x the old 11px so the segment yardages are readable at arm's length in sunlight;
+    // padding/offset bumped to match so the bigger pill still clears the dot.
     label.style.cssText =
-      "position:absolute;top:36px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,.8);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.4);";
+      "position:absolute;top:40px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,.8);color:#fff;font-size:22px;font-weight:700;padding:6px 14px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.4);";
     el.appendChild(label);
 
     const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
@@ -587,9 +611,11 @@ export function CourseMap({
     });
 
     marker.on("dragend", () => {
-      label.style.top = "36px";
+      label.style.top = "40px";
       label.style.left = "50%";
       label.style.transform = "translateX(-50%)";
+      // A dot dragged on top of another collapses the two into one (keeps the earlier dot).
+      dedupeMeasureDots();
     });
 
     el.addEventListener("dblclick", (evt) => {
@@ -603,6 +629,38 @@ export function CourseMap({
     measureMarkersRef.current.set(id, { marker, label });
     updateLineAndLabels();
     updateDispersionEllipse();
+    // If this new dot landed right on top of an existing one, drop it back to a single dot.
+    dedupeMeasureDots();
+  }
+
+  // Removes any measure dot whose on-screen position sits within DEDUPE_PX of an earlier dot, so
+  // near-overlapping dots collapse to one instead of stacking up. Pixel-based (via map.project)
+  // rather than yard-based so "overlapping" tracks what the eye sees at the current zoom. Keeps
+  // the earlier dot in insertion order (the Map preserves it), removing the later duplicate.
+  function dedupeMeasureDots() {
+    const map = mapRef.current;
+    if (!map) return;
+    const entries = Array.from(measureMarkersRef.current.entries());
+    const removed = new Set<string>();
+    for (let i = 0; i < entries.length; i++) {
+      const [idA, a] = entries[i];
+      if (removed.has(idA)) continue;
+      const pa = map.project(a.marker.getLngLat());
+      for (let j = i + 1; j < entries.length; j++) {
+        const [idB, b] = entries[j];
+        if (removed.has(idB)) continue;
+        const pb = map.project(b.marker.getLngLat());
+        if (Math.hypot(pa.x - pb.x, pa.y - pb.y) < DEDUPE_PX) {
+          b.marker.remove();
+          measureMarkersRef.current.delete(idB);
+          removed.add(idB);
+        }
+      }
+    }
+    if (removed.size > 0) {
+      updateLineAndLabels();
+      updateDispersionEllipse();
+    }
   }
 
   // --- Blue dot marker: always shows real GPS, regardless of the fallback used for the line/camera ---

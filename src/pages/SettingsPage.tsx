@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { PageHeader } from "../components/PageHeader";
 import { ensureDefaultClubs, listClubs, updateClubDispersion } from "../lib/courseRepo";
+import { isGpsEnabled, setGpsEnabled } from "../lib/settings";
 import type { Club } from "../types/domain";
 
 /**
@@ -19,12 +20,30 @@ export function SettingsPage() {
   }, []);
   const clubs = useLiveQuery(() => listClubs(), []);
 
+  const [gpsEnabled, setGpsEnabledState] = useState(isGpsEnabled);
+  function toggleGps(enabled: boolean) {
+    setGpsEnabledState(enabled);
+    setGpsEnabled(enabled);
+  }
+
   return (
     <div style={{ padding: 16 }}>
       <PageHeader title="Settings" />
       <p style={{ opacity: 0.8, marginBottom: 20 }}>
         Not built yet: units, default aim-point rule, strokes-gained baseline default, Supabase
         sync status.
+      </p>
+
+      <h2 style={{ fontSize: 16, marginBottom: 4 }}>Location</h2>
+      <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+        <input type="checkbox" checked={gpsEnabled} onChange={(e) => toggleGps(e.target.checked)} />
+        <span style={{ fontSize: 14 }}>Use live GPS on the course</span>
+      </label>
+      <p style={{ fontSize: 13, opacity: 0.7, marginBottom: 20 }}>
+        When on, the round map anchors distances to your real position once you're within ~2000
+        yards of a hole's tee. Turn off to always measure from the saved tee boxes instead (useful
+        when reviewing a course from home, or if GPS is being unreliable). Takes effect next time
+        you open a round.
       </p>
 
       <h2 style={{ fontSize: 16, marginBottom: 4 }}>Club dispersion</h2>
