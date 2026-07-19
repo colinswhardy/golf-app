@@ -16,10 +16,9 @@ import {
 } from "../lib/roundRepo";
 import { detectLie } from "../lib/lie";
 import { classifyFairwayResult } from "../lib/fairway";
-import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE, type DispersionEllipseSpec } from "../components/CourseMap";
+import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE } from "../components/CourseMap";
 import { HoleScoreSheet, ScorecardSheet, ShotSheet, relativeToParLabel } from "../components/RoundSheets";
 import { bearingDegrees, distanceMeters, distanceYards, fromDownrangeOffline } from "../lib/geo";
-import { getClubDispersion } from "../lib/dispersion";
 import type { Club, FairwayResult, LatLng, Lie, Round, RoundHole } from "../types/domain";
 
 const GREENSIDE_BUNKER_MAX_YARDS = 40;
@@ -120,25 +119,7 @@ export function RoundMapPage() {
   const [centerDistance, setCenterDistance] = useState<number | null>(null);
   const [waterWarningYards, setWaterWarningYards] = useState<number | null>(null);
 
-  // --- Dispersion overlay: pick a club, show its (manual or actual, per the club's own flag)
-  // shot ellipse centered on the target pin ---
-  const [dispersionPickerOpen, setDispersionPickerOpen] = useState(false);
-  const [activeClubId, setActiveClubId] = useState<string | null>(null);
-  const [dispersionEllipse, setDispersionEllipse] = useState<DispersionEllipseSpec | null>(null);
-  useEffect(() => {
-    const club = clubs.find((c) => c.id === activeClubId);
-    if (!club) {
-      setDispersionEllipse(null);
-      return;
-    }
-    let cancelled = false;
-    getClubDispersion(club).then((spec) => {
-      if (!cancelled) setDispersionEllipse(spec);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeClubId, clubs]);
+  // (Dispersion overlay removed)
 
   // --- Per-hole notes: freeform text tied to the hole (not the round), auto-saved on a short
   // debounce so there's no explicit save action to remember to tap ---
@@ -481,14 +462,6 @@ export function RoundMapPage() {
           <button onClick={() => setOpenSheet("scorecard")} style={pillButtonStyle} aria-label="Scorecard" title="Score Summary">
             📋
           </button>
-          <button
-            onClick={() => setDispersionPickerOpen((v) => !v)}
-            style={{ ...pillButtonStyle, ...(dispersionEllipse ? pillButtonActiveStyle : {}) }}
-            aria-label="Dispersion overlay"
-            title="Dispersion Overlay"
-          >
-            📐
-          </button>
         </div>
       )}
 
@@ -509,26 +482,6 @@ export function RoundMapPage() {
         <button onClick={() => setNotesOpen(true)} style={notesPreviewStyle}>
           📝 Notes: {currentHole.notes}
         </button>
-      )}
-
-      {!isDemo && currentHole && dispersionPickerOpen && (
-        <div style={clubPickerStyle}>
-          <button
-            onClick={() => setActiveClubId(null)}
-            style={{ ...clubChipStyle, ...(activeClubId === null ? clubChipActiveStyle : {}) }}
-          >
-            None
-          </button>
-          {clubs.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setActiveClubId(c.id)}
-              style={{ ...clubChipStyle, ...(activeClubId === c.id ? clubChipActiveStyle : {}) }}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
       )}
 
       {/* Tap-away dismissal: a genuine TAP (minimal movement between pointerdown and pointerup)
@@ -576,7 +529,6 @@ export function RoundMapPage() {
             onSettingTargetChange={setSettingTarget}
             mapStyle={mapStyle}
             hideInternalHud
-            dispersionEllipse={dispersionEllipse}
             autoLayupPoint={fairwayLayupPoint}
             currentShotNumber={shotCount + 1}
           />
@@ -902,35 +854,3 @@ const waterWarningRowStyle: React.CSSProperties = {
   whiteSpace: "nowrap"
 };
 
-const clubPickerStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 130,
-  right: 12,
-  zIndex: 2,
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-  maxHeight: "min(320px, 50vh)",
-  overflowY: "auto",
-  background: "rgba(11,15,12,0.92)",
-  border: "1px solid #2f5c3d",
-  borderRadius: 12,
-  padding: 8
-};
-
-const clubChipStyle: React.CSSProperties = {
-  padding: "6px 12px",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 999,
-  fontSize: 12,
-  cursor: "pointer",
-  whiteSpace: "nowrap"
-};
-
-const clubChipActiveStyle: React.CSSProperties = {
-  background: "#f5d90a",
-  color: "#111",
-  border: "1px solid #f5d90a"
-};

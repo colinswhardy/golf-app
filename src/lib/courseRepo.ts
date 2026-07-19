@@ -178,3 +178,20 @@ export async function updateClubDispersion(
   await db.clubs.put(updated);
   await queueOutbox("clubs", "upsert", updated);
 }
+
+export async function saveCustomHazard(holeId: string, geometry: GeoJSON.Polygon): Promise<void> {
+  const feature: HoleFeature = {
+    id: uuid(),
+    holeId,
+    featureType: "hazard",
+    geometry,
+    zOrder: Z_ORDER["hazard"]
+  };
+  await db.holeFeatures.put(feature);
+  await queueOutbox("holeFeatures", "upsert", feature);
+}
+
+export async function deleteHoleFeature(featureId: string): Promise<void> {
+  await db.holeFeatures.delete(featureId);
+  await queueOutbox("holeFeatures", "delete", { id: featureId });
+}

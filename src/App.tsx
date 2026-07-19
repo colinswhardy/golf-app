@@ -17,15 +17,28 @@ export default function App() {
   }, []);
 
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/courses" element={<CoursesPage />} />
-      <Route path="/round/:courseId" element={<RoundMapPage />} />
-      <Route path="/rounds" element={<ReviewRoundsPage />} />
-      <Route path="/imports" element={<DataImportsPage />} />
-      <Route path="/settings" element={<SettingsPage />} />
-      <Route path="/course-editor" element={<CourseEditorPage />} />
-      <Route path="/course-editor/:courseId" element={<CourseEditorPage />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/courses" element={<CoursesPage />} />
+        <Route path="/round/:courseId" element={<RoundMapPage />} />
+        <Route path="/rounds" element={<ReviewRoundsPage />} />
+        <Route path="/imports" element={<DataImportsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/course-editor" element={<CourseEditorPage />} />
+        <Route path="/course-editor/:courseId" element={<CourseEditorPage />} />
+      </Routes>
+      <div style={{
+        position: "fixed",
+        bottom: 4,
+        right: 8,
+        fontSize: 10,
+        color: "rgba(255,255,255,0.35)",
+        pointerEvents: "none",
+        zIndex: 9999
+      }}>
+        1.0
+      </div>
+    </>
   );
 }

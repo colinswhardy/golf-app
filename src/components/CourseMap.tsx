@@ -127,6 +127,7 @@ export function CourseMap({
   // would otherwise spin/re-tilt the map on every drag tick) without affecting the live
   // line/label/distance updates, which stay driven by `target` state as normal.
   const isDraggingTargetRef = useRef(false);
+  const isDraggingTeeRef = useRef(false);
   const measureMarkersRef = useRef<Map<string, { marker: mapboxgl.Marker; label: HTMLDivElement }>>(new Map());
   const [bunkerCard, setBunkerCard] = useState<BunkerYardages | null>(null);
 
@@ -572,11 +573,23 @@ export function CourseMap({
       .setLngLat([point.lng, point.lat])
       .addTo(map);
 
+    marker.on("dragstart", () => {
+      label.style.top = "10px";
+      label.style.left = "44px";
+      label.style.transform = "translateY(-50%)";
+    });
+
     marker.on("drag", () => {
       const dragMap = mapRef.current;
       if (dragMap) applyTouchDragOffset(dragMap, marker);
       updateLineAndLabels();
       updateDispersionEllipse();
+    });
+
+    marker.on("dragend", () => {
+      label.style.top = "36px";
+      label.style.left = "50%";
+      label.style.transform = "translateX(-50%)";
     });
 
     el.addEventListener("dblclick", (evt) => {
@@ -630,10 +643,20 @@ export function CourseMap({
         .setLngLat([displayPoint.lng, displayPoint.lat])
         .addTo(map);
 
+      marker.on("dragstart", () => {
+        isDraggingTeeRef.current = true;
+      });
+
       marker.on("drag", () => {
         const dragMap = mapRef.current;
         if (!dragMap) return;
         setTeeOverride(applyTouchDragOffset(dragMap, marker));
+      });
+
+      marker.on("dragend", () => {
+        isDraggingTeeRef.current = false;
+        const pos = marker.getLngLat();
+        setTeeOverride({ lat: pos.lat, lng: pos.lng });
       });
 
       teeMarkerRef.current = marker;
@@ -695,11 +718,19 @@ export function CourseMap({
     updateLineAndLabels();
     updateWaterWarning();
 
-    if (origin && target && !isDraggingTargetRef.current) {
+    if (origin && target && !isDraggingTargetRef.current && !isDraggingTeeRef.current) {
       // Orient camera tee-at-bottom / green-at-top with a tilt, so the hole fits a smaller
       // vertical footprint than a flat top-down view would need. Only re-orients when the
       // target/origin change (not every GPS tick) to avoid a constantly spinning map.
-      map.easeTo({ center: [origin.lng, origin.lat], bearing: bearingDegrees(origin, target), pitch: 55, duration: 600 });
+      const bounds = new mapboxgl.LngLatBounds();
+      bounds.extend([origin.lng, origin.lat]);
+      bounds.extend([target.lng, target.lat]);
+      map.fitBounds(bounds, {
+        bearing: bearingDegrees(origin, target),
+        pitch: 55,
+        padding: { top: 104, bottom: 122, left: 60, right: 60 },
+        duration: 600
+      });
     }
   }, [target, origin]);
 

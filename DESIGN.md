@@ -219,6 +219,19 @@ bunker polygon later.
     per-pixel placement — the green consistently lands near the top, but the tee isn't pinned to
     the literal bottom edge on every hole. Falls back to the old fixed `zoom: 17` centered view
     when `fallbackOrigin`/`initialTarget` aren't both available yet (e.g. demo mode).
+  - **Camera re-centering now also uses `fitBounds`, not `easeTo`**: the `[target, origin]` effect
+    that re-orients the camera as the target/tee change used to call `map.easeTo({ center: origin,
+    bearing, pitch })` — a fixed zoom that didn't re-frame the hole. It now calls the same
+    `fitBounds` pattern as the initial constructor, but with tighter padding: `{ top: 104, bottom:
+    122, left: 60, right: 60 }`, chosen so the green lands roughly under the right-side `🎯` pill
+    button and the tee lands roughly at the bottom edge of the left distance HUD card (§17) —
+    every hole ends up occupying about the same vertical screen footprint regardless of yardage.
+  - **Tee-drag also suppresses the camera re-fit**, not just target-drag: `isDraggingTeeRef`
+    (`dragstart`/`dragend` on the tee marker) is checked alongside `isDraggingTargetRef` in the
+    `[target, origin]` effect's guard (`!isDraggingTargetRef.current &&
+    !isDraggingTeeRef.current`) — without it, every tee-drag tick's `teeOverride` update would
+    re-trigger a `fitBounds` mid-drag, fighting the user's own drag gesture with a competing camera
+    animation. Mirrors the target marker's existing pattern (§8 draggable target marker bullet).
 - **Tile caching**: flagging a real constraint here — Mapbox GL JS for **web** doesn't have the
   first-party "offline region" support that Mapbox's native iOS/Android SDKs have; that feature is
   SDK-only. Given you're fine with "spotty signal, not zero signal," the plan is a service-worker
@@ -257,6 +270,10 @@ bunker polygon later.
     bunker hit-test layer, dispersion ellipse) are (re-)added by one named `ensureSources()`,
     re-run on both the initial `"load"` and `"style.load"` after every switch, rather than assuming
     Mapbox's cross-style diffing preserves them.
+- **Version badge**: `App.tsx` renders a fixed `1.0` label bottom-right on every route (outside the
+  `<Routes>` switch, so it survives navigation), `pointer-events: none` and low-opacity so it never
+  intercepts taps. Manually bumped by hand with each meaningful round of changes — not derived from
+  `package.json` or git — since this app has no CI/CD versioning pipeline and is single-developer.
 - **Touch targets**: every draggable map dot (measure markers, the target/pin marker, the tee
   marker) is a 44×44px invisible flex-centered `.map-touch-target` div — the actual Mapbox marker
   element Mapbox positions/tracks — wrapping a smaller visual `.map-touch-dot` (16px for measure
@@ -279,6 +296,13 @@ bunker polygon later.
     since stacking a CSS transform on top of the *real* coordinate offset above would double it).
   - `user-select: none` is set globally in `index.css` too — this is a touch-driven map app, not a
     document, so double-taps must never trigger the OS text-selection menu.
+  - **Waypoint label offset while dragging**: each measure dot's distance label is a plain
+    absolutely-positioned child div (`top: 36px; left: 50%; transform: translateX(-50%)`, centered
+    underneath the dot by default). `dragstart` shifts it to `top: 10px; left: 44px; transform:
+    translateY(-50%)` (beside the dot, vertically centered) so a thumb dragging the dot doesn't
+    also cover its own live-updating distance label; `dragend` restores the default underneath
+    position. Purely a `label.style` mutation on the existing DOM node — no re-render, same
+    approach as the touch-target color change above.
 - **Draggable target marker (custom pin locations)**: the red target marker is `draggable: true`;
   `drag` calls `setTarget(applyTouchDragOffset(...))` on every tick (same render path as
   tap-to-set, so the line/labels/`onDistanceUpdate` all update live with no special-casing —
@@ -488,10 +512,14 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
   of them. Shots without a recorded aim point are skipped — there's no meaningful "offline" axis
   without knowing what was being aimed at. Falls back to manual values when there isn't enough
   actual history yet.
-- `RoundMapPage` adds a club-picker chip row (behind a 📐 pill button) that sets `activeClubId`;
-  an effect resolves it to a `DispersionEllipseSpec` and passes it to `CourseMap`, which draws it as
-  a filled+outlined polygon (`DISPERSION_SOURCE_ID`) — `fromDownrangeOffline` (the inverse of the
-  projection above) turns 40 sampled ellipse-boundary points back into map coordinates.
+- **Round map picker removed**: `RoundMapPage` previously exposed this via a club-picker chip row
+  behind a 📐 pill button (`dispersionPickerOpen`/`activeClubId`/`dispersionEllipse` state, plus
+  the `clubPickerStyle` chip panel) — deleted entirely as a deliberate scope cut, along with the
+  `dispersionEllipse` prop passed to `CourseMap`. The underlying machinery below
+  (`computeDispersionEllipse`, `lib/dispersion.ts`, `CourseMap`'s `DispersionEllipseSpec` prop and
+  drawing/centering logic) is untouched and still fully wired — only the round-map trigger UI is
+  gone. Re-adding a picker (e.g. elsewhere in the chrome) would just mean re-wiring the same prop,
+  not rebuilding the underlying computation.
   - **Centering** (`getDispersionCenter()`): the target of the shot currently being played, not
     always the green — `RoundMapPage` passes `currentShotNumber={shotCount + 1}` down; shot 1
     centers on the nearest-to-origin measure dot (`dots[0]`), shot 2 on the second-nearest
@@ -635,6 +663,39 @@ Turbo + a re-import for a one-tee-box fix.
   schema/complexity cost; the existing Data Imports flow remains the path to a genuine from-scratch
   re-import if a full reset is ever needed.
 - Home's 4th tile (previously blank) now links here.
+- **Tee marker drag also uses `applyTouchDragOffset`**: the editor's own tee marker drag handler
+  (separate implementation from `CourseMap`'s, since this is a standalone map — see above) applies
+  the same 50px mathematical screen-space offset (§8) rather than a plain `marker.getLngLat()`
+  read, so the same "thumb doesn't obscure the real coordinate" behavior applies here too.
+- **Custom hazard drawing**: a right-side "Hole Hazards" panel lets Point, Line, or Area hazards
+  (water, creeks, ponds the OSM import missed or drew wrong) be added by hand, per-hole.
+  - **Drawing state machine**: `drawingMode: "none" | "point" | "line" | "area"` plus
+    `drawingCoords: LatLng[]` accumulate clicked map coordinates while armed. A `draw-hazard`
+    GeoJSON source/layer set (fill for area previews, dashed line for line previews, small circles
+    for placed vertices) renders the in-progress shape live; a separate `existing-hazards`
+    source/layer renders every already-saved `HoleFeature` of `featureType: "hazard"` for this hole
+    in translucent blue, so it's obvious what's already mapped before drawing something new.
+  - **Point** saves immediately on the first map click (no "Finish" step) — buffered 3 meters via
+    `turf.buffer` into a small circular polygon. **Line** and **Area** accumulate multiple clicked
+    vertices with a live preview, then require an explicit "Finish" button (disabled until the
+    minimum vertex count — 2 for a line, 3 for an area — is met): a line buffers 1.5 meters into a
+    thin channel polygon, an area closes its ring and saves as-is. All three funnel through
+    `courseRepo.saveCustomHazard(holeId, geometry)`, which writes a `HoleFeature` with
+    `featureType: "hazard"` and queues it in the sync `outbox`, same pattern as every other
+    Dexie-writing repo function.
+  - **Why buffer Point/Line at all**: both the Supabase `hole_features` table (`geometry
+    geography(polygon, 4326)`) and the app's own proximity-warning math (§12, which expects
+    polygon geometries to measure distance-to-nearest-edge against) require a polygon — a bare
+    point or line would fail the DB constraint and crash the warning calculation. Buffering by a
+    small, fixed real-world distance is a pragmatic way to get a valid polygon out of what's
+    conceptually a point or a line, without adding a second non-polygon geometry code path
+    anywhere else in the app.
+  - `turf.buffer` can return `undefined` for degenerate inputs (its TS typing reflects this) — both
+    call sites (`Point`, `Line`) check for that before proceeding, bailing out (and, for `Line`,
+    leaving `drawingMode` armed so nothing is silently lost) rather than assuming a result.
+  - **Delete**: each hazard in the panel's list gets a 🗑️ button calling
+    `courseRepo.deleteHoleFeature(featureId)`, which deletes the Dexie row and queues a matching
+    `outbox` delete entry.
 
 ## Course Import — Overpass → Dexie
 

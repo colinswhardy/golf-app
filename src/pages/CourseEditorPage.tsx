@@ -4,7 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import * as turf from "@turf/turf";
-import { getFeaturesForHole, getHolesForVersion, getLatestCourseVersion, getTeeBoxesForHole, listCourses, updateTeeBoxLocation } from "../lib/courseRepo";
+import { deleteHoleFeature, getFeaturesForHole, getHolesForVersion, getLatestCourseVersion, getTeeBoxesForHole, listCourses, saveCustomHazard, updateTeeBoxLocation } from "../lib/courseRepo";
 import { PageHeader } from "../components/PageHeader";
 import { SATELLITE_STYLE } from "../components/CourseMap";
 import type { LatLng, TeeBox } from "../types/domain";
@@ -51,6 +51,15 @@ function CourseEditorCourseList() {
   );
 }
 
+const TOUCH_DRAG_OFFSET_PX = 50;
+function applyTouchDragOffset(map: mapboxgl.Map, marker: mapboxgl.Marker): LatLng {
+  const raw = marker.getLngLat();
+  const px = map.project(raw);
+  const offset = map.unproject([px.x, px.y - TOUCH_DRAG_OFFSET_PX]);
+  marker.setLngLat(offset);
+  return { lat: offset.lat, lng: offset.lng };
+}
+
 function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   const navigate = useNavigate();
   const courseVersion = useLiveQuery(() => getLatestCourseVersion(courseId), [courseId]);
@@ -72,6 +81,10 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   const [draftLocation, setDraftLocation] = useState<LatLng | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
+  // --- Hazard drawing states ---
+  const [drawingMode, setDrawingMode] = useState<"none" | "point" | "line" | "area">("none");
+  const [drawingCoords, setDrawingCoords] = useState<LatLng[]>([]);
+
   const selectedTeeBox = teeBoxes?.find((t) => t.id === selectedTeeBoxId) ?? null;
   const isDirty = !!selectedTeeBox && !!draftLocation && (draftLocation.lat !== selectedTeeBox.location.lat || draftLocation.lng !== selectedTeeBox.location.lng);
 
@@ -79,6 +92,8 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   useEffect(() => {
     setSelectedTeeBoxId(teeBoxes?.[0]?.id ?? null);
     setStatus(null);
+    setDrawingMode("none");
+    setDrawingCoords([]);
   }, [currentHole?.id, teeBoxes?.length]);
   useEffect(() => {
     setDraftLocation(selectedTeeBox?.location ?? null);
@@ -106,6 +121,72 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
       zoom: 16
     });
     mapRef.current = map;
+
+    map.on("load", () => {
+      // Add existing-hazards source & layers
+      map.addSource("existing-hazards", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] }
+      });
+      map.addLayer({
+        id: "existing-hazards-fill",
+        type: "fill",
+        source: "existing-hazards",
+        paint: {
+          "fill-color": "#3b82f6",
+          "fill-opacity": 0.4
+        }
+      });
+      map.addLayer({
+        id: "existing-hazards-outline",
+        type: "line",
+        source: "existing-hazards",
+        paint: {
+          "line-color": "#2563eb",
+          "line-width": 2
+        }
+      });
+
+      // Add draw-hazard source & layers
+      map.addSource("draw-hazard", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] }
+      });
+      map.addLayer({
+        id: "draw-hazard-fill",
+        type: "fill",
+        source: "draw-hazard",
+        filter: ["==", ["get", "type"], "area"],
+        paint: {
+          "fill-color": "#ef4444",
+          "fill-opacity": 0.35
+        }
+      });
+      map.addLayer({
+        id: "draw-hazard-line",
+        type: "line",
+        source: "draw-hazard",
+        filter: ["==", ["get", "type"], "line"],
+        paint: {
+          "line-color": "#ef4444",
+          "line-width": 3,
+          "line-dasharray": [2, 1]
+        }
+      });
+      map.addLayer({
+        id: "draw-hazard-circle",
+        type: "circle",
+        source: "draw-hazard",
+        filter: ["==", ["get", "type"], "vertex"],
+        paint: {
+          "circle-radius": 5,
+          "circle-color": "#ef4444",
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1.5
+        }
+      });
+    });
+
     return () => {
       map.remove();
       mapRef.current = null;
@@ -113,6 +194,109 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
       greenMarkerRef.current = null;
     };
   }, []);
+
+  // --- Render existing hazards ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const source = map.getSource("existing-hazards") as mapboxgl.GeoJSONSource | undefined;
+    if (!source) return;
+
+    const hazards = holeFeatures?.filter((f) => f.featureType === "hazard") ?? [];
+    source.setData({
+      type: "FeatureCollection",
+      features: hazards.map((h) => ({
+        type: "Feature",
+        properties: {},
+        geometry: h.geometry
+      }))
+    });
+  }, [holeFeatures]);
+
+  // --- Render draw preview ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const source = map.getSource("draw-hazard") as mapboxgl.GeoJSONSource | undefined;
+    if (!source) return;
+
+    if (drawingCoords.length === 0) {
+      source.setData({ type: "FeatureCollection", features: [] });
+      return;
+    }
+
+    const features: GeoJSON.Feature[] = [];
+
+    // Add vertices
+    drawingCoords.forEach((c) => {
+      features.push({
+        type: "Feature",
+        properties: { type: "vertex" },
+        geometry: { type: "Point", coordinates: [c.lng, c.lat] }
+      });
+    });
+
+    // Add line or polygon preview
+    if (drawingMode === "line" && drawingCoords.length > 1) {
+      features.push({
+        type: "Feature",
+        properties: { type: "line" },
+        geometry: { type: "LineString", coordinates: drawingCoords.map((c) => [c.lng, c.lat]) }
+      });
+    } else if (drawingMode === "area" && drawingCoords.length > 1) {
+      if (drawingCoords.length >= 3) {
+        features.push({
+          type: "Feature",
+          properties: { type: "area" },
+          geometry: { type: "Polygon", coordinates: [[...drawingCoords, drawingCoords[0]].map((c) => [c.lng, c.lat])] }
+        });
+      } else {
+        features.push({
+          type: "Feature",
+          properties: { type: "line" },
+          geometry: { type: "LineString", coordinates: drawingCoords.map((c) => [c.lng, c.lat]) }
+        });
+      }
+    }
+
+    source.setData({
+      type: "FeatureCollection",
+      features
+    });
+  }, [drawingCoords, drawingMode]);
+
+  // --- Handle Map Drawing Clicks ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || drawingMode === "none") return;
+
+    const handleDrawingClick = (e: mapboxgl.MapMouseEvent) => {
+      const clicked = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+
+      if (drawingMode === "point") {
+        const pt = turf.point([clicked.lng, clicked.lat]);
+        const buffered = turf.buffer(pt, 3, { units: "meters" });
+        if (buffered && currentHole) {
+          const poly = buffered.geometry as GeoJSON.Polygon;
+          saveCustomHazard(currentHole.id, poly).then(() => {
+            setDrawingMode("none");
+            setDrawingCoords([]);
+            setStatus("Saved custom point hazard.");
+          });
+        }
+      } else {
+        setDrawingCoords((prev) => [...prev, clicked]);
+      }
+    };
+
+    map.on("click", handleDrawingClick);
+    map.getCanvas().style.cursor = "crosshair";
+
+    return () => {
+      map.off("click", handleDrawingClick);
+      map.getCanvas().style.cursor = "";
+    };
+  }, [drawingMode, currentHole]);
 
   // --- Green reference marker (read-only) ---
   useEffect(() => {
@@ -157,6 +341,9 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
         .setLngLat([draftLocation.lng, draftLocation.lat])
         .addTo(map);
       marker.on("drag", () => {
+        setDraftLocationRef.current(applyTouchDragOffset(map, marker));
+      });
+      marker.on("dragend", () => {
         const pos = marker.getLngLat();
         setDraftLocationRef.current({ lat: pos.lat, lng: pos.lng });
       });
@@ -187,6 +374,45 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
     setStatus(null);
   }
 
+  async function handleFinishDrawing() {
+    if (!currentHole || drawingCoords.length === 0) return;
+    try {
+      let geometry: GeoJSON.Polygon | null = null;
+      if (drawingMode === "line") {
+        if (drawingCoords.length < 2) return;
+        const line = turf.lineString(drawingCoords.map((c) => [c.lng, c.lat]));
+        const buffered = turf.buffer(line, 1.5, { units: "meters" });
+        if (!buffered) return;
+        geometry = buffered.geometry as GeoJSON.Polygon;
+      } else if (drawingMode === "area") {
+        if (drawingCoords.length < 3) return;
+        const ring = [...drawingCoords, drawingCoords[0]].map((c) => [c.lng, c.lat]);
+        geometry = turf.polygon([ring]).geometry as GeoJSON.Polygon;
+      }
+
+      if (geometry) {
+        await saveCustomHazard(currentHole.id, geometry);
+        setStatus(`Saved custom ${drawingMode} hazard.`);
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus("Error saving hazard geometry.");
+    } finally {
+      setDrawingMode("none");
+      setDrawingCoords([]);
+    }
+  }
+
+  async function handleDeleteHazard(featureId: string) {
+    try {
+      await deleteHoleFeature(featureId);
+      setStatus("Deleted hazard feature.");
+    } catch (err) {
+      console.error(err);
+      setStatus("Error deleting hazard.");
+    }
+  }
+
   if (!TOKEN) {
     return (
       <div style={{ padding: 24 }}>
@@ -194,6 +420,8 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
       </div>
     );
   }
+
+  const holeHazards = holeFeatures?.filter((f) => f.featureType === "hazard") ?? [];
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
@@ -236,6 +464,65 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
       )}
 
       {teeBoxes && teeBoxes.length === 0 && <div style={emptyBannerStyle}>No tee boxes mapped for this hole.</div>}
+
+      {/* Hazard Manager Panel */}
+      {currentHole && (
+        <div style={hazardPanelStyle}>
+          <div style={{ fontWeight: 700, fontSize: 13, borderBottom: "1px solid #2f5c3d", paddingBottom: 4 }}>
+            Hole Hazards
+          </div>
+
+          {drawingMode === "none" ? (
+            <>
+              <div style={{ fontSize: 11, opacity: 0.8 }}>Add water, creek, or pond hazard:</div>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                <button onClick={() => setDrawingMode("point")} style={hazardMiniButtonStyle}>+ Point</button>
+                <button onClick={() => setDrawingMode("line")} style={hazardMiniButtonStyle}>+ Line</button>
+                <button onClick={() => setDrawingMode("area")} style={hazardMiniButtonStyle}>+ Area</button>
+              </div>
+
+              <div style={{ fontWeight: 600, fontSize: 12, marginTop: 4 }}>Existing hazards:</div>
+              <div style={hazardListStyle}>
+                {holeHazards.length === 0 ? (
+                  <div style={{ fontSize: 11, opacity: 0.5, padding: "4px 0" }}>No custom hazards</div>
+                ) : (
+                  holeHazards.map((h, i) => (
+                    <div key={h.id} style={hazardItemStyle}>
+                      <span>Hazard #{i + 1}</span>
+                      <button onClick={() => handleDeleteHazard(h.id)} style={hazardDeleteButtonStyle} title="Delete">🗑️</button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontWeight: 600, fontSize: 12, color: "#f5d90a" }}>
+                Drawing {drawingMode.toUpperCase()}...
+              </div>
+              <div style={{ fontSize: 11, opacity: 0.9 }}>
+                {drawingMode === "point" && "Tap the map once to place the hazard point (creates a small 3m circle)."}
+                {drawingMode === "line" && `Tap map to add segments (${drawingCoords.length} points).`}
+                {drawingMode === "area" && `Tap map to add vertices (${drawingCoords.length} points).`}
+              </div>
+              <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                {drawingMode !== "point" && (
+                  <button
+                    onClick={handleFinishDrawing}
+                    disabled={(drawingMode === "line" && drawingCoords.length < 2) || (drawingMode === "area" && drawingCoords.length < 3)}
+                    style={{ ...hazardSaveButtonStyle, opacity: ((drawingMode === "line" && drawingCoords.length >= 2) || (drawingMode === "area" && drawingCoords.length >= 3)) ? 1 : 0.5 }}
+                  >
+                    Finish
+                  </button>
+                )}
+                <button onClick={() => { setDrawingMode("none"); setDrawingCoords([]); }} style={hazardCancelButtonStyle}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={bottomPanelStyle}>
         <div style={{ fontSize: 12, opacity: 0.75 }}>
@@ -386,5 +673,87 @@ const primaryEditorButtonStyle: React.CSSProperties = {
   borderRadius: 999,
   fontSize: 14,
   fontWeight: 600,
+  cursor: "pointer"
+};
+
+const hazardPanelStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 76,
+  right: 12,
+  zIndex: 2,
+  width: 200,
+  maxHeight: "60vh",
+  background: "rgba(11,15,12,0.92)",
+  border: "1px solid #2f5c3d",
+  borderRadius: 12,
+  padding: 10,
+  color: "#eef2ef",
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  overflowY: "auto"
+};
+
+const hazardMiniButtonStyle: React.CSSProperties = {
+  flex: 1,
+  padding: "5px 8px",
+  background: "#1a3a24",
+  color: "#eef2ef",
+  border: "1px solid #2f5c3d",
+  borderRadius: 4,
+  fontSize: 10,
+  fontWeight: 600,
+  cursor: "pointer",
+  textAlign: "center"
+};
+
+const hazardListStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  maxHeight: 180,
+  overflowY: "auto"
+};
+
+const hazardItemStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  background: "#16271c",
+  border: "1px solid #223e2b",
+  padding: "4px 8px",
+  borderRadius: 6,
+  fontSize: 11
+};
+
+const hazardDeleteButtonStyle: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  color: "#f87171",
+  fontSize: 11,
+  cursor: "pointer",
+  padding: "0 2px"
+};
+
+const hazardSaveButtonStyle: React.CSSProperties = {
+  flex: 1,
+  padding: "6px 10px",
+  background: "#f5d90a",
+  color: "#111",
+  border: "none",
+  borderRadius: 6,
+  fontSize: 11,
+  fontWeight: 600,
+  cursor: "pointer"
+};
+
+const hazardCancelButtonStyle: React.CSSProperties = {
+  flex: 1,
+  padding: "6px 10px",
+  background: "#374151",
+  color: "#eef2ef",
+  border: "none",
+  borderRadius: 6,
+  fontSize: 11,
   cursor: "pointer"
 };

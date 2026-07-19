@@ -1,120 +1,83 @@
-# Enhancement & Review Tasks
+# Task List for CaddyShot Enhancements
 
-- [x] Redesign Round Map Layout (Grint Style & Sleek Theme)
-  - [x] Add circular white back button at top left in `src/pages/RoundMapPage.tsx`
-  - [x] Implement centered slim `getHoleOrdinal(n) - Par Y - ZZZ Yards` header capsule in `src/pages/RoundMapPage.tsx`
-  - [x] Pass `onDistanceUpdate` callback from `src/components/CourseMap.tsx` to `src/pages/RoundMapPage.tsx`
-  - [x] Render floating right-side vertical capsule action buttons
-  - [x] Replace bottom sheet triggers with a sleek bottom profile/action bar
-  - [x] Add tooltips/titles to all pill buttons on the right side
-- [x] Implement Bottom-Left HUD Cards
-  - [x] Render Front/Center/Back green distance card in the bottom-left container in `src/pages/RoundMapPage.tsx`
-  - [x] Render Closest Water Warning card (`⚠️ Water: XXXy`) in the bottom-left container
-- [x] Implement Segmented Map Lines, HUD, and Tee Box Dot
-  - [x] Adjust `hudStyle` in `src/components/CourseMap.tsx` to hide or move it out of the top
-  - [x] Add `teeMarkerRef` to render a white circle dot with a dark green border on the tee box in `src/components/CourseMap.tsx`
-  - [x] Set `teeMarkerRef` to `draggable: true` but do not save position updates to IndexedDB (only update local state coordinates)
-  - [x] Implement `updateLineAndLabels()` in `src/components/CourseMap.tsx` to sort measure markers by distance and route the line through them
-  - [x] Format distance labels to read `XXXy / YYYy` where the first `XXXy` is the distance **from the previous point on the line**
-  - [x] Bind `updateLineAndLabels()` to marker drag, initialization, and delete events
-- [x] Water Hazards & Bunker Warnings
-  - [x] Scan boundaries of water features to find the closest point to the origin/tee box coordinate in `src/components/CourseMap.tsx`
-  - [x] Expose water warning distance via callback to bottom-left HUD
-  - [x] Implement click handlers on bunker polygons to display Front/Middle/Back yardages in a card
-- [x] Segmented Line Spawning & 5-Dot Limit
-  - [x] Update map click listener in `src/components/CourseMap.tsx` to scan all path segments for tap coordinates
-  - [x] Limit the total number of placed layup dots to 5 maximum
-- [x] Automatic 275y Fairway Layup Points
-  - [x] For holes < 300 yards or Par 3s: Do not place an automatic dot
-  - [x] For holes >= 300 yards: Calculate intersection of centerline with fairway. Place dot at midpoint of the fairway polygon segment (or 275 yards down if inside fairway)
-- [x] Auto-Fit Viewport Zoom
-  - [x] Replace constructor zoom with `fitBounds()` using bearing and padding `top: 120, bottom: 180, left: 60, right: 60` to align tee at bottom and green at top
-- [x] Implement Draggable Greens & Pin Locations
-  - [x] Change `targetMarkerRef` initialization to `draggable: true` in `src/components/CourseMap.tsx`
-  - [x] Bind drag listeners to update target coordinates in state and invoke `onTargetChange` callback
-  - [x] Resolve active target to `pinLocation ?? greenCentroid` inside `src/pages/RoundMapPage.tsx`
-  - [x] Save pin location coordinate updates to `roundHoles` table in IndexedDB via `onTargetChange` callback
-- [x] Map Gesture & Touch Target Optimizations
-  - [x] Set `user-select: none; -webkit-user-select: none;` globally in `src/index.css` to disable copy-paste highlighting
-  - [x] Wrap visual map dots in a `44px` invisible touch target in `src/components/CourseMap.tsx`
-  - [x] Implement custom drag logic in `src/components/CourseMap.tsx` to mathematically offset coordinates by 50px (y-axis) during movement and set coordinates at this offset on release
-- [x] Migrate Custom Clubs Seed List
-  - [x] Modify `ensureDefaultClubs()` in `src/lib/courseRepo.ts` to clear and re-seed the new club list
-- [x] Update Shot Saving & GPS Fallback
-  - [x] Remove `!lastPositionRef.current` lock from "Shot X" button in `src/pages/RoundMapPage.tsx`
-  - [x] Add GPS fallback to `fallbackOrigin` and Sand Bunker distance check inside `handleSaveShot`
-- [x] Overhaul Shot Logging Component
-  - [x] Modify `ShotSheet` in `src/components/RoundSheets.tsx` to skip lie selection for Shot 1
-  - [x] In `ShotSheet`, check if `props.detectedLie === "green"` and if so, save immediately with `"Putter"` (no club step)
-  - [x] Add 2-column Lie grid and 3-column Club grid tiles
-  - [x] Add click-to-transition flow (one-tap lie changes to club, one-tap club triggers instant save)
-- [x] Fairway Miss Tracking
-  - [x] Add `fairwayResult` field to `RoundHole` schema in `src/types/domain.ts`
-  - [x] Auto-calculate miss direction (hit/left/right/short/long) using coordinate and line projection math when Shot 2 is logged on Par 4/5 holes
-  - [x] Render 5-way miss selector in `src/components/RoundSheets.tsx` showing the auto-detected result as pre-selected (bypass entirely for Par 3 holes)
-- [x] Right Capsule Notes Popover & Bottom Preview Snippet
-  - [x] Add `notes` field to `Hole` schema in `src/types/domain.ts`
-  - [x] Add `📝` notes button to the right utility pill in `src/pages/RoundMapPage.tsx`
-  - [x] Render a togglable, auto-saving notes text card adjacent to the right-side capsule (ensuring no overlaps)
-  - [x] Render a notes preview card at the bottom of the map screen that opens the notes popover on click
-- [x] Dispersion Overlay & Settings
-  - [x] Add dispersion ranges editing view to `src/pages/SettingsPage.tsx`
-  - [x] Render draggable confidence ellipse overlay in `src/components/CourseMap.tsx`. Center on the target of the shot currently being played (`dots[0]` for Shot 1, `dots[1]` for Shot 2, target green pin for Shot 3+)
-- [x] Tap-Away Dismissals
-  - [x] Bind static click events on map wrapper to dismiss active popups (notes popovers, club sheets) in `src/pages/RoundMapPage.tsx` without triggering on active drags/pans
-- [x] Correct OSM Green & Tee Polygon Mapping
-  - [x] Update `parseOverpassGeoJson` in `src/lib/importOverpass.ts` to map greens to the centerline end and tee boxes to the centerline start
-  - [x] Check green-centerline coordinates to auto-reverse backward-drawn OSM lines in `src/lib/importOverpass.ts`
-  - [x] Update `parseOverpassGeoJson` to generate fallback tee boxes from centerline starts for courses without tee polygons
-  - [x] Expand water hazard query tags in `src/lib/importOverpass.ts` to scan waterway, natural=water, streams, creeks, and drains
-- [x] Implement Teebox Selector UI & Backmost Default
-  - [x] Add `selectedTeeName` state and persistent localStorage key in `src/pages/RoundMapPage.tsx`
-  - [x] Render a dropdown selector in the round setup view for selecting teebox sets (excluding generic "Tee" if color sets exist)
-  - [x] Filter `teeBoxes` by `selectedTeeName`, falling back to the backmost tee box (furthest from green) by default
-  - [x] Hide the teebox selector dropdown completely once the round starts (`round.status === "in_progress"`)
-- [x] Re-seed Database Migration
-  - [x] Add a `caddyshot_reseeded_v2` version check in `src/lib/seedCourses.ts` to wipe and re-seed bundled courses on next load
-- [x] Implement Post-Round Review & Aim Targets
-  - [x] Implement `ReviewRoundsPage.tsx` to query and list completed rounds
-  - [x] Add hole-by-hole navigation and shot review listings
-  - [x] Bind click events on the map in review mode to update `aimPointOverride` for the selected shot in Dexie database
-- [x] Implement In-App Course Editor
-  - [x] Create `CourseEditorPage.tsx` routing and link the 4th tile in `src/pages/Home.tsx`
-  - [x] Allow dragging and editing tee box locations hole-by-hole on the map, writing override changes to `teeBoxes` table
-- [x] Verify UI & Functionality
-  - [x] Verify that Innerkip/Tarandowah load correctly and map visual elements are positioned like the screenshot
-  - [x] Verify review page list, map loading, and aim target placement
-  - [x] Verify that teebox selection works and defaults to the backmost tee box
-  - [x] Verify that green mapping bugs on holes 2 and 3 are fixed
-  - [x] Verify that tapping the line spawns a layup dot (up to 5 dots max)
-  - [x] Verify that holding and dragging the pin updates position and persists on returning to the hole
-  - [x] Verify segment distance logic, touch offsets, auto-putter green bypass, fairway miss logger, and hole notes popover
-  - [x] Verify Course Editor loads and edits tee boxes successfully
-  - [x] Verify dispersion overlay centers on the active target segment for the current shot number
-  - [x] Verify Par 3 scorecard flow skips fairway result questions completely
-  - [x] Verify dragging offsets mathematical position by 50px above finger and drops exactly at the offset coordinate
-  - [x] Verify teebox dropdown disappears once the round status is active
+- [x] Global Version Badge
+  - [x] Add `1.0` fixed div at the bottom-right viewport in `src/App.tsx`
+  - [x] Set `pointer-events: none` and opacity `0.35` so it remains unobtrusive and non-interactive
+
+- [x] Tee Drag Panning Fix
+  - [x] Add `isDraggingTeeRef` ref in `src/components/CourseMap.tsx`
+  - [x] Add `dragstart` and `dragend` listeners to `teeMarkerRef` to toggle `isDraggingTeeRef.current`
+  - [x] Update the camera re-centering `useEffect` condition to check `!isDraggingTeeRef.current`
+
+- [x] Dynamic Waypoint Distance Label Offsets
+  - [x] In `addMeasureMarker` within `src/components/CourseMap.tsx`, add a `dragstart` listener that styles the label to the right side (`top: 10px; left: 44px; transform: translateY(-50%)`)
+  - [x] Add a `dragend` listener that restores the label style underneath the marker (`top: 36px; left: 50%; transform: translateX(-50%)`)
+
+- [x] Consistent Viewport Hole Fit
+  - [x] Replace `map.easeTo` in the camera re-centering `useEffect` in `src/components/CourseMap.tsx` with a `map.fitBounds` call
+  - [x] Set `bounds` around `origin` and `target`
+  - [x] Apply padding: `{ top: 104, bottom: 122, left: 60, right: 60 }` and pitch: `55` to keep the green aligned with `🎯` and the tee box aligned with the distance card bottom
+
+- [x] Hazard Drawing in Course Editor
+  - [x] Implement `saveCustomHazard` and `deleteHoleFeature` in `src/lib/courseRepo.ts`
+  - [x] Add `existing-hazards` source/layers in `src/pages/CourseEditorPage.tsx` to render water polygons in blue
+  - [x] Add `draw-hazard` source/layers in `src/pages/CourseEditorPage.tsx` for active drawing previews
+  - [x] Build the drawing mode controls panel in the Course Editor UI (Point, Line, Area selectors, Finish/Cancel actions)
+  - [x] Attach `click` handler to the Mapbox map when drawing is armed to append clicked coordinates
+  - [x] On completion, buffer Point (3m) and Line (1.5m) to polygon geometries using `turf.buffer` before saving to Dexie
+  - [x] Render a list of existing hazard features on the current hole with a `🗑️` delete button next to each
+  - [x] Import and apply `applyTouchDragOffset` math to the tee box editor marker dragging handler so it sits 50px above the finger
+
+- [x] Remove Dispersion Picker Menu
+  - [x] Remove the `📐` button from the right-side vertical pill in `src/pages/RoundMapPage.tsx`
+  - [x] Delete the `clubPickerStyle` side menu panel JSX from `src/pages/RoundMapPage.tsx`
+  - [x] Remove `dispersionPickerOpen`, `activeClubId`, and `dispersionEllipse` states and their usages/cleanups in `src/pages/RoundMapPage.tsx`
+
+- [x] Verification & Build
+  - [x] Run `npm run build` (via `npx tsc -b`) to confirm there are no TypeScript compiler errors
+  - [x] Verify version badge is present on all pages
+  - [x] Verify dragging the tee marker in round view does not pan/spin the map
+  - [x] Verify waypoint labels move to the side when dragging and return underneath on drop
+  - [x] Verify holes occupy consistent vertical screen space and are centered horizontally
+  - [x] Verify Point, Line, and Area hazards draw, display, delete, and save as valid polygons
+  - [x] Verify the side club menu is completely removed from the round map view
 
 ## Extra notes from this turn's verification
 
-- **Mathematical touch drag offset** (`applyTouchDragOffset` in `CourseMap.tsx`) replaces the
-  prior turn's CSS-only `translateY(-55px)` visual lift, which never moved the marker's actual
-  geographic coordinate — only its rendered position. The new version calls `map.project()` on the
-  marker's current (pointer-driven) LngLat, subtracts 50px from screen-space Y, `map.unproject()`s
-  back, and snaps the marker there on every `drag` tick — applied to the tee, target/pin, and
-  measure-dot markers. Verified precisely: dragged the target marker to a known release pixel,
-  then re-derived its final geographic position's own screen projection — it landed ~53px above
-  the release point (target 50px; the few-pixel difference is drag-simulation step rounding, not
-  a bug). Removed the now-redundant CSS transform (stacking it on top of the real coordinate
-  offset would have doubled it) but kept the green highlight color for "actively dragging"
-  feedback.
-- Auto-fit viewport padding updated to `{top:120, bottom:180, left:60, right:60}` (previously
-  `{80,120,50,50}`) — pushes the tee further from the bottom edge and the green further from the
-  top, giving more breathing room around both ends. Confirmed via screenshot.
-- Dynamic dispersion centering, the Par 3 fairway-tracking skip, the stacked bottom-left HUD, and
-  tap-away dismissal (all from the prior two turns) were re-verified working, not re-implemented —
-  no regressions from this turn's drag-handler changes.
-- Teebox selector hiding "once the round starts" was already correctly implemented via the
-  existing `!round` render gate (a round is created with `status: "in_progress"` the instant
-  `startRound()` resolves, so `round` transitions null → non-null at exactly that moment) — no
-  code change needed, just confirmed the existing gate already satisfies the requirement.
+This turn's incoming code changes (from the external planning tool) had NOT actually been
+compiled or verified despite `walkthrough.md` claiming "zero errors" — `npx tsc -b` (the project's
+real build, which has `noUnusedLocals`/`noUnusedParameters` on) surfaced 5 genuine errors that the
+tool's own `tsc --noEmit` check apparently missed:
+
+- `CourseEditorPage.tsx`: both `turf.buffer()` call sites (Point hazard on map click, Line hazard
+  on Finish) accessed `.geometry` on the result without checking for `undefined` first — `turf`'s
+  own TS typing marks `buffer()`'s return as possibly `undefined` for degenerate inputs. Fixed by
+  null-checking `buffered` before use at both sites; the Line site bails out of `handleFinishDrawing`
+  early (still runs the `finally` block resetting `drawingMode`/`drawingCoords`, per normal JS
+  `try`/`finally` semantics) rather than assuming success.
+- `RoundMapPage.tsx`: after the dispersion picker JSX was deleted, `clubPickerStyle`,
+  `clubChipStyle`, and `clubChipActiveStyle` were left behind as now-unused module-level `const`
+  declarations — `noUnusedLocals` flags these as build errors, not just lint warnings, in this
+  project's `tsconfig.app.json`. Deleted all three; confirmed via grep no other references remained
+  (`dispersionPickerOpen`, `activeClubId`, `dispersionEllipse`, `getClubDispersion`,
+  `DispersionEllipseSpec` are all fully gone from the file too).
+
+Verified end-to-end in a real Playwright-driven browser after fixing the above (build was clean
+before touching the app):
+- Version badge (`1.0`, `pointer-events: none`) renders fixed-bottom-right on both the home page
+  and the round map page.
+- The 📐 dispersion button and its chip panel are gone from the round map's right pill.
+- Dragging the tee marker: map bearing measured identical before and mid-drag (no spin/pan).
+- Dragging a measure dot: its label's inline style flips to `top: 10px; left: 44px;
+  transform: translateY(-50%)` mid-drag and back to `top: 36px; left: 50%; transform:
+  translateX(-50%)` on release — confirmed via direct DOM inspection of the label element (not the
+  marker wrapper, which has its own unrelated Mapbox-managed transform).
+- Course Editor: drew a Point hazard by clicking the map — confirmed a new `HoleFeature` row
+  (`featureType: "hazard"`, `geometry.type: "Polygon"`, buffered ring) appeared in IndexedDB, and
+  the blue circle rendered on the map. Deleted a hazard via its 🗑️ button — confirmed the total
+  hazard count decremented by exactly 1 in IndexedDB. Drew a Line hazard (2 vertices + Finish) —
+  confirmed it saved as a buffered `Polygon` too.
+- fitBounds padding change (`{top:104, bottom:122, left:60, right:60}`) confirmed present in the
+  camera re-centering effect and visually screenshotted; Mapbox's pitched-camera bounds-fitting is
+  an approximation (documented in DESIGN.md §8), so exact pixel alignment with the 🎯 icon isn't
+  literally pinned, matching the pre-existing caveat already noted for the initial auto-fit.
