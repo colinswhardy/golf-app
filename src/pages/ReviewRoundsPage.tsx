@@ -5,6 +5,7 @@ import { getHolesForVersion } from "../lib/courseRepo";
 import { listCompletedRounds, listShotsForRoundHole, setShotAimPoint } from "../lib/roundRepo";
 import { LIE_LABELS } from "../lib/lie";
 import { ReviewMap } from "../components/ReviewMap";
+import { ScorecardSheet, relativeToParLabel } from "../components/RoundSheets";
 import { PageHeader } from "../components/PageHeader";
 import type { LatLng } from "../types/domain";
 
@@ -12,6 +13,7 @@ export function ReviewRoundsPage() {
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
   const [holeNumber, setHoleNumber] = useState(1);
   const [armedShotId, setArmedShotId] = useState<string | null>(null);
+  const [showScorecard, setShowScorecard] = useState(false);
 
   const completedRounds = useLiveQuery(async () => {
     const rounds = await listCompletedRounds();
@@ -19,7 +21,19 @@ export function ReviewRoundsPage() {
       rounds.map(async (round) => {
         const version = await db.courseVersions.get(round.courseVersionId);
         const course = version ? await db.courses.get(version.courseId) : undefined;
-        return { round, courseName: course?.name ?? "Unknown course" };
+        const holes = version ? await getHolesForVersion(version.id) : [];
+        const roundHoles = await db.roundHoles.where("roundId").equals(round.id).toArray();
+        // Total to-par across only the holes actually scored, so a partial round still summarizes.
+        let toPar = 0;
+        let scoredHoles = 0;
+        for (const h of holes) {
+          const rh = roundHoles.find((r) => r.holeId === h.id);
+          if (rh?.score != null) {
+            toPar += rh.score - h.par;
+            scoredHoles += 1;
+          }
+        }
+        return { round, courseName: course?.name ?? "Unknown course", toPar, scoredHoles };
       })
     );
   }, []);
@@ -52,11 +66,32 @@ export function ReviewRoundsPage() {
 
   const clubs = useLiveQuery(() => db.clubs.toArray(), []);
 
+  // Full scorecard for the open round (all holes, scored or not) — reuses the in-round
+  // ScorecardSheet component so the review scorecard matches what you saw while playing.
+  const allRoundHoles = useLiveQuery(
+    () => (selectedRound ? db.roundHoles.where("roundId").equals(selectedRound.id).toArray() : []),
+    [selectedRound?.id]
+  );
+  const scorecardEntries = useMemo(() => {
+    if (!holes) return [];
+    return [...holes]
+      .sort((a, b) => a.number - b.number)
+      .map((h) => ({
+        holeNumber: h.number,
+        par: h.par,
+        score: allRoundHoles?.find((rh) => rh.holeId === h.id)?.score ?? null
+      }));
+  }, [holes, allRoundHoles]);
+
   // A newly-selected round or hole shouldn't carry over an armed aim-target toggle from
   // whatever was being reviewed before.
   useEffect(() => {
     setArmedShotId(null);
   }, [selectedRoundId, currentHole?.id]);
+  // Close the scorecard overlay when switching rounds.
+  useEffect(() => {
+    setShowScorecard(false);
+  }, [selectedRoundId]);
 
   async function handleMapClick(point: LatLng) {
     if (!armedShotId) return;
@@ -80,9 +115,17 @@ export function ReviewRoundsPage() {
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {completedRounds.map(({ round, courseName }) => (
+            {completedRounds.map(({ round, courseName, toPar, scoredHoles }) => (
               <button key={round.id} onClick={() => openRound(round.id)} style={roundListItemStyle}>
-                <div style={{ fontWeight: 600 }}>{courseName}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+                  <div style={{ fontWeight: 600 }}>{courseName}</div>
+                  {scoredHoles > 0 && (
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#f5d90a" }}>
+                      {relativeToParLabel(toPar)}
+                      <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 400 }}> · {scoredHoles} holes</span>
+                    </div>
+                  )}
+                </div>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>{round.playedOn}</div>
               </button>
             ))}
@@ -97,6 +140,9 @@ export function ReviewRoundsPage() {
       <div style={{ position: "relative", flex: "0 0 55%" }}>
         <button onClick={() => setSelectedRoundId(null)} style={backButtonStyle} aria-label="Back to round list">
           ←
+        </button>
+        <button onClick={() => setShowScorecard(true)} style={scorecardButtonStyle} aria-label="Show scorecard" title="Scorecard">
+          📋 Scorecard
         </button>
         {currentHole && (
           <div style={holeHeaderStyle}>
@@ -150,9 +196,26 @@ export function ReviewRoundsPage() {
           })
         )}
       </div>
+
+      {showScorecard && <ScorecardSheet entries={scorecardEntries} onClose={() => setShowScorecard(false)} />}
     </div>
   );
 }
+
+const scorecardButtonStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 12,
+  right: 12,
+  zIndex: 3,
+  padding: "8px 14px",
+  background: "rgba(11,15,12,0.85)",
+  color: "#eef2ef",
+  border: "1px solid #2f5c3d",
+  borderRadius: 999,
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer"
+};
 
 const roundListItemStyle: React.CSSProperties = {
   display: "block",

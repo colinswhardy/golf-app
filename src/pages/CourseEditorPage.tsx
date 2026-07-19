@@ -4,7 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import * as turf from "@turf/turf";
-import { deleteHoleFeature, getFeaturesForHole, getHolesForVersion, getLatestCourseVersion, getTeeBoxesForHole, listCourses, saveCustomHazard, updateTeeBoxLocation } from "../lib/courseRepo";
+import { createTeeBox, deleteHoleFeature, getFeaturesForHole, getHolesForVersion, getLatestCourseVersion, getTeeBoxesForHole, listCourses, saveCustomHazard, updateHoleGreenPoint, updateHoleWaypoints, updateTeeBoxLocation } from "../lib/courseRepo";
 import { PageHeader } from "../components/PageHeader";
 import { SATELLITE_STYLE } from "../components/CourseMap";
 import type { LatLng, TeeBox } from "../types/domain";
@@ -85,6 +85,17 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   const [drawingMode, setDrawingMode] = useState<"none" | "point" | "line" | "area">("none");
   const [drawingCoords, setDrawingCoords] = useState<LatLng[]>([]);
 
+  // --- Green + waypoint editing states ---
+  // draftGreen is the editable green position: null means "no override, use the polygon centroid"
+  // (the marker renders at draftGreen ?? greenCentroid). greenDirty tracks an unsaved drag/place.
+  const [draftGreen, setDraftGreen] = useState<LatLng | null>(null);
+  const [greenDirty, setGreenDirty] = useState(false);
+  // Waypoint markers are managed imperatively (like the measure dots on the round map); waypointMode
+  // arms map-tap-to-add, waypointDirty flags unsaved add/drag/delete edits.
+  const [waypointMode, setWaypointMode] = useState(false);
+  const [waypointDirty, setWaypointDirty] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
+
   const selectedTeeBox = teeBoxes?.find((t) => t.id === selectedTeeBoxId) ?? null;
   const isDirty = !!selectedTeeBox && !!draftLocation && (draftLocation.lat !== selectedTeeBox.location.lat || draftLocation.lng !== selectedTeeBox.location.lng);
 
@@ -94,6 +105,10 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
     setStatus(null);
     setDrawingMode("none");
     setDrawingCoords([]);
+    setWaypointMode(false);
+    setWaypointDirty(false);
+    setDraftGreen(currentHole?.greenPoint ?? null);
+    setGreenDirty(false);
   }, [currentHole?.id, teeBoxes?.length]);
   useEffect(() => {
     setDraftLocation(selectedTeeBox?.location ?? null);
@@ -104,10 +119,17 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const teeMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const greenMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const waypointMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const draftLocationRef = useRef(draftLocation);
   draftLocationRef.current = draftLocation;
   const setDraftLocationRef = useRef(setDraftLocation);
   setDraftLocationRef.current = setDraftLocation;
+  const setDraftGreenRef = useRef(setDraftGreen);
+  setDraftGreenRef.current = setDraftGreen;
+  const setGreenDirtyRef = useRef(setGreenDirty);
+  setGreenDirtyRef.current = setGreenDirty;
+  const setWaypointDirtyRef = useRef(setWaypointDirty);
+  setWaypointDirtyRef.current = setWaypointDirty;
 
   // --- Map init: one map per courseId (not per hole — just recentres/repositions markers as
   // the hole/selection changes, avoiding a full teardown+rebuild on every hole navigation). ---
@@ -123,6 +145,7 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
     mapRef.current = map;
 
     map.on("load", () => {
+      setMapReady(true);
       // Add existing-hazards source & layers
       map.addSource("existing-hazards", {
         type: "geojson",
@@ -192,6 +215,8 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
       mapRef.current = null;
       teeMarkerRef.current = null;
       greenMarkerRef.current = null;
+      waypointMarkersRef.current.clear();
+      setMapReady(false);
     };
   }, []);
 
@@ -298,25 +323,102 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
     };
   }, [drawingMode, currentHole]);
 
-  // --- Green reference marker (read-only) ---
+  // --- Draggable green marker: renders at the editor override (draftGreen) if set, else the
+  // polygon centroid. Dragging it stages a green-location override (saved via "Save green"), which
+  // the round map then uses as the aim target — including for holes that have no green polygon. ---
+  const greenPos = draftGreen ?? greenCentroid;
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !greenCentroid) {
+    if (!map || !greenPos) {
       greenMarkerRef.current?.remove();
       greenMarkerRef.current = null;
       return;
     }
     if (!greenMarkerRef.current) {
       const el = document.createElement("div");
-      el.style.cssText =
-        "width:14px;height:14px;border-radius:50%;background:#e63946;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.5);";
-      greenMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "center" })
-        .setLngLat([greenCentroid.lng, greenCentroid.lat])
+      el.className = "map-touch-target";
+      el.style.cssText = "width:44px;height:44px;display:flex;align-items:center;justify-content:center;";
+      const dot = document.createElement("div");
+      dot.className = "map-touch-dot";
+      dot.style.cssText =
+        "width:16px;height:16px;border-radius:50%;background:#e63946;border:3px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.5);cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
+      el.appendChild(dot);
+      const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
+        .setLngLat([greenPos.lng, greenPos.lat])
         .addTo(map);
+      marker.on("drag", () => {
+        const p = applyTouchDragOffset(map, marker);
+        setDraftGreenRef.current(p);
+        setGreenDirtyRef.current(true);
+      });
+      marker.on("dragend", () => {
+        const pos = marker.getLngLat();
+        setDraftGreenRef.current({ lat: pos.lat, lng: pos.lng });
+        setGreenDirtyRef.current(true);
+      });
+      greenMarkerRef.current = marker;
     } else {
-      greenMarkerRef.current.setLngLat([greenCentroid.lng, greenCentroid.lat]);
+      greenMarkerRef.current.setLngLat([greenPos.lng, greenPos.lat]);
     }
-  }, [greenCentroid]);
+  }, [greenPos?.lat, greenPos?.lng]);
+
+  // Creates one draggable waypoint marker (double-click to delete). Imperative, like the round
+  // map's measure dots — positions are read back off the markers on save.
+  function addWaypointMarker(point: LatLng) {
+    const map = mapRef.current;
+    if (!map) return;
+    const id = crypto.randomUUID();
+    const el = document.createElement("div");
+    el.className = "map-touch-target";
+    el.style.cssText = "width:44px;height:44px;display:flex;align-items:center;justify-content:center;";
+    const dot = document.createElement("div");
+    dot.className = "map-touch-dot";
+    dot.style.cssText =
+      "width:16px;height:16px;border-radius:50%;background:#f5d90a;border:3px solid #111;box-shadow:0 0 4px rgba(0,0,0,.5);cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
+    el.appendChild(dot);
+    const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
+      .setLngLat([point.lng, point.lat])
+      .addTo(map);
+    marker.on("drag", () => {
+      applyTouchDragOffset(map, marker);
+      setWaypointDirtyRef.current(true);
+    });
+    marker.on("dragend", () => setWaypointDirtyRef.current(true));
+    el.addEventListener("dblclick", (evt) => {
+      evt.stopPropagation();
+      marker.remove();
+      waypointMarkersRef.current.delete(id);
+      setWaypointDirtyRef.current(true);
+    });
+    waypointMarkersRef.current.set(id, marker);
+  }
+
+  // Rebuilds the waypoint markers from the hole's saved waypoints whenever the hole changes (or the
+  // map first becomes ready). Runs only when not mid-edit so it never wipes unsaved additions.
+  useEffect(() => {
+    if (!mapReady || !currentHole) return;
+    waypointMarkersRef.current.forEach((m) => m.remove());
+    waypointMarkersRef.current.clear();
+    for (const wp of currentHole.waypoints ?? []) addWaypointMarker(wp);
+    setWaypointDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentHole?.id, mapReady]);
+
+  // --- Waypoint add-on-tap (only while waypoint mode is armed) ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !waypointMode) return;
+    const onClick = (e: mapboxgl.MapMouseEvent) => {
+      addWaypointMarker({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+      setWaypointDirty(true);
+    };
+    map.on("click", onClick);
+    map.getCanvas().style.cursor = "crosshair";
+    return () => {
+      map.off("click", onClick);
+      map.getCanvas().style.cursor = "";
+    };
+  }, [waypointMode]);
 
   // --- Draggable tee marker for the selected tee box; recenters the camera on hole/selection change ---
   useEffect(() => {
@@ -354,13 +456,17 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   }, [draftLocation]);
 
   // Recenters the camera once per hole/tee-box selection (not on every drag tick, or the map
-  // would fight the marker being dragged).
+  // would fight the marker being dragged). Falls back to the green when a hole has no tee box yet
+  // (otherwise the editor would leave you stranded on the wrong part of the course for exactly the
+  // holes you most need to fix — the ones missing a tee).
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selectedTeeBox) return;
-    map.easeTo({ center: [selectedTeeBox.location.lng, selectedTeeBox.location.lat], zoom: 18, duration: 400 });
+    if (!map || !mapReady) return;
+    const center = selectedTeeBox?.location ?? greenPos ?? null;
+    if (!center) return;
+    map.easeTo({ center: [center.lng, center.lat], zoom: 18, duration: 400 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTeeBox?.id]);
+  }, [selectedTeeBox?.id, currentHole?.id, mapReady]);
 
   async function handleSave() {
     if (!selectedTeeBox || !draftLocation) return;
@@ -372,6 +478,45 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
     if (!selectedTeeBox) return;
     setDraftLocation(selectedTeeBox.location);
     setStatus(null);
+  }
+
+  // Creates a tee box at the current map center for a hole that has none (the OSM import left some
+  // holes with no tee, which makes them unplayable on the round map). Named "Tee" to match the
+  // import's generic fallback name; drag + Save afterward to fine-tune, same as any other tee.
+  async function handleAddTeeBox() {
+    const map = mapRef.current;
+    if (!map || !currentHole) return;
+    const c = map.getCenter();
+    const tee = await createTeeBox(currentHole.id, "Tee", { lat: c.lat, lng: c.lng });
+    setSelectedTeeBoxId(tee.id);
+    setStatus("Added a tee box — drag it into place, then Save.");
+  }
+
+  async function handleSaveGreen() {
+    if (!currentHole || !draftGreen) return;
+    await updateHoleGreenPoint(currentHole.id, draftGreen);
+    setGreenDirty(false);
+    setStatus("Saved green location.");
+  }
+
+  async function handleResetGreen() {
+    if (!currentHole) return;
+    await updateHoleGreenPoint(currentHole.id, null);
+    setDraftGreen(null);
+    setGreenDirty(false);
+    setStatus("Cleared green override (back to mapped green).");
+  }
+
+  async function handleSaveWaypoints() {
+    if (!currentHole) return;
+    const points = Array.from(waypointMarkersRef.current.values()).map((m) => {
+      const p = m.getLngLat();
+      return { lat: p.lat, lng: p.lng };
+    });
+    await updateHoleWaypoints(currentHole.id, points);
+    setWaypointDirty(false);
+    setWaypointMode(false);
+    setStatus(points.length ? `Saved ${points.length} waypoint${points.length === 1 ? "" : "s"}.` : "Cleared waypoints.");
   }
 
   async function handleFinishDrawing() {
@@ -463,7 +608,12 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
         </div>
       )}
 
-      {teeBoxes && teeBoxes.length === 0 && <div style={emptyBannerStyle}>No tee boxes mapped for this hole.</div>}
+      {teeBoxes && teeBoxes.length === 0 && (
+        <div style={emptyBannerStyle}>
+          No tee boxes mapped for this hole.
+          <button onClick={handleAddTeeBox} style={addTeeButtonStyle}>+ Add tee box (map center)</button>
+        </div>
+      )}
 
       {/* Hazard Manager Panel */}
       {currentHole && (
@@ -524,9 +674,67 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
         </div>
       )}
 
+      {/* Green + Waypoints panel (left side, opposite the hazard panel) */}
+      {currentHole && (
+        <div style={greenPanelStyle}>
+          <div style={{ fontWeight: 700, fontSize: 13, borderBottom: "1px solid #2f5c3d", paddingBottom: 4 }}>
+            Green &amp; Waypoints
+          </div>
+
+          <div style={{ fontSize: 11, opacity: 0.8 }}>
+            {greenPos ? "Drag the red dot to move the green." : "No green yet — place one:"}
+          </div>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {!greenPos && (
+              <button
+                onClick={() => {
+                  const c = mapRef.current?.getCenter();
+                  if (c) {
+                    setDraftGreen({ lat: c.lat, lng: c.lng });
+                    setGreenDirty(true);
+                  }
+                }}
+                style={hazardMiniButtonStyle}
+              >
+                + Green (center)
+              </button>
+            )}
+            <button onClick={handleSaveGreen} disabled={!greenDirty} style={{ ...hazardSaveButtonStyle, opacity: greenDirty ? 1 : 0.5 }}>
+              Save green
+            </button>
+            {(currentHole.greenPoint || draftGreen) && (
+              <button onClick={handleResetGreen} style={hazardCancelButtonStyle}>
+                Reset
+              </button>
+            )}
+          </div>
+
+          <div style={{ fontWeight: 600, fontSize: 12, marginTop: 6 }}>
+            Waypoints ({waypointMarkersRef.current.size})
+          </div>
+          <div style={{ fontSize: 11, opacity: 0.8 }}>
+            {waypointMode ? "Tap the map to add layup points. Drag to move, double-tap to remove." : "Saved layup points seed dots when you play the hole."}
+          </div>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            <button
+              onClick={() => {
+                setWaypointMode((v) => !v);
+                setDrawingMode("none");
+              }}
+              style={{ ...hazardMiniButtonStyle, ...(waypointMode ? { background: "#f5d90a", color: "#111" } : {}) }}
+            >
+              {waypointMode ? "Done adding" : "+ Add waypoints"}
+            </button>
+            <button onClick={handleSaveWaypoints} disabled={!waypointDirty} style={{ ...hazardSaveButtonStyle, opacity: waypointDirty ? 1 : 0.5 }}>
+              Save waypoints
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={bottomPanelStyle}>
         <div style={{ fontSize: 12, opacity: 0.75 }}>
-          {selectedTeeBox ? `Dragging "${selectedTeeBox.name}" — red dot is the green for reference.` : "Select a tee to edit."}
+          {selectedTeeBox ? `Dragging "${selectedTeeBox.name}" — red dot is the green.` : "Edit the green/waypoints, or add a tee box."}
           {status && <div style={{ color: "#10b981", marginTop: 4 }}>{status}</div>}
         </div>
         <div style={{ display: "flex", gap: 10 }}>
@@ -629,14 +837,49 @@ const teeChipActiveStyle: React.CSSProperties = {
 
 const emptyBannerStyle: React.CSSProperties = {
   position: "absolute",
-  top: 76,
-  left: 12,
+  bottom: 84,
+  left: "50%",
+  transform: "translateX(-50%)",
   zIndex: 2,
-  background: "rgba(11,15,12,0.85)",
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  background: "rgba(11,15,12,0.9)",
   color: "#fca5a5",
   padding: "8px 12px",
   borderRadius: 8,
-  fontSize: 12
+  fontSize: 12,
+  whiteSpace: "nowrap"
+};
+
+const addTeeButtonStyle: React.CSSProperties = {
+  padding: "6px 10px",
+  background: "#1a3a24",
+  color: "#eef2ef",
+  border: "1px solid #2f5c3d",
+  borderRadius: 6,
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+  whiteSpace: "nowrap"
+};
+
+const greenPanelStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 76,
+  left: 12,
+  zIndex: 2,
+  width: 190,
+  maxHeight: "60vh",
+  background: "rgba(11,15,12,0.92)",
+  border: "1px solid #2f5c3d",
+  borderRadius: 12,
+  padding: 10,
+  color: "#eef2ef",
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  overflowY: "auto"
 };
 
 const bottomPanelStyle: React.CSSProperties = {

@@ -219,6 +219,29 @@ bunker polygon later.
     per-pixel placement — the green consistently lands near the top, but the tee isn't pinned to
     the literal bottom edge on every hole. Falls back to the old fixed `zoom: 17` centered view
     when `fallbackOrigin`/`initialTarget` aren't both available yet (e.g. demo mode).
+  - **Live-GPS activation range + off switch**: `usingLiveGps` swaps live GPS in for the saved-tee
+    origin once the device is within `GPS_ACTIVE_MAX_METERS` (2000 yards ≈ 1828.8 m) of the tee —
+    widened from a much tighter 300m so real position drives the map anywhere on/near the course,
+    not just on the tee. A `gpsEnabled` prop (Settings › Location "Use live GPS on the course",
+    persisted in `lib/settings.ts` under `caddyshot_gps_enabled`, default on) forces GPS off
+    entirely: the `watchPosition` effect early-returns and clears `me`, so `origin` falls back to
+    the saved tee. Read once on `RoundMapPage` mount, so toggling it takes effect next round open.
+  - **Overlapping measure-dot dedupe**: after a user adds or drops a measure dot, `dedupeMeasureDots`
+    removes any dot whose on-screen center (via `map.project`) is within `DEDUPE_PX` (26px) of an
+    earlier one, so dots never pile up. Deliberately skipped when *seeding* dots (saved waypoints,
+    auto-layup — `addMeasureMarker(point, false)`): those are already known-distinct, and running the
+    pixel dedupe during early mount, before the canvas is final-sized and `map.project` is reliable,
+    would falsely collapse genuinely separate seeded dots.
+  - **Saved waypoints seed the measure line** (`initialWaypoints`, from `Hole.waypoints`): placed
+    once on mount, and when present they suppress the automatic layup suggestion (they *are* the
+    user's considered layup line). `waypointsSeededRef` guards the one-shot — and, like
+    `autoLayupPlacedRef`, it is reset in the map-init cleanup, or StrictMode's throwaway first mount
+    would consume the guard and the real mount would silently skip seeding (a bug this exact reset
+    fixes; see the marker-refs note above for the same StrictMode hazard).
+  - **In-round text scale**: the on-course HUD/header/pill/label sizes are deliberately large for
+    arm's-length sunlight reading — measure-dot segment labels ~2x (22px), plus scaled-up hole
+    header, BACK/CTR/FRONT card, right pill, tee selector, and bottom bar. The 📋 scorecard pill was
+    replaced by a live score-to-par badge (`relativeToParLabel`, e.g. "-2"/"E"/"+3", "–" pre-round).
   - **Camera re-centering now also uses `fitBounds`, not `easeTo`**: the `[target, origin]` effect
     that re-orients the camera as the target/tee change used to call `map.easeTo({ center: origin,
     bearing, pitch })` — a fixed zoom that didn't re-frame the hole. It now calls the same
@@ -388,6 +411,13 @@ couldn't).
 joined through `courseVersions` to `courses` for a display name), then a hole-by-hole stepper for
 the selected round's actual recorded shots.
 
+- **Scorecard**: the round list shows each round's to-par + holes-scored summary, and an open round
+  has a "Scorecard" button that opens the same `ScorecardSheet` component the live round map uses
+  (hole/par/score/± with a running total) — built from the round's `roundHoles` joined to the
+  version's holes, so the review scorecard is literally the in-round one, not a parallel
+  implementation. Only holes with a recorded `score` count toward the total, so a partial round
+  still summarizes sensibly.
+
 - **`ReviewMap.tsx` is a separate component from `CourseMap`**, not more optional props bolted
   onto it. Reviewing a completed round has a fundamentally different interaction model — a fixed
   historical shot path, tapping the map to set a *planned* aim point — versus a live round's
@@ -512,14 +542,14 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
   of them. Shots without a recorded aim point are skipped — there's no meaningful "offline" axis
   without knowing what was being aimed at. Falls back to manual values when there isn't enough
   actual history yet.
-- **Round map picker removed**: `RoundMapPage` previously exposed this via a club-picker chip row
-  behind a 📐 pill button (`dispersionPickerOpen`/`activeClubId`/`dispersionEllipse` state, plus
-  the `clubPickerStyle` chip panel) — deleted entirely as a deliberate scope cut, along with the
-  `dispersionEllipse` prop passed to `CourseMap`. The underlying machinery below
-  (`computeDispersionEllipse`, `lib/dispersion.ts`, `CourseMap`'s `DispersionEllipseSpec` prop and
-  drawing/centering logic) is untouched and still fully wired — only the round-map trigger UI is
-  gone. Re-adding a picker (e.g. elsewhere in the chrome) would just mean re-wiring the same prop,
-  not rebuilding the underlying computation.
+- **Round map picker** (`RoundMapPage`): the 📐 pill button toggles a club-chip panel
+  (`clubPickerStyle`) with an explicit ✕ close control in its header; `activeClubId` → an effect
+  resolves the club's `DispersionEllipseSpec` via `getClubDispersion` and passes it to `CourseMap`
+  as `dispersionEllipse`. "None" clears it. (This trigger UI was briefly removed and then brought
+  back with the close button; the underlying `computeDispersionEllipse` / `lib/dispersion.ts` /
+  `CourseMap` drawing+centering was never touched.) The ellipse only actually draws once the chosen
+  club has dispersion data — manual front/back+left/right in Settings, or enough recorded shots with
+  known aim points — so selecting a brand-new club with neither shows nothing, by design.
   - **Centering** (`getDispersionCenter()`): the target of the shot currently being played, not
     always the green — `RoundMapPage` passes `currentShotNumber={shotCount + 1}` down; shot 1
     centers on the nearest-to-origin measure dot (`dots[0]`), shot 2 on the second-nearest
@@ -663,6 +693,29 @@ Turbo + a re-import for a one-tee-box fix.
   schema/complexity cost; the existing Data Imports flow remains the path to a genuine from-scratch
   re-import if a full reset is ever needed.
 - Home's 4th tile (previously blank) now links here.
+- **Editing green location, waypoints, and creating tees** (all persisted on the `Hole`, so they
+  reload whenever the course is next played — see `courseRepo.updateHoleGreenPoint` /
+  `updateHoleWaypoints` / `createTeeBox`):
+  - **Green** — the reference marker (formerly read-only) is now draggable; dragging stages a
+    `draftGreen`, "Save green" writes `Hole.greenPoint`, "Reset" clears it back to the polygon
+    centroid. For a hole with no green polygon at all, "+ Green (center)" drops one at the map
+    center. `RoundMapPage.greenCentroid` prefers `hole.greenPoint` over the derived centroid — so
+    this both corrects mis-mapped greens and, critically, gives a target to greenless holes that
+    otherwise never resolve one and sit on "Loading course…" (Tarandowah 6/12/13/15; see the OSM
+    data-gap note).
+  - **Waypoints** — a "+ Add waypoints" mode arms map-tap-to-place; markers are draggable and
+    double-tap-delete (managed imperatively in `waypointMarkersRef`, like the round map's measure
+    dots), "Save waypoints" writes `Hole.waypoints`. Rebuilt from the saved list on every hole
+    change (gated on a `mapReady` state so it doesn't run before the map's "load"). Consumed by the
+    round map via `initialWaypoints` (see §8).
+  - **Tee creation** — a hole with zero tee boxes shows "+ Add tee box (map center)" (bottom-center,
+    so it clears the left green/waypoint panel), which `createTeeBox`s a "Tee" at the map center;
+    drag + Save to place it. This is what makes the no-tee holes (12/13) playable at all, since the
+    round map can't render without a `fallbackOrigin`.
+  - The camera recenter falls back to the green (`greenPos`) when a hole has no selected tee, so the
+    editor doesn't strand you off-hole on exactly the holes most in need of fixing. (Holes with
+    *neither* tee nor green — 12/13 before editing — still open at the map's default center; pan to
+    the hole to drop the first tee.)
 - **Tee marker drag also uses `applyTouchDragOffset`**: the editor's own tee marker drag handler
   (separate implementation from `CourseMap`'s, since this is a standalone map — see above) applies
   the same 50px mathematical screen-space offset (§8) rather than a plain `marker.getLngLat()`

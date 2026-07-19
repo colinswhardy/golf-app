@@ -42,6 +42,14 @@ export interface Hole {
   /** Freeform per-hole notes (yardage reminders, strategy, etc), persisted so they reload the
    * next time this course/hole is played — not tied to a specific round. */
   notes?: string | null;
+  /** Course-editor override for the green center / aim target. When set, the round map uses this
+   * as the green (target + camera framing) instead of deriving a centroid from the green polygon —
+   * lets you correct a mis-mapped green, or give a green to a hole the OSM import left without one. */
+  greenPoint?: LatLng | null;
+  /** Saved mid-hole waypoints (layup / aim points), set in the course editor and seeded as
+   * measure dots automatically the next time this hole is played. Persist with the course, not the
+   * round, so a considered layup line reloads every time. */
+  waypoints?: LatLng[] | null;
   updatedAt: string;
 }
 

@@ -105,6 +105,10 @@ interface CourseMapProps {
    * line/camera always anchor to the saved tee (fallbackOrigin), matching the Settings "use
    * saved tees instead of GPS" toggle. Defaults to true. */
   gpsEnabled?: boolean;
+  /** Saved course-editor waypoints, seeded once on mount as measure dots. When present they take
+   * the place of the automatic layup suggestion (autoLayupPoint) — these are the user's own
+   * considered layup line for the hole. Still fully draggable/deletable afterward. */
+  initialWaypoints?: LatLng[] | null;
 }
 
 /**
@@ -129,7 +133,8 @@ export function CourseMap({
   dispersionEllipse,
   autoLayupPoint,
   currentShotNumber,
-  gpsEnabled = true
+  gpsEnabled = true,
+  initialWaypoints
 }: CourseMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -334,6 +339,11 @@ export function CourseMap({
       measureMarkersRef.current.clear();
       isDraggingTargetRef.current = false;
       autoLayupPlacedRef.current = false;
+      // Reset alongside autoLayupPlacedRef: without this, StrictMode's throwaway first mount sets
+      // waypointsSeededRef true and adds the seeded dots to the map it then tears down, and the real
+      // remount skips re-seeding — so saved waypoints silently never appear (the auto-layup dot does
+      // instead). Same class of bug the marker refs above guard against.
+      waypointsSeededRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -569,7 +579,11 @@ export function CourseMap({
     });
   }
 
-  function addMeasureMarker(point: LatLng) {
+  // dedupe defaults on for user taps/drags; seeding (saved waypoints, auto-layup) passes false —
+  // those points are already known-distinct, and running the pixel-based dedupe during early mount
+  // (before the map canvas has its final size, so map.project is unreliable) can falsely collapse
+  // two genuinely separate seeded dots into one.
+  function addMeasureMarker(point: LatLng, dedupe = true) {
     const map = mapRef.current;
     if (!map) return;
     const id = crypto.randomUUID();
@@ -630,7 +644,7 @@ export function CourseMap({
     updateLineAndLabels();
     updateDispersionEllipse();
     // If this new dot landed right on top of an existing one, drop it back to a single dot.
-    dedupeMeasureDots();
+    if (dedupe) dedupeMeasureDots();
   }
 
   // Removes any measure dot whose on-screen position sits within DEDUPE_PX of an earlier dot, so
@@ -816,11 +830,27 @@ export function CourseMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispersionEllipse, target, origin, currentShotNumber]);
 
+  const autoLayupPlacedRef = useRef(false);
+
+  // Seeds the hole's saved course-editor waypoints as measure dots once on mount, and marks the
+  // auto-layup suggestion as already-placed so it doesn't also drop a dot — the user's saved layup
+  // line wins over the automatic guess. Declared before the auto-layup effect so it runs first.
+  const waypointsSeededRef = useRef(false);
+  useEffect(() => {
+    if (waypointsSeededRef.current || !initialWaypoints || initialWaypoints.length === 0) return;
+    waypointsSeededRef.current = true;
+    autoLayupPlacedRef.current = true;
+    if (measureMarkersRef.current.size === 0) {
+      for (const wp of initialWaypoints) addMeasureMarker(wp, false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialWaypoints]);
+
   // Places one suggested layup dot at autoLayupPoint the first time it's available this mount —
   // guarded by a ref (not just "no dots yet") so it fires exactly once per hole and never fights
   // a dot the user has since dragged away or deleted. autoLayupPoint depends on stable per-hole
-  // values (tee/green), not live GPS, so this doesn't re-fire on every position tick.
-  const autoLayupPlacedRef = useRef(false);
+  // values (tee/green), not live GPS, so this doesn't re-fire on every position tick. Skipped
+  // entirely when saved waypoints already seeded the line (above).
   useEffect(() => {
     if (autoLayupPlacedRef.current || !autoLayupPoint) return;
     autoLayupPlacedRef.current = true;

@@ -263,7 +263,12 @@ export function RoundMapPage() {
   }, [isDemo, allTeeBoxes, holes]);
 
   const greenCentroid = useMemo(() => {
-    if (!holeFeatures?.length || !currentHole) return null;
+    if (!currentHole) return null;
+    // A course-editor green override wins over the derived polygon centroid — and, crucially,
+    // works even for holes the OSM import left with no green polygon at all (which otherwise
+    // never resolve a target and stay stuck on "Loading course…").
+    if (currentHole.greenPoint) return currentHole.greenPoint;
+    if (!holeFeatures?.length) return null;
     // Dexie's live-query hook keeps returning the PREVIOUS hole's already-resolved rows for a
     // few renders after currentHole.id changes, before the new query catches up — a plain
     // truthy/non-empty check doesn't catch this since the stale data is real, just for the
@@ -602,6 +607,7 @@ export function RoundMapPage() {
             autoLayupPoint={fairwayLayupPoint}
             currentShotNumber={shotCount + 1}
             gpsEnabled={gpsEnabled}
+            initialWaypoints={currentHole.waypoints}
           />
         ) : (
           <div style={{ padding: 24, color: "#eef2ef" }}>Loading course…</div>

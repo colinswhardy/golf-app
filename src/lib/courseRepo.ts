@@ -141,6 +141,35 @@ export async function updateHoleNotes(holeId: string, notes: string | null): Pro
   await queueOutbox("holes", "upsert", updated);
 }
 
+/** Course-editor override for the green center / aim target (or null to clear it and fall back to
+ * the green polygon centroid). Persisted on the hole so it reloads whenever this course is played. */
+export async function updateHoleGreenPoint(holeId: string, greenPoint: LatLng | null): Promise<void> {
+  const hole = await db.holes.get(holeId);
+  if (!hole) return;
+  const updated: Hole = { ...hole, greenPoint, updatedAt: now() };
+  await db.holes.put(updated);
+  await queueOutbox("holes", "upsert", updated);
+}
+
+/** Saved mid-hole waypoints (layup/aim points) for a hole, seeded as measure dots when it's next
+ * played. Empty array clears them. Persisted on the hole (course-level, not per-round). */
+export async function updateHoleWaypoints(holeId: string, waypoints: LatLng[]): Promise<void> {
+  const hole = await db.holes.get(holeId);
+  if (!hole) return;
+  const updated: Hole = { ...hole, waypoints: waypoints.length ? waypoints : null, updatedAt: now() };
+  await db.holes.put(updated);
+  await queueOutbox("holes", "upsert", updated);
+}
+
+/** Creates a new tee box for a hole (course editor) — used to give a playable tee to a hole the
+ * OSM import left without one, which otherwise can't render on the round map at all. */
+export async function createTeeBox(holeId: string, name: string, location: LatLng): Promise<TeeBox> {
+  const teeBox: TeeBox = { id: uuid(), holeId, name, location };
+  await db.teeBoxes.put(teeBox);
+  await queueOutbox("teeBoxes", "upsert", teeBox);
+  return teeBox;
+}
+
 const DEFAULT_CLUB_NAMES = ["Driver", "5 Wood", "4 Iron", "5 Iron", "6 Iron", "7 Iron", "8 Iron", "9 Iron", "50°", "56°", "60°", "Putter"];
 // Names only ever seeded by the old default list — presence of any of these means this
 // install still has the pre-migration clubs and needs a one-time reseed onto the new list.
