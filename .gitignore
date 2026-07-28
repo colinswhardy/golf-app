@@ -6,3 +6,6 @@ dist-ssr
 *.local
 .env
 .env.local
+
+# Claude Code local permission overrides — machine-specific, never shared
+.claude/settings.local.json
