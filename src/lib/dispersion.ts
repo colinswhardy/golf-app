@@ -19,18 +19,19 @@ export function manualDispersion(club: Club): DispersionEllipseSpec | null {
 
 /**
  * Actual dispersion computed from this club's shot history: for every recorded shot that has
- * both an end point and an aim point (set during post-round review), projects the end point into
- * the shot's own (downrange, offline) frame relative to its start->aim bearing, then fits a 90%
- * confidence ellipse across all of them. Shots without an aim point are skipped — there's no
- * meaningful "offline" axis without knowing what was being aimed at.
+ * both an end point and a target point (manual or default-applied — see targetSource), projects
+ * the end point into the shot's own (downrange, offline) frame relative to its start->target
+ * bearing, then fits a 90% confidence ellipse across all of them. Shots without a target, or
+ * excluded from stats, are skipped — there's no meaningful "offline" axis without knowing what
+ * was being aimed at.
  */
 export async function computeActualDispersion(clubId: string): Promise<DispersionEllipseSpec | null> {
   const shots = await db.shots.where("clubId").equals(clubId).toArray();
   const points: { downrangeYards: number; offlineYards: number }[] = [];
 
   for (const s of shots) {
-    if (!s.endPoint || !s.aimPointOverride) continue;
-    const bearing = bearingDegrees(s.startPoint, s.aimPointOverride);
+    if (!s.endPoint || !s.targetPoint || s.excluded || s.swingType === "putt") continue;
+    const bearing = bearingDegrees(s.startPoint, s.targetPoint);
     points.push(toDownrangeOffline(s.startPoint, bearing, s.endPoint));
   }
 

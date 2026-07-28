@@ -12,9 +12,13 @@ interface ReviewMapProps {
   shots: Shot[];
   /** Tee box, used as a camera fallback when there are no shots recorded yet for this hole. */
   fallbackOrigin: LatLng | null;
-  /** Shot id currently accepting an aim-point tap, or null if none armed. */
+  /** Shot id currently accepting a target tap, or null if none armed (drives marker highlight
+   * and the "tap the map" HUD). */
   armedShotId: string | null;
-  /** Fires with the tapped coordinate while a shot is armed. */
+  /** Forward map taps to onMapClick even without an armed shot — e.g. penalty-point entry.
+   * Defaults to false so idle taps stay inert. */
+  clickArmed?: boolean;
+  /** Fires with the tapped coordinate while a shot (or clickArmed mode) is armed. */
   onMapClick: (point: LatLng) => void;
 }
 
@@ -27,14 +31,14 @@ interface ReviewMapProps {
  * props on it — the interaction model here is fundamentally different (fixed data, tap to
  * set a planned aim point) from CourseMap's live-round GPS-driven one.
  */
-export function ReviewMap({ shots, fallbackOrigin, armedShotId, onMapClick }: ReviewMapProps) {
+export function ReviewMap({ shots, fallbackOrigin, armedShotId, clickArmed = false, onMapClick }: ReviewMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const shotMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const aimMarkersRef = useRef<mapboxgl.Marker[]>([]);
 
-  const stateRef = useRef({ shots, armedShotId, onMapClick });
-  stateRef.current = { shots, armedShotId, onMapClick };
+  const stateRef = useRef({ shots, armedShotId, clickArmed, onMapClick });
+  stateRef.current = { shots, armedShotId, clickArmed, onMapClick };
 
   const pathPoints: LatLng[] = [];
   if (shots.length) {
@@ -73,12 +77,14 @@ export function ReviewMap({ shots, fallbackOrigin, armedShotId, onMapClick }: Re
         new mapboxgl.Marker({ element: el, anchor: "center" }).setLngLat([s.startPoint.lng, s.startPoint.lat]).addTo(map)
       );
 
-      if (s.aimPointOverride) {
+      // Only hand-set targets get a marker — default-applied targets (green/pin/fairway) would
+      // just re-draw geometry the player can already see.
+      if (s.targetPoint && s.targetSource === "manual") {
         const aimEl = document.createElement("div");
         aimEl.style.cssText = "width:16px;height:16px;border-radius:50%;background:#e63946;border:2px solid #fff;";
         aimMarkersRef.current.push(
           new mapboxgl.Marker({ element: aimEl, anchor: "center" })
-            .setLngLat([s.aimPointOverride.lng, s.aimPointOverride.lat])
+            .setLngLat([s.targetPoint.lng, s.targetPoint.lat])
             .addTo(map)
         );
       }
@@ -126,8 +132,8 @@ export function ReviewMap({ shots, fallbackOrigin, armedShotId, onMapClick }: Re
     });
 
     map.on("click", (e) => {
-      const { armedShotId: curArmed, onMapClick: curOnClick } = stateRef.current;
-      if (!curArmed) return;
+      const { armedShotId: curArmed, clickArmed: curClickArmed, onMapClick: curOnClick } = stateRef.current;
+      if (!curArmed && !curClickArmed) return;
       curOnClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
     });
 

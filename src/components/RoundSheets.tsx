@@ -116,28 +116,26 @@ export function ScorecardSheet(props: { entries: { holeNumber: number; par: numb
 }
 
 /** Bottom sheet for holing out: fairway result (Par 4+ only, pre-selected from Shot 2's
- * auto-detected landing spot but overridable) + putts (with per-putt distances) + score
- * (prefilled from recorded shots + putts). */
+ * auto-detected landing spot but overridable) + putts + score (prefilled from recorded shots +
+ * putts). Per-putt distances are gone — putts are real Shot rows placed on the green-marking
+ * screen now (REVISION-SPEC 1.5), so when green marks exist the putt count arrives pre-filled. */
 export function HoleScoreSheet(props: {
   holeNumber: number;
   par: number;
   recordedShots: number;
+  /** Putt count from the green-marking screen, when the hole was marked — pre-fills the stepper. */
+  markedPutts?: number | null;
   /** Auto-detected the moment Shot 2 was logged (see RoundMapPage.handleSaveShot) — pre-selects
    * the fairway tile below, still fully overridable by tapping a different one. Null if there
    * wasn't enough geometry to auto-detect (e.g. no mapped fairway polygon for this hole). */
   autoDetectedFairwayResult?: FairwayResult | null;
-  onSave: (
-    score: number,
-    putts: number,
-    puttDistancesFeet: (number | null)[],
-    fairwayResult: FairwayResult | null
-  ) => void;
+  onSave: (score: number, putts: number, fairwayResult: FairwayResult | null) => void;
   onClose: () => void;
 }) {
-  const [putts, setPutts] = useState(2);
+  const initialPutts = props.markedPutts ?? 2;
+  const [putts, setPutts] = useState(initialPutts);
   const [scoreTouched, setScoreTouched] = useState(false);
-  const [score, setScore] = useState(props.recordedShots + 2);
-  const [distances, setDistances] = useState<string[]>(["", ""]);
+  const [score, setScore] = useState(props.recordedShots + initialPutts);
   const [fairwayResult, setFairwayResult] = useState<FairwayResult | null>(props.autoDetectedFairwayResult ?? null);
 
   const effectiveScore = scoreTouched ? score : props.recordedShots + putts;
@@ -162,35 +160,14 @@ export function HoleScoreSheet(props: {
         </div>
       )}
       <Stepper
-        label="Putts"
+        label={props.markedPutts != null ? "Putts (from green marks)" : "Putts"}
         value={putts}
         min={0}
         onChange={(v) => {
           setPutts(v);
-          setDistances((d) => (v > d.length ? [...d, ...Array(v - d.length).fill("")] : d.slice(0, v)));
           if (!scoreTouched) setScore(props.recordedShots + v);
         }}
       />
-
-      {putts > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>Putt distances (feet, optional)</div>
-          {distances.map((d, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-              <span style={{ fontSize: 13, width: 52 }}>Putt {i + 1}</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                placeholder="ft"
-                value={d}
-                onChange={(e) => setDistances((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
-                style={distanceInputStyle}
-              />
-            </div>
-          ))}
-        </div>
-      )}
 
       <Stepper
         label={`Score${scoreTouched ? "" : ` (auto: ${props.recordedShots} shots + putts)`}`}
@@ -202,17 +179,7 @@ export function HoleScoreSheet(props: {
         }}
       />
       <button
-        onClick={() =>
-          props.onSave(
-            effectiveScore,
-            putts,
-            distances.map((d) => {
-              const n = parseFloat(d);
-              return Number.isFinite(n) && n >= 0 ? n : null;
-            }),
-            showFairway ? fairwayResult : null
-          )
-        }
+        onClick={() => props.onSave(effectiveScore, putts, showFairway ? fairwayResult : null)}
         style={primaryButtonStyle}
       >
         Save hole
@@ -335,16 +302,6 @@ const tileActiveStyle: React.CSSProperties = {
   // same property across re-renders (tileStyle uses the `border` shorthand) throws a React
   // dev warning and can cause the un-set longhand pieces (width/style) to not reset.
   border: "1px solid #f5d90a"
-};
-
-const distanceInputStyle: React.CSSProperties = {
-  flex: 1,
-  padding: "8px 10px",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 8,
-  fontSize: 14
 };
 
 const stepButtonStyle: React.CSSProperties = {
