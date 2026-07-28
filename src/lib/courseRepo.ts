@@ -1,11 +1,14 @@
 import { db } from "./db";
-import type { ParsedCourse } from "./importOverpass";
+import { IMPORTER_VERSION, type ParsedCourse } from "./importOverpass";
+import { slugify } from "./slug";
 import type { Club, Course, CourseVersion, FeatureType, Hole, HoleFeature, LatLng, TeeBox } from "../types/domain";
 
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
 
 // z-order resolves overlapping polygons during lie-detection (higher wins). See DESIGN.md §5.
+// centerline is not a lie surface — lie detection skips it entirely; 0 here is just a filler
+// for non-synthetic centerlines (synthetic ones are stored with zOrder -1, see saveImportedCourse).
 const Z_ORDER: Record<FeatureType, number> = {
   fringe: 4,
   green: 3,
@@ -15,7 +18,8 @@ const Z_ORDER: Record<FeatureType, number> = {
   hazard: 2,
   fairway: 1,
   rough: 0,
-  ob: 5
+  ob: 5,
+  centerline: 0
 };
 
 async function queueOutbox(table: string, op: "upsert" | "delete", payload: unknown) {
@@ -23,22 +27,35 @@ async function queueOutbox(table: string, op: "upsert" | "delete", payload: unkn
 }
 
 /**
- * Persists a parsed Overpass import as a new course version. If a course with
- * the same name already exists, this adds a new version under it (copy-on-write,
- * DESIGN.md §7) rather than duplicating the course.
+ * Persists a parsed Overpass import as a new course version. Dedupe is by SLUG (stable natural
+ * key), not display name: if a course with the same slug already exists, this adds a new version
+ * under it (copy-on-write, DESIGN.md §7) rather than duplicating the course. Strictly additive —
+ * existing versions/holes/features are never touched, so historical rounds keep resolving.
  */
-export async function saveImportedCourse(parsed: ParsedCourse): Promise<{ courseId: string; courseVersionId: string }> {
+export async function saveImportedCourse(
+  parsed: ParsedCourse,
+  opts?: { slug?: string }
+): Promise<{ courseId: string; courseVersionId: string }> {
+  const slug = opts?.slug ?? slugify(parsed.name);
   return db.transaction("rw", [db.courses, db.courseVersions, db.holes, db.holeFeatures, db.teeBoxes, db.outbox], async () => {
-    let course = await db.courses.where("name").equals(parsed.name).first();
+    let course = await db.courses.where("slug").equals(slug).first();
 
     if (!course) {
       course = {
         id: uuid(),
         name: parsed.name,
+        slug,
+        importerVersion: IMPORTER_VERSION,
         location: parsed.location,
         updatedAt: now(),
         deletedAt: null
       };
+      await db.courses.put(course);
+      await queueOutbox("courses", "upsert", course);
+    } else {
+      // Re-import: record which importer produced the new latest version. Name/location refresh
+      // too (OSM data may have been corrected), but nothing under old versions is modified.
+      course = { ...course, importerVersion: IMPORTER_VERSION, name: parsed.name, location: parsed.location ?? course.location, updatedAt: now() };
       await db.courses.put(course);
       await queueOutbox("courses", "upsert", course);
     }
@@ -80,7 +97,8 @@ export async function saveImportedCourse(parsed: ParsedCourse): Promise<{ course
         holeId,
         featureType: f.featureType,
         geometry: f.geometry,
-        zOrder: Z_ORDER[f.featureType]
+        // -1 marks synthetic geometry (fabricated straight tee→green centerlines) per spec 0.4.
+        zOrder: f.synthetic ? -1 : Z_ORDER[f.featureType]
       };
       await db.holeFeatures.put(feature);
       await queueOutbox("holeFeatures", "upsert", feature);
@@ -106,6 +124,12 @@ export async function listCourses(): Promise<Course[]> {
 export async function getLatestCourseVersion(courseId: string): Promise<CourseVersion | undefined> {
   const versions = await db.courseVersions.where("courseId").equals(courseId).toArray();
   return versions.sort((a, b) => b.versionNumber - a.versionNumber)[0];
+}
+
+/** Loads a specific course version by id — review paths use this (a round always renders against
+ * the geometry it was played on), while live rounds use getLatestCourseVersion. */
+export async function getCourseVersion(courseVersionId: string): Promise<CourseVersion | undefined> {
+  return db.courseVersions.get(courseVersionId);
 }
 
 export async function getHolesForVersion(courseVersionId: string): Promise<Hole[]> {
@@ -175,6 +199,9 @@ const DEFAULT_CLUB_NAMES = ["Driver", "5 Wood", "4 Iron", "5 Iron", "6 Iron", "7
 // install still has the pre-migration clubs and needs a one-time reseed onto the new list.
 const LEGACY_ONLY_CLUB_NAMES = ["3 Wood", "PW", "GW", "SW", "LW"];
 
+// Spec 5.4 defaults: shots inside these pin distances are PARTIAL swings for these clubs.
+const DEFAULT_PARTIAL_THRESHOLDS: Record<string, number> = { "56°": 80, "50°": 100 };
+
 export async function ensureDefaultClubs(): Promise<Club[]> {
   // Whole read-check-write runs as one Dexie transaction so two concurrent callers (e.g.
   // React StrictMode's dev-only double effect invocation) can't both see "empty"/"legacy"
@@ -183,10 +210,28 @@ export async function ensureDefaultClubs(): Promise<Club[]> {
   return db.transaction("rw", db.clubs, async () => {
     const existing = await db.clubs.toArray();
     const hasLegacy = existing.some((c) => LEGACY_ONLY_CLUB_NAMES.includes(c.name));
-    if (existing.length && !hasLegacy) return existing;
+    if (existing.length && !hasLegacy) {
+      // One-time idempotent backfill of the partial-swing thresholds on already-seeded clubs.
+      let changed = false;
+      for (const c of existing) {
+        const threshold = DEFAULT_PARTIAL_THRESHOLDS[c.name];
+        if (threshold !== undefined && c.fullSwingMinYards === undefined) {
+          c.fullSwingMinYards = threshold;
+          await db.clubs.put(c);
+          changed = true;
+        }
+      }
+      return changed ? db.clubs.toArray() : existing;
+    }
     if (hasLegacy) await db.clubs.clear();
 
-    const clubs: Club[] = DEFAULT_CLUB_NAMES.map((name, i) => ({ id: uuid(), name, sortOrder: i, updatedAt: now() }));
+    const clubs: Club[] = DEFAULT_CLUB_NAMES.map((name, i) => ({
+      id: uuid(),
+      name,
+      sortOrder: i,
+      fullSwingMinYards: DEFAULT_PARTIAL_THRESHOLDS[name] ?? null,
+      updatedAt: now()
+    }));
     await db.clubs.bulkPut(clubs);
     return clubs;
   });
@@ -196,10 +241,12 @@ export async function listClubs(): Promise<Club[]> {
   return (await db.clubs.toArray()).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-/** Updates a club's manual dispersion settings (Settings page dispersion table). */
+/** Updates a club's manual dispersion / stats settings (Settings page club table). */
 export async function updateClubDispersion(
   clubId: string,
-  patch: Partial<Pick<Club, "manualFrontBackYards" | "manualLeftRightYards" | "useActualDispersion">>
+  patch: Partial<
+    Pick<Club, "manualFrontBackYards" | "manualLeftRightYards" | "useActualDispersion" | "descentAngleDeg" | "fullSwingMinYards">
+  >
 ): Promise<void> {
   const club = await db.clubs.get(clubId);
   if (!club) return;

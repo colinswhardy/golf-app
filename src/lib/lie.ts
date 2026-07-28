@@ -11,7 +11,10 @@ const FEATURE_TO_LIE: Record<FeatureType, Lie> = {
   hazard: "hazard",
   ob: "ob",
   rough: "rough",
-  tee: "tee"
+  tee: "tee",
+  // Never reached — centerlines (and any other non-Polygon geometry) are skipped inside
+  // detectLie before lookup. Entry exists only to keep this Record exhaustive.
+  centerline: "rough"
 };
 
 export const ALL_LIES: Lie[] = [
@@ -50,6 +53,9 @@ export function detectLie(point: LatLng, features: HoleFeature[]): Lie {
   const pt = turf.point([point.lng, point.lat]);
   const sorted = [...features].sort((a, b) => b.zOrder - a.zOrder);
   for (const f of sorted) {
+    // Centerlines (LineString) are navigation geometry, not lie surfaces — skip any
+    // non-Polygon row rather than letting booleanPointInPolygon throw on it.
+    if (f.featureType === "centerline" || f.geometry.type !== "Polygon") continue;
     if (turf.booleanPointInPolygon(pt, turf.feature(f.geometry) as GeoJSON.Feature<GeoJSON.Polygon>)) {
       return FEATURE_TO_LIE[f.featureType];
     }

@@ -13,6 +13,13 @@ const DIRECT_TAG_MAP: Record<string, FeatureType> = {
   lateral_water_hazard: "hazard"
 };
 
+/** Version of this parser's OUTPUT. Bump whenever a parser fix/feature means already-imported
+ * courses should be re-imported (additively — a new CourseVersion; never a wipe). Compared
+ * against Course.importerVersion by seedCourses.
+ * v4: hole centerlines persisted as HoleFeature rows (real ones from golf=hole, synthetic
+ * straight tee→green lines where OSM has none), needed for target-line defaults. */
+export const IMPORTER_VERSION = 4;
+
 const GREENSIDE_BUNKER_THRESHOLD_YARDS = 30;
 // Streams/creeks/drains are usually mapped as centerlines, not polygons — buffered to a thin
 // corridor so they fit this app's polygon-only hazard model. Width is a guess (real width data
@@ -40,7 +47,11 @@ export interface ParsedHole {
 export interface ParsedFeature {
   holeNumber: number;
   featureType: FeatureType;
-  geometry: GeoJSON.Polygon;
+  /** LineString only for featureType "centerline"; Polygon for everything else. */
+  geometry: GeoJSON.Polygon | GeoJSON.LineString;
+  /** True for fabricated geometry (straight tee→green centerline where OSM has no golf=hole
+   * way). Persisted as zOrder -1 so consumers can tell it apart from surveyed data. */
+  synthetic?: boolean;
 }
 
 export interface ParsedTeeBox {
@@ -293,11 +304,50 @@ export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCours
     );
   }
 
+  // --- 8. Persist hole centerlines as features (REVISION-SPEC 0.4). Real golf=hole ways go in
+  // as-is (already direction-corrected in §2b); holes without one get a synthetic straight
+  // tee→green LineString (marked synthetic → zOrder -1) when both endpoints are known. Holes
+  // with neither (e.g. Tarandowah 12/13: no centerline, no tee, no green in OSM) get nothing —
+  // consumers fall back to the runtime tee→green line as before.
+  const centerlineFeatures: ParsedFeature[] = [];
+  const syntheticCenterlineHoles: number[] = [];
+  for (let n = 1; n <= maxHoleNumber; n++) {
+    const line = holeLineByNumber.get(n);
+    if (line) {
+      centerlineFeatures.push({ holeNumber: n, featureType: "centerline", geometry: line.geometry });
+      continue;
+    }
+    const tee = teeBoxes.find((t) => t.holeNumber === n);
+    const green = rawFeatures.find((rf) => rf.holeNumber === n && rf.featureType === "green");
+    if (!tee || !green) continue;
+    centerlineFeatures.push({
+      holeNumber: n,
+      featureType: "centerline",
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [tee.location.lng, tee.location.lat],
+          [green.centroid.lng, green.centroid.lat]
+        ]
+      },
+      synthetic: true
+    });
+    syntheticCenterlineHoles.push(n);
+  }
+  if (syntheticCenterlineHoles.length) {
+    warnings.push(
+      `Holes ${syntheticCenterlineHoles.join(", ")} have no OSM centerline — stored a synthetic straight tee→green line instead (marked synthetic).`
+    );
+  }
+
   return {
     name,
     location,
     holes,
-    features: rawFeatures.map(({ holeNumber, featureType, geometry }) => ({ holeNumber, featureType, geometry })),
+    features: [
+      ...rawFeatures.map(({ holeNumber, featureType, geometry }) => ({ holeNumber, featureType, geometry })),
+      ...centerlineFeatures
+    ],
     teeBoxes,
     warnings
   };

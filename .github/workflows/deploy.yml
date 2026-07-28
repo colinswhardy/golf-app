@@ -27,6 +27,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Type-check + unit tests gate the deploy — `vite build` alone does neither.
+      - run: npm run typecheck
+      - run: npm test
       - run: npm run build
         env:
           VITE_BASE: /golf-app/
