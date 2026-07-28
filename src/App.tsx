@@ -7,13 +7,18 @@ import { ReviewRoundsPage } from "./pages/ReviewRoundsPage";
 import { DataImportsPage } from "./pages/DataImportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { CourseEditorPage } from "./pages/CourseEditorPage";
+import { StatsPage } from "./pages/StatsPage";
 import { seedBundledCourses } from "./lib/seedCourses";
+import { pruneOutbox } from "./lib/db";
 
 export default function App() {
   // Fire-and-forget, once per app load. Idempotent (skips courses already in Dexie),
   // so this is safe to run every time rather than needing a "first run ever" flag.
+  // Outbox pruning is equally fire-and-forget: nothing drains that table yet, so old
+  // entries are just dead weight.
   useEffect(() => {
     seedBundledCourses();
+    pruneOutbox().catch(() => {});
   }, []);
 
   return (
@@ -27,6 +32,7 @@ export default function App() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/course-editor" element={<CourseEditorPage />} />
         <Route path="/course-editor/:courseId" element={<CourseEditorPage />} />
+        <Route path="/stats" element={<StatsPage />} />
       </Routes>
       <div style={{
         position: "fixed",
@@ -37,7 +43,7 @@ export default function App() {
         pointerEvents: "none",
         zIndex: 9999
       }}>
-        1.0
+        2.0
       </div>
     </>
   );

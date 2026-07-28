@@ -5,7 +5,7 @@ const TILES: { label: string; to: string | null }[] = [
   { label: "Review Rounds", to: "/rounds" },
   { label: "Data Imports", to: "/imports" },
   { label: "Course Editor", to: "/course-editor" },
-  { label: "", to: null },
+  { label: "Stats", to: "/stats" },
   { label: "Settings", to: "/settings" }
 ];
 
