@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { Button, Icon, relativeToParLabel, scoreToneClass } from "./ui";
 import type { Club, FairwayResult, Lie } from "../types/domain";
 
 const FAIRWAY_TILES: { label: string; value: FairwayResult }[] = [
@@ -12,18 +14,18 @@ const FAIRWAY_TILES: { label: string; value: FairwayResult }[] = [
 const LIE_TILES: { label: string; lie: Lie }[] = [
   { label: "Fairway", lie: "fairway" },
   { label: "Rough", lie: "rough" },
-  { label: "Sand Bunker", lie: "bunker_greenside" },
-  { label: "Water Hazard", lie: "hazard" },
+  { label: "Bunker", lie: "bunker_greenside" },
+  { label: "Water", lie: "hazard" },
   { label: "Fringe", lie: "fringe" },
   { label: "Green", lie: "green" }
 ];
 
 /**
- * Bottom sheet for recording a shot: two fast taps and it's saved — no separate Save
- * button. Shot 1 skips the lie tap entirely (always "tee"); shot 2+ taps a lie tile,
- * then a club tile, and the club tap saves immediately. Green is a special case: tapping
- * "Green" (or landing there via auto-detection) saves instantly with Putter — zero taps
- * in the club grid, since putting off the green is a near-certainty and this is the single
+ * Bottom sheet for recording a shot: two fast taps and it's saved — no separate
+ * Save button. Shot 1 skips the lie tap entirely (always "tee"); shot 2+ taps a
+ * lie tile, then a club tile, and the club tap saves immediately. Green is a
+ * special case: tapping "Green" (or landing there via auto-detection) saves
+ * instantly with Putter — putting off the green is a near-certainty and the
  * most frequent lie transition in a round.
  */
 export function ShotSheet(props: {
@@ -38,9 +40,9 @@ export function ShotSheet(props: {
   const [lie, setLie] = useState<Lie | null>(isFirstShot ? "tee" : isOnGreen ? "green" : null);
   const putter = props.clubs.find((c) => c.name === "Putter");
 
-  // Fires for both the auto-detected initial state (isOnGreen) and a manual tap of the Green
-  // tile — either way, landing on "green" should save immediately, not just pre-highlight Putter
-  // and wait for another tap.
+  // Fires for both the auto-detected initial state and a manual tap of the Green
+  // tile — either way, landing on "green" saves immediately rather than
+  // pre-highlighting Putter and waiting for another tap.
   useEffect(() => {
     if (lie === "green") props.onSave(putter?.id ?? null, "green");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,10 +54,10 @@ export function ShotSheet(props: {
     <Sheet title={`Shot ${props.shotNumber}`} onClose={props.onClose}>
       {lie === null ? (
         <>
-          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>Lie</div>
-          <div style={lieGridStyle}>
+          <div className="section__title mb-2">Where is the ball?</div>
+          <div className="tile-grid tile-grid--3">
             {LIE_TILES.map((t) => (
-              <button key={t.lie} onClick={() => setLie(t.lie)} style={tileStyle}>
+              <button key={t.lie} className="tile" onClick={() => setLie(t.lie)}>
                 {t.label}
               </button>
             ))}
@@ -63,10 +65,17 @@ export function ShotSheet(props: {
         </>
       ) : (
         <>
-          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>Club</div>
-          <div style={clubGridStyle}>
+          <div className="row row--between mb-2">
+            <div className="section__title">Club</div>
+            {!isFirstShot && (
+              <button className="chip chip--sm" onClick={() => setLie(null)}>
+                ← Lie
+              </button>
+            )}
+          </div>
+          <div className="tile-grid tile-grid--3">
             {props.clubs.map((c) => (
-              <button key={c.id} onClick={() => props.onSave(c.id, lie)} style={tileStyle}>
+              <button key={c.id} className="tile" onClick={() => props.onSave(c.id, lie)}>
                 {c.name}
               </button>
             ))}
@@ -77,57 +86,59 @@ export function ShotSheet(props: {
   );
 }
 
-export function relativeToParLabel(diff: number): string {
-  return diff === 0 ? "E" : diff > 0 ? `+${diff}` : `${diff}`;
-}
-
-/** Bottom sheet showing the in-progress round's scorecard so far: hole/par/score/+- per hole played, with a running total. */
-export function ScorecardSheet(props: { entries: { holeNumber: number; par: number; score: number | null }[]; onClose: () => void }) {
-  const playedEntries = props.entries.filter((e) => e.score !== null);
-  const totalPar = playedEntries.reduce((s, e) => s + e.par, 0);
-  const totalScore = playedEntries.reduce((s, e) => s + (e.score as number), 0);
+/** Scorecard for the round so far: hole/par/score/± with a running total. Shared
+ * by the live round map and post-round review so both show the same thing. */
+export function ScorecardSheet(props: {
+  entries: { holeNumber: number; par: number; score: number | null }[];
+  onClose: () => void;
+}) {
+  const played = props.entries.filter((e) => e.score !== null);
+  const totalPar = played.reduce((s, e) => s + e.par, 0);
+  const totalScore = played.reduce((s, e) => s + (e.score as number), 0);
 
   return (
     <Sheet title="Scorecard" onClose={props.onClose}>
-      <div style={scorecardRowStyle}>
-        <span style={{ flex: 1, opacity: 0.7 }}>Hole</span>
-        <span style={scorecardColStyle}>Par</span>
-        <span style={scorecardColStyle}>Score</span>
-        <span style={scorecardColStyle}>+/-</span>
+      <div className="scorecard-row scorecard-row--head">
+        <span>Hole</span>
+        <span>Par</span>
+        <span>Score</span>
+        <span>+/−</span>
       </div>
       {props.entries.map((e) => (
-        <div key={e.holeNumber} style={scorecardRowStyle}>
-          <span style={{ flex: 1 }}>Hole {e.holeNumber}</span>
-          <span style={scorecardColStyle}>{e.par}</span>
-          <span style={scorecardColStyle}>{e.score ?? "—"}</span>
-          <span style={scorecardColStyle}>{e.score !== null ? relativeToParLabel(e.score - e.par) : "—"}</span>
+        <div key={e.holeNumber} className="scorecard-row">
+          <span>Hole {e.holeNumber}</span>
+          <span className="dim">{e.par}</span>
+          <span>
+            {e.score !== null ? <span className={scoreToneClass(e.score, e.par)}>{e.score}</span> : <span className="faint">—</span>}
+          </span>
+          <span className="dim">{e.score !== null ? relativeToParLabel(e.score - e.par) : "—"}</span>
         </div>
       ))}
-      {playedEntries.length > 0 && (
-        <div style={{ ...scorecardRowStyle, borderTop: "1px solid #2f5c3d", marginTop: 6, paddingTop: 10, fontWeight: 600 }}>
-          <span style={{ flex: 1 }}>Total</span>
-          <span style={scorecardColStyle}>{totalPar}</span>
-          <span style={scorecardColStyle}>{totalScore}</span>
-          <span style={scorecardColStyle}>{relativeToParLabel(totalScore - totalPar)}</span>
+      {played.length > 0 && (
+        <div className="scorecard-row scorecard-row--total">
+          <span>Total</span>
+          <span>{totalPar}</span>
+          <span>{totalScore}</span>
+          <span className="accent">{relativeToParLabel(totalScore - totalPar)}</span>
         </div>
       )}
     </Sheet>
   );
 }
 
-/** Bottom sheet for holing out: fairway result (Par 4+ only, pre-selected from Shot 2's
- * auto-detected landing spot but overridable) + putts + score (prefilled from recorded shots +
- * putts). Per-putt distances are gone — putts are real Shot rows placed on the green-marking
- * screen now (REVISION-SPEC 1.5), so when green marks exist the putt count arrives pre-filled. */
+/**
+ * Holing out: fairway result (Par 4+ only, pre-selected from Shot 2's
+ * auto-detected landing spot but overridable) + putts + score, prefilled from
+ * recorded shots + putts. Per-putt distances are gone — putts are real Shot rows
+ * placed on the green-marking screen now, so a marked hole arrives with its putt
+ * count already known.
+ */
 export function HoleScoreSheet(props: {
   holeNumber: number;
   par: number;
   recordedShots: number;
-  /** Putt count from the green-marking screen, when the hole was marked — pre-fills the stepper. */
+  /** Putt count from the green-marking screen when the hole was marked. */
   markedPutts?: number | null;
-  /** Auto-detected the moment Shot 2 was logged (see RoundMapPage.handleSaveShot) — pre-selects
-   * the fairway tile below, still fully overridable by tapping a different one. Null if there
-   * wasn't enough geometry to auto-detect (e.g. no mapped fairway polygon for this hole). */
   autoDetectedFairwayResult?: FairwayResult | null;
   onSave: (score: number, putts: number, fairwayResult: FairwayResult | null) => void;
   onClose: () => void;
@@ -140,18 +151,20 @@ export function HoleScoreSheet(props: {
 
   const effectiveScore = scoreTouched ? score : props.recordedShots + putts;
   const showFairway = props.par >= 4;
+  const diff = effectiveScore - props.par;
 
   return (
-    <Sheet title={`Hole ${props.holeNumber} — finish`} onClose={props.onClose}>
+    <Sheet title={`Hole ${props.holeNumber} · Par ${props.par}`} onClose={props.onClose}>
       {showFairway && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>Fairway</div>
-          <div style={fairwayGridStyle}>
+        <div className="mb-3">
+          <div className="section__title mb-2">Tee shot</div>
+          <div className="tile-grid tile-grid--5">
             {FAIRWAY_TILES.map((t) => (
               <button
                 key={t.value}
+                className={`tile${fairwayResult === t.value ? " tile--active" : ""}`}
+                style={{ padding: "13px 4px", fontSize: 12.5 }}
                 onClick={() => setFairwayResult(t.value)}
-                style={{ ...tileStyle, ...(fairwayResult === t.value ? tileActiveStyle : {}), padding: "12px 4px" }}
               >
                 {t.label}
               </button>
@@ -159,6 +172,7 @@ export function HoleScoreSheet(props: {
           </div>
         </div>
       )}
+
       <Stepper
         label={props.markedPutts != null ? "Putts (from green marks)" : "Putts"}
         value={putts}
@@ -170,7 +184,8 @@ export function HoleScoreSheet(props: {
       />
 
       <Stepper
-        label={`Score${scoreTouched ? "" : ` (auto: ${props.recordedShots} shots + putts)`}`}
+        label="Score"
+        hint={scoreTouched ? undefined : `${props.recordedShots} shots + ${putts} putts`}
         value={effectiveScore}
         min={1}
         onChange={(v) => {
@@ -178,42 +193,51 @@ export function HoleScoreSheet(props: {
           setScore(v);
         }}
       />
-      <button
-        onClick={() => props.onSave(effectiveScore, putts, showFairway ? fairwayResult : null)}
-        style={primaryButtonStyle}
-      >
+
+      <div className="row row--between mt-2 mb-3">
+        <span className="small dim">Result</span>
+        <span className={scoreToneClass(effectiveScore, props.par)} style={{ fontSize: 15, minWidth: 44 }}>
+          {relativeToParLabel(diff)}
+        </span>
+      </div>
+
+      <Button variant="primary" block onClick={() => props.onSave(effectiveScore, putts, showFairway ? fairwayResult : null)}>
         Save hole
-      </button>
+      </Button>
     </Sheet>
   );
 }
 
-function Stepper(props: { label: string; value: number; min: number; onChange: (v: number) => void }) {
+function Stepper(props: { label: string; hint?: string; value: number; min: number; onChange: (v: number) => void }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-      <span style={{ fontSize: 14 }}>{props.label}</span>
-      <span style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <button onClick={() => props.onChange(Math.max(props.min, props.value - 1))} style={stepButtonStyle}>
+    <div className="stepper">
+      <div>
+        <div>{props.label}</div>
+        {props.hint && <div className="tiny faint">{props.hint}</div>}
+      </div>
+      <div className="stepper__controls">
+        <button className="stepper__btn" onClick={() => props.onChange(Math.max(props.min, props.value - 1))} aria-label="Decrease">
           −
         </button>
-        <span style={{ fontSize: 18, minWidth: 24, textAlign: "center" }}>{props.value}</span>
-        <button onClick={() => props.onChange(props.value + 1)} style={stepButtonStyle}>
+        <span className="stepper__value">{props.value}</span>
+        <button className="stepper__btn" onClick={() => props.onChange(props.value + 1)} aria-label="Increase">
           +
         </button>
-      </span>
+      </div>
     </div>
   );
 }
 
-function Sheet(props: { title: string; onClose: () => void; children: React.ReactNode }) {
+export function Sheet(props: { title: string; onClose: () => void; children: ReactNode }) {
   return (
     <>
-      <div onClick={props.onClose} style={backdropStyle} />
-      <div style={sheetStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <strong style={{ fontSize: 16 }}>{props.title}</strong>
-          <button onClick={props.onClose} style={{ ...chipStyle, padding: "4px 10px" }}>
-            ✕
+      <div className="sheet-backdrop" onClick={props.onClose} />
+      <div className="sheet" role="dialog" aria-label={props.title}>
+        <div className="sheet__grab" />
+        <div className="sheet__head">
+          <span className="sheet__title">{props.title}</span>
+          <button className="map-btn" onClick={props.onClose} aria-label="Close" style={{ width: 34, height: 34, background: "var(--surface-2)" }}>
+            <Icon.close size={17} />
           </button>
         </div>
         {props.children}
@@ -221,109 +245,3 @@ function Sheet(props: { title: string; onClose: () => void; children: React.Reac
     </>
   );
 }
-
-const backdropStyle: React.CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  background: "rgba(0,0,0,0.4)",
-  zIndex: 3
-};
-
-const sheetStyle: React.CSSProperties = {
-  position: "absolute",
-  left: 0,
-  right: 0,
-  bottom: 0,
-  zIndex: 4,
-  background: "#101812",
-  borderTop: "1px solid #2f5c3d",
-  borderRadius: "16px 16px 0 0",
-  padding: "16px 16px 24px",
-  color: "#eef2ef",
-  maxHeight: "70%",
-  overflowY: "auto"
-};
-
-const scorecardRowStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  padding: "6px 0",
-  fontSize: 14
-};
-
-const scorecardColStyle: React.CSSProperties = {
-  width: 44,
-  textAlign: "center"
-};
-
-const chipStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 999,
-  fontSize: 13,
-  cursor: "pointer"
-};
-
-const lieGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 10
-};
-
-const clubGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr 1fr",
-  gap: 8
-};
-
-const fairwayGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(5, 1fr)",
-  gap: 6
-};
-
-const tileStyle: React.CSSProperties = {
-  padding: "18px 8px",
-  textAlign: "center",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 12,
-  fontSize: 14,
-  cursor: "pointer"
-};
-
-const tileActiveStyle: React.CSSProperties = {
-  background: "#f5d90a",
-  color: "#111",
-  // Full `border` shorthand, not just borderColor — mixing shorthand/non-shorthand for the
-  // same property across re-renders (tileStyle uses the `border` shorthand) throws a React
-  // dev warning and can cause the un-set longhand pieces (width/style) to not reset.
-  border: "1px solid #f5d90a"
-};
-
-const stepButtonStyle: React.CSSProperties = {
-  width: 36,
-  height: 36,
-  borderRadius: 999,
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  fontSize: 18,
-  cursor: "pointer"
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  width: "100%",
-  marginTop: 8,
-  padding: "12px 14px",
-  background: "#f5d90a",
-  color: "#111",
-  border: "none",
-  borderRadius: 10,
-  fontSize: 15,
-  fontWeight: 600,
-  cursor: "pointer"
-};

@@ -71,7 +71,7 @@ export function ReviewMap({ shots, fallbackOrigin, armedShotId, clickArmed = fal
 
       const el = document.createElement("div");
       const isArmed = s.id === curArmed;
-      el.style.cssText = `width:24px;height:24px;border-radius:50%;background:${isArmed ? "#f5d90a" : "#ffffff"};border:2px solid #222;box-shadow:0 0 4px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#111;`;
+      el.style.cssText = `width:25px;height:25px;border-radius:50%;background:${isArmed ? "#ffc043" : "#ffffff"};border:2px solid rgba(0,0,0,.65);box-shadow:0 2px 7px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#111;`;
       el.textContent = String(i + 1);
       shotMarkersRef.current.push(
         new mapboxgl.Marker({ element: el, anchor: "center" }).setLngLat([s.startPoint.lng, s.startPoint.lat]).addTo(map)
@@ -81,7 +81,7 @@ export function ReviewMap({ shots, fallbackOrigin, armedShotId, clickArmed = fal
       // just re-draw geometry the player can already see.
       if (s.targetPoint && s.targetSource === "manual") {
         const aimEl = document.createElement("div");
-        aimEl.style.cssText = "width:16px;height:16px;border-radius:50%;background:#e63946;border:2px solid #fff;";
+        aimEl.style.cssText = "width:16px;height:16px;border-radius:50%;background:#ff5a5a;border:2px solid #fff;box-shadow:0 0 0 4px rgba(255,90,90,.2);";
         aimMarkersRef.current.push(
           new mapboxgl.Marker({ element: aimEl, anchor: "center" })
             .setLngLat([s.targetPoint.lng, s.targetPoint.lat])
@@ -126,7 +126,7 @@ export function ReviewMap({ shots, fallbackOrigin, armedShotId, clickArmed = fal
         id: PATH_SOURCE_ID,
         type: "line",
         source: PATH_SOURCE_ID,
-        paint: { "line-color": "#f5d90a", "line-width": 3 }
+        paint: { "line-color": "#ffc043", "line-width": 3 }
       });
       renderShots();
     });
@@ -177,32 +177,22 @@ export function ReviewMap({ shots, fallbackOrigin, armedShotId, clickArmed = fal
 
   if (!TOKEN) {
     return (
-      <div style={{ padding: 24, color: "#eef2ef" }}>
-        No Mapbox token configured. Add <code>VITE_MAPBOX_TOKEN</code> to <code>.env.local</code>.
+      <div className="page">
+        <div className="note note--danger">
+          No Mapbox token configured. Add <code>VITE_MAPBOX_TOKEN</code> to <code>.env.local</code>.
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    <div className="map-root">
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
       {armedShotId && (
-        <div style={armedHudStyle}>🎯 Tap the map to set Shot {armedIndex + 1}'s aim point…</div>
+        <div className="toast glass" style={{ top: "auto", bottom: 12, color: "var(--warn)" }}>
+          Tap the map to set shot {armedIndex + 1}'s target
+        </div>
       )}
     </div>
   );
 }
-
-const armedHudStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 12,
-  left: 12,
-  right: 12,
-  background: "rgba(245,217,10,0.95)",
-  color: "#111",
-  padding: "8px 12px",
-  borderRadius: 8,
-  fontSize: 13,
-  fontWeight: 600,
-  zIndex: 1
-};

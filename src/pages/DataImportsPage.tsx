@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PageHeader } from "../components/PageHeader";
+import { AppBar, Badge, Button, Icon, Note, Page, Section } from "../components/ui";
 import { parseOverpassGeoJson, type ParsedCourse } from "../lib/importOverpass";
 import { saveImportedCourse } from "../lib/courseRepo";
 
@@ -16,10 +16,9 @@ export function DataImportsPage() {
     setError(null);
     setSavedCourseId(null);
     try {
-      const text = await file.text();
-      const geojson = JSON.parse(text);
+      const geojson = JSON.parse(await file.text());
       if (geojson.type !== "FeatureCollection") {
-        throw new Error('Not a GeoJSON FeatureCollection — export from Overpass Turbo using Export → GeoJSON.');
+        throw new Error("Not a GeoJSON FeatureCollection — export from Overpass Turbo using Export → GeoJSON.");
       }
       setParsed(parseOverpassGeoJson(geojson));
     } catch (e) {
@@ -49,85 +48,77 @@ export function DataImportsPage() {
     : null;
 
   return (
-    <div style={{ padding: 16 }}>
-      <PageHeader title="Data Imports" />
+    <Page>
+      <AppBar title="Data imports" />
 
-      <p style={{ opacity: 0.8, fontSize: 14 }}>
-        Import a course from an Overpass Turbo GeoJSON export (Export → GeoJSON after running your
-        query). Re-importing a course with the same name adds a new version rather than duplicating it.
-      </p>
+      <Section hint="Import a course from an Overpass Turbo GeoJSON export. Re-importing a course adds a new version rather than replacing it, so rounds already recorded keep resolving against the geometry they were played on.">
+        <Button variant="primary" onClick={() => fileInputRef.current?.click()}>
+          <Icon.upload size={16} /> Choose GeoJSON file
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".geojson,.json,application/geo+json,application/json"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) handleFile(file);
+          }}
+        />
+      </Section>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".geojson,.json,application/geo+json,application/json"
-        style={{ display: "none" }}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleFile(file);
-        }}
-      />
-      <button onClick={() => fileInputRef.current?.click()} style={buttonStyle}>
-        Choose GeoJSON file…
-      </button>
-
-      {error && <p style={{ color: "#ff8080", marginTop: 12 }}>{error}</p>}
-
-      {parsed && (
-        <div style={{ marginTop: 20 }}>
-          <h2 style={{ fontSize: 16 }}>{parsed.name}</h2>
-          <p style={{ opacity: 0.8, fontSize: 14 }}>{parsed.holes.length} holes detected.</p>
-
-          <table style={{ fontSize: 13, borderCollapse: "collapse", marginTop: 8 }}>
-            <tbody>
-              {Object.entries(featureCounts ?? {}).map(([type, count]) => (
-                <tr key={type}>
-                  <td style={{ padding: "2px 12px 2px 0", opacity: 0.8 }}>{type}</td>
-                  <td>{count}</td>
-                </tr>
-              ))}
-              <tr>
-                <td style={{ padding: "2px 12px 2px 0", opacity: 0.8 }}>tee boxes</td>
-                <td>{parsed.teeBoxes.length}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          {parsed.warnings.length > 0 && (
-            <div style={{ marginTop: 12, background: "#3a2a0b", border: "1px solid #6b4d16", borderRadius: 8, padding: 10 }}>
-              <strong style={{ fontSize: 13 }}>Warnings</strong>
-              <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12.5 }}>
-                {parsed.warnings.map((w, i) => (
-                  <li key={i} style={{ marginBottom: 4 }}>{w}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {!savedCourseId ? (
-            <button onClick={handleSave} disabled={saving} style={{ ...buttonStyle, marginTop: 16 }}>
-              {saving ? "Saving…" : "Save to this device"}
-            </button>
-          ) : (
-            <div style={{ marginTop: 16 }}>
-              <p style={{ color: "#8fd694" }}>Saved.</p>
-              <button onClick={() => navigate("/courses")} style={buttonStyle}>
-                Go to Courses →
-              </button>
-            </div>
-          )}
+      {error && (
+        <div className="mt-2">
+          <Note tone="danger">{error}</Note>
         </div>
       )}
-    </div>
+
+      {parsed && (
+        <Section title="Preview">
+          <div className="card">
+            <div className="card__title">{parsed.name}</div>
+            <div className="card__meta">{parsed.holes.length} holes detected</div>
+
+            <div className="row row--wrap mt-2" style={{ gap: 6 }}>
+              {Object.entries(featureCounts ?? {}).map(([type, count]) => (
+                <Badge key={type}>
+                  {type.replace(/_/g, " ")} {count}
+                </Badge>
+              ))}
+              <Badge tone="accent">tee boxes {parsed.teeBoxes.length}</Badge>
+            </div>
+
+            {parsed.warnings.length > 0 && (
+              <div className="mt-2">
+                <Note tone="warn">
+                  <div className="bold mb-1">Warnings</div>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {parsed.warnings.map((w, i) => (
+                      <li key={i} style={{ marginBottom: 4 }}>
+                        {w}
+                      </li>
+                    ))}
+                  </ul>
+                </Note>
+              </div>
+            )}
+
+            <div className="mt-3">
+              {!savedCourseId ? (
+                <Button variant="primary" onClick={handleSave} disabled={saving}>
+                  {saving ? "Saving…" : "Save to this device"}
+                </Button>
+              ) : (
+                <div className="row row--wrap" style={{ gap: 8 }}>
+                  <Note tone="ok">Saved.</Note>
+                  <Button onClick={() => navigate("/courses")}>Go to courses</Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </Section>
+      )}
+    </Page>
   );
 }
-
-const buttonStyle: React.CSSProperties = {
-  padding: "10px 14px",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 8,
-  fontSize: 14,
-  cursor: "pointer"
-};

@@ -278,7 +278,14 @@ export function CourseMap({
       // Bunker tap: check hit-testable (invisible) bunker polygons before falling through to the
       // settingTarget/measure-dot logic below, so tapping a bunker always shows its F/M/B card
       // rather than being swallowed by a nearby measure-dot placement.
-      const bunkerHits = map.queryRenderedFeatures(e.point, { layers: [BUNKER_SOURCE_ID] });
+      //
+      // Guarded on the layer existing: queryRenderedFeatures THROWS for an unknown layer, and the
+      // layer isn't added until the style's "load"/"style.load" fires. A tap in that window (slow
+      // connection on the course, or right after a map-style switch) would otherwise throw out of
+      // the handler and silently eat the tap — no target set, no measure dot.
+      const bunkerHits = map.getLayer(BUNKER_SOURCE_ID)
+        ? map.queryRenderedFeatures(e.point, { layers: [BUNKER_SOURCE_ID] })
+        : [];
       if (bunkerHits.length > 0 && curOrigin) {
         const geometry = bunkerHits[0].geometry as GeoJSON.Polygon;
         setBunkerCard(computeBunkerYardages(curOrigin, geometry));
@@ -364,7 +371,7 @@ export function CourseMap({
         id: LINE_SOURCE_ID,
         type: "line",
         source: LINE_SOURCE_ID,
-        paint: { "line-color": "#f5d90a", "line-width": 3, "line-dasharray": [2, 1] }
+        paint: { "line-color": "#ffc043", "line-width": 3, "line-dasharray": [2, 1] }
       });
     }
     if (!map.getSource(BUNKER_SOURCE_ID)) {
@@ -472,7 +479,7 @@ export function CourseMap({
     if (!waterMarkerRef.current) {
       const el = document.createElement("div");
       el.style.cssText =
-        "width:22px;height:22px;border-radius:50%;background:#dc2626;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);";
+        "width:22px;height:22px;border-radius:50%;background:#ff5a5a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;border:2px solid #fff;box-shadow:0 0 0 5px rgba(255,90,90,.18),0 2px 6px rgba(0,0,0,.5);";
       el.textContent = "!";
       waterMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "center" })
         .setLngLat([closest.point.lng, closest.point.lat])
@@ -586,19 +593,16 @@ export function CourseMap({
     // bigger touch target than the 16px visual dot so a thumb doesn't block its own view of it.
     const el = document.createElement("div");
     el.className = "map-touch-target";
-    el.style.cssText = "width:44px;height:44px;display:flex;align-items:center;justify-content:center;";
 
     const dot = document.createElement("div");
     dot.className = "map-touch-dot";
     dot.style.cssText =
-      "width:16px;height:16px;border-radius:50%;background:#ffffff;border:2px solid #222;box-shadow:0 0 4px rgba(0,0,0,.5);cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
+      "width:16px;height:16px;border-radius:50%;background:#ffffff;border:2px solid rgba(0,0,0,.7);box-shadow:0 2px 6px rgba(0,0,0,.5);cursor:grab;";
     el.appendChild(dot);
 
+    // Segment yardages are sized for arm's-length reading in sunlight (see .measure-label).
     const label = document.createElement("div");
-    // Font ~2x the old 11px so the segment yardages are readable at arm's length in sunlight;
-    // padding/offset bumped to match so the bigger pill still clears the dot.
-    label.style.cssText =
-      "position:absolute;top:40px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,.8);color:#fff;font-size:22px;font-weight:700;padding:6px 14px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.4);";
+    label.className = "measure-label";
     el.appendChild(label);
 
     const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
@@ -679,7 +683,7 @@ export function CourseMap({
     if (!meMarkerRef.current) {
       const el = document.createElement("div");
       el.style.cssText =
-        "width:18px;height:18px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.6);";
+        "width:18px;height:18px;border-radius:50%;background:#3d8bff;border:3px solid #fff;box-shadow:0 0 0 6px rgba(61,139,255,.22),0 2px 8px rgba(0,0,0,.6);";
       meMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat([me.lng, me.lat]).addTo(map);
     } else {
       meMarkerRef.current.setLngLat([me.lng, me.lat]);
@@ -697,12 +701,11 @@ export function CourseMap({
     if (!teeMarkerRef.current) {
       const el = document.createElement("div");
       el.className = "map-touch-target";
-      el.style.cssText = "width:44px;height:44px;display:flex;align-items:center;justify-content:center;";
 
       const dot = document.createElement("div");
       dot.className = "map-touch-dot";
       dot.style.cssText =
-        "width:12px;height:12px;border-radius:50%;background:#ffffff;border:3px solid #2f5c3d;box-shadow:0 0 4px rgba(0,0,0,.4);cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
+        "width:13px;height:13px;border-radius:50%;background:#ffffff;border:3px solid rgba(0,0,0,.55);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:grab;";
       el.appendChild(dot);
 
       const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
@@ -740,12 +743,11 @@ export function CourseMap({
       if (!targetMarkerRef.current) {
         const el = document.createElement("div");
         el.className = "map-touch-target";
-        el.style.cssText = "width:44px;height:44px;display:flex;align-items:center;justify-content:center;";
 
         const dot = document.createElement("div");
         dot.className = "map-touch-dot";
         dot.style.cssText =
-          "width:14px;height:14px;border-radius:50%;background:#e63946;border:2px solid #fff;cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
+          "width:15px;height:15px;border-radius:50%;background:#ff5a5a;border:2px solid #fff;box-shadow:0 0 0 5px rgba(255,90,90,.2);cursor:grab;";
         el.appendChild(dot);
 
         const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
@@ -880,82 +882,68 @@ export function CourseMap({
 
   if (!TOKEN) {
     return (
-      <div style={{ padding: 24, color: "#eef2ef" }}>
-        No Mapbox token configured. Add <code>VITE_MAPBOX_TOKEN</code> to <code>.env.local</code> to
-        enable the map (see .env.example).
+      <div className="page">
+        <div className="note note--danger">
+          No Mapbox token configured. Add <code>VITE_MAPBOX_TOKEN</code> to <code>.env.local</code> to
+          enable the map (see .env.example).
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    <div className="map-root">
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
+      {/* Only rendered when a caller doesn't supply its own chrome — i.e. demo mode. */}
       {!hideInternalHud && (
-        <div style={hudStyle}>
-          {geoError && <div style={{ color: "#ffb3b3" }}>GPS: {geoError}</div>}
+        <div className="glass" style={{ position: "absolute", left: 12, bottom: 16, zIndex: 2, borderRadius: 16, padding: 12 }}>
+          {geoError && <div className="small danger mb-1">GPS: {geoError}</div>}
           {distanceToTarget !== null && (
-            <div>
-              {distanceToTarget}y to target
-              {!usingLiveGps && <span style={{ opacity: 0.7 }}> (from tee — not near this hole)</span>}
+            <div className="mb-2">
+              <span className="hud__value" style={{ fontSize: 30 }}>
+                {distanceToTarget}
+              </span>
+              <span className="hud__unit">yd to target</span>
+              {!usingLiveGps && <div className="tiny faint">from tee — not near this hole</div>}
             </div>
           )}
-          <button
-            onClick={() => setSettingTarget(!settingTarget)}
-            style={{
-              marginTop: 6,
-              padding: "6px 10px",
-              background: settingTarget ? "#f5d90a" : "#1a3a24",
-              color: settingTarget ? "#111" : "#eef2ef",
-              border: "1px solid #2f5c3d",
-              borderRadius: 6
-            }}
-          >
-            {settingTarget ? "Tap map to set target…" : target ? "Move target" : "Set target"}
+          <button className={`btn btn--sm${settingTarget ? " btn--primary" : ""}`} onClick={() => setSettingTarget(!settingTarget)}>
+            {settingTarget ? "Tap map to set…" : target ? "Move target" : "Set target"}
           </button>
         </div>
       )}
 
       {bunkerCard && (
-        <div style={bunkerCardStyle}>
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>Bunker</div>
-          <div style={{ display: "flex", gap: 12 }}>
-            <span>Front {bunkerCard.front}y</span>
-            <span>Mid {bunkerCard.middle}y</span>
-            <span>Back {bunkerCard.back}y</span>
+        <div
+          className="glass"
+          style={{
+            position: "absolute",
+            bottom: 96,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 3,
+            borderRadius: 14,
+            padding: "10px 16px",
+            textAlign: "center",
+            borderColor: "var(--warn)"
+          }}
+        >
+          <div className="tiny warn bold mb-1" style={{ letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            Bunker
+          </div>
+          <div className="row num" style={{ gap: 14, fontWeight: 700 }}>
+            <span>{bunkerCard.front}</span>
+            <span className="dim">{bunkerCard.middle}</span>
+            <span>{bunkerCard.back}</span>
+          </div>
+          <div className="row tiny faint" style={{ gap: 14, justifyContent: "space-between" }}>
+            <span>front</span>
+            <span>mid</span>
+            <span>back</span>
           </div>
         </div>
       )}
     </div>
   );
 }
-
-// Bottom-left (not top) so it never competes with the header/HUD chrome real callers (e.g.
-// RoundMapPage) render at the top — matches where those callers put their own equivalent cards.
-// Only ever visible when hideInternalHud is omitted, i.e. demo mode.
-const hudStyle: React.CSSProperties = {
-  position: "absolute",
-  bottom: 16,
-  left: 12,
-  background: "rgba(11,15,12,0.75)",
-  color: "#eef2ef",
-  padding: "8px 10px",
-  borderRadius: 8,
-  fontSize: 14,
-  zIndex: 1
-};
-
-const bunkerCardStyle: React.CSSProperties = {
-  position: "absolute",
-  bottom: 96,
-  left: "50%",
-  transform: "translateX(-50%)",
-  background: "rgba(11,15,12,0.9)",
-  color: "#eef2ef",
-  padding: "8px 14px",
-  borderRadius: 10,
-  fontSize: 13,
-  border: "1px solid #d4a017",
-  zIndex: 2,
-  textAlign: "center"
-};

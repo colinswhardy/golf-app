@@ -5,7 +5,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import * as turf from "@turf/turf";
 import { createTeeBox, deleteHoleFeature, getFeaturesForHole, getHolesForVersion, getLatestCourseVersion, getTeeBoxesForHole, listCourses, saveCustomHazard, updateHoleGreenPoint, updateHoleWaypoints, updateTeeBoxLocation } from "../lib/courseRepo";
-import { PageHeader } from "../components/PageHeader";
+import { AppBar, EmptyState, Icon, Page } from "../components/ui";
 import { SATELLITE_STYLE } from "../components/CourseMap";
 import { applyTouchDragOffset } from "../lib/mapTouch";
 import type { LatLng, TeeBox } from "../types/domain";
@@ -34,21 +34,23 @@ function CourseEditorCourseList() {
   const courses = useLiveQuery(() => listCourses(), []);
 
   return (
-    <div style={{ padding: "16px 20px", maxWidth: 600, margin: "0 auto" }}>
-      <PageHeader title="Course Editor" />
-      <p style={{ opacity: 0.75, fontSize: 13, marginBottom: 16 }}>
-        Pick a course to correct mis-mapped tee box coordinates by hand.
-      </p>
-      {!courses && <p style={{ opacity: 0.5 }}>Loading…</p>}
-      {courses && courses.length === 0 && <p style={{ opacity: 0.5 }}>No courses imported yet.</p>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {courses?.map((c) => (
-          <Link key={c.id} to={`/course-editor/${c.id}`} style={courseRowStyle}>
-            {c.name}
-          </Link>
-        ))}
-      </div>
-    </div>
+    <Page>
+      <AppBar title="Course editor" subtitle="Fix mis-mapped tees, greens, waypoints and hazards" />
+      {!courses ? (
+        <div className="card dim small">Loading…</div>
+      ) : courses.length === 0 ? (
+        <EmptyState title="No courses imported yet" />
+      ) : (
+        <div className="stack">
+          {courses.map((c) => (
+            <Link key={c.id} to={`/course-editor/${c.id}`} className="list-row">
+              <span className="truncate">{c.name}</span>
+              <Icon.chevron size={16} />
+            </Link>
+          ))}
+        </div>
+      )}
+    </Page>
   );
 }
 
@@ -369,7 +371,7 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
     const dot = document.createElement("div");
     dot.className = "map-touch-dot";
     dot.style.cssText =
-      "width:16px;height:16px;border-radius:50%;background:#f5d90a;border:3px solid #111;box-shadow:0 0 4px rgba(0,0,0,.5);cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
+      "width:16px;height:16px;border-radius:50%;background:#ffc043;border:3px solid rgba(0,0,0,.6);box-shadow:0 0 4px rgba(0,0,0,.5);cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
     el.appendChild(dot);
     const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
       .setLngLat([point.lng, point.lat])
@@ -431,7 +433,7 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
       const dot = document.createElement("div");
       dot.className = "map-touch-dot";
       dot.style.cssText =
-        "width:16px;height:16px;border-radius:50%;background:#ffffff;border:3px solid #2f5c3d;box-shadow:0 0 4px rgba(0,0,0,.5);cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
+        "width:16px;height:16px;border-radius:50%;background:#ffffff;border:3px solid rgba(0,0,0,.55);box-shadow:0 0 4px rgba(0,0,0,.5);cursor:grab;transition:transform .1s,background .1s,border-color .1s;";
       el.appendChild(dot);
 
       const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: "center" })
@@ -564,23 +566,31 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   const holeHazards = holeFeatures?.filter((f) => f.featureType === "hazard") ?? [];
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <button onClick={() => navigate("/course-editor")} style={backButtonStyle} aria-label="Back to course list">
-        ←
+    <div className="map-root">
+      <button
+        className="map-btn glass"
+        onClick={() => navigate("/course-editor")}
+        style={{ position: "absolute", top: "calc(12px + var(--safe-t))", left: 12, zIndex: 5 }}
+        aria-label="Back to course list"
+      >
+        <Icon.back size={19} />
       </button>
 
       {currentHole && (
-        <div style={holeHeaderStyle}>
-          <button onClick={() => setHoleNumber((n) => Math.max(1, n - 1))} disabled={holeNumber <= 1} style={navButtonStyle}>
+        <div className="hole-bar glass">
+          <button className="hole-bar__nav" onClick={() => setHoleNumber((n) => Math.max(1, n - 1))} disabled={holeNumber <= 1}>
             ‹
           </button>
-          <span>
-            Hole {currentHole.number} · Par {currentHole.par}
+          <span className="hole-bar__label">
+            {currentHole.number}
+            <span className="hole-bar__par">
+              {" · "}Par {currentHole.par}
+            </span>
           </span>
           <button
+            className="hole-bar__nav"
             onClick={() => setHoleNumber((n) => Math.min(maxHoleNumber, n + 1))}
             disabled={holeNumber >= maxHoleNumber}
-            style={navButtonStyle}
           >
             ›
           </button>
@@ -590,12 +600,12 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
       {teeBoxes && teeBoxes.length > 0 && (
-        <div style={teeChipRowStyle}>
+        <div style={{ position: "absolute", top: "calc(66px + var(--safe-t))", left: 12, zIndex: 4, display: "flex", flexDirection: "column", gap: 6 }}>
           {teeBoxes.map((t: TeeBox) => (
             <button
               key={t.id}
+              className={`chip chip--sm glass${t.id === selectedTeeBoxId ? " chip--active" : ""}`}
               onClick={() => setSelectedTeeBoxId(t.id)}
-              style={{ ...teeChipStyle, ...(t.id === selectedTeeBoxId ? teeChipActiveStyle : {}) }}
             >
               {t.name}
             </button>
@@ -604,63 +614,92 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
       )}
 
       {teeBoxes && teeBoxes.length === 0 && (
-        <div style={emptyBannerStyle}>
-          No tee boxes mapped for this hole.
-          <button onClick={handleAddTeeBox} style={addTeeButtonStyle}>+ Add tee box (map center)</button>
+        <div
+          className="glass"
+          style={{
+            position: "absolute",
+            bottom: 92,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 4,
+            borderRadius: 12,
+            padding: "10px 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            whiteSpace: "nowrap"
+          }}
+        >
+          <span className="small danger">No tee boxes on this hole.</span>
+          <button className="btn btn--sm" onClick={handleAddTeeBox}>
+            Add at map centre
+          </button>
         </div>
       )}
 
-      {/* Hazard Manager Panel */}
+      {/* Hazard panel */}
       {currentHole && (
-        <div style={hazardPanelStyle}>
-          <div style={{ fontWeight: 700, fontSize: 13, borderBottom: "1px solid #2f5c3d", paddingBottom: 4 }}>
-            Hole Hazards
-          </div>
+        <div className="popover glass" style={{ top: "calc(66px + var(--safe-t))", right: 12, width: 196, maxHeight: "56vh", overflowY: "auto" }}>
+          <div className="section__title mb-2">Hazards</div>
 
           {drawingMode === "none" ? (
             <>
-              <div style={{ fontSize: 11, opacity: 0.8 }}>Add water, creek, or pond hazard:</div>
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                <button onClick={() => setDrawingMode("point")} style={hazardMiniButtonStyle}>+ Point</button>
-                <button onClick={() => setDrawingMode("line")} style={hazardMiniButtonStyle}>+ Line</button>
-                <button onClick={() => setDrawingMode("area")} style={hazardMiniButtonStyle}>+ Area</button>
+              <div className="chip-row mb-2">
+                <button className="chip chip--sm" onClick={() => setDrawingMode("point")}>
+                  Point
+                </button>
+                <button className="chip chip--sm" onClick={() => setDrawingMode("line")}>
+                  Line
+                </button>
+                <button className="chip chip--sm" onClick={() => setDrawingMode("area")}>
+                  Area
+                </button>
               </div>
-
-              <div style={{ fontWeight: 600, fontSize: 12, marginTop: 4 }}>Existing hazards:</div>
-              <div style={hazardListStyle}>
+              <div className="stack" style={{ gap: 5 }}>
                 {holeHazards.length === 0 ? (
-                  <div style={{ fontSize: 11, opacity: 0.5, padding: "4px 0" }}>No custom hazards</div>
+                  <div className="tiny faint">No custom hazards</div>
                 ) : (
                   holeHazards.map((h, i) => (
-                    <div key={h.id} style={hazardItemStyle}>
-                      <span>Hazard #{i + 1}</span>
-                      <button onClick={() => handleDeleteHazard(h.id)} style={hazardDeleteButtonStyle} title="Delete">🗑️</button>
+                    <div key={h.id} className="row row--between" style={{ fontSize: 12 }}>
+                      <span className="dim">Hazard {i + 1}</span>
+                      <button
+                        className="map-btn"
+                        style={{ width: 26, height: 26, color: "var(--danger)" }}
+                        onClick={() => handleDeleteHazard(h.id)}
+                        aria-label="Delete hazard"
+                      >
+                        <Icon.trash size={14} />
+                      </button>
                     </div>
                   ))
                 )}
               </div>
             </>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontWeight: 600, fontSize: 12, color: "#f5d90a" }}>
-                Drawing {drawingMode.toUpperCase()}...
+            <div className="stack" style={{ gap: 8 }}>
+              <div className="tiny warn bold">Drawing {drawingMode}</div>
+              <div className="tiny dim">
+                {drawingMode === "point" && "Tap the map once — saves as a small 3m circle."}
+                {drawingMode === "line" && `Tap to add points (${drawingCoords.length}), then Finish.`}
+                {drawingMode === "area" && `Tap to add vertices (${drawingCoords.length}), then Finish.`}
               </div>
-              <div style={{ fontSize: 11, opacity: 0.9 }}>
-                {drawingMode === "point" && "Tap the map once to place the hazard point (creates a small 3m circle)."}
-                {drawingMode === "line" && `Tap map to add segments (${drawingCoords.length} points).`}
-                {drawingMode === "area" && `Tap map to add vertices (${drawingCoords.length} points).`}
-              </div>
-              <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              <div className="row" style={{ gap: 6 }}>
                 {drawingMode !== "point" && (
                   <button
+                    className="btn btn--sm btn--primary"
                     onClick={handleFinishDrawing}
                     disabled={(drawingMode === "line" && drawingCoords.length < 2) || (drawingMode === "area" && drawingCoords.length < 3)}
-                    style={{ ...hazardSaveButtonStyle, opacity: ((drawingMode === "line" && drawingCoords.length >= 2) || (drawingMode === "area" && drawingCoords.length >= 3)) ? 1 : 0.5 }}
                   >
                     Finish
                   </button>
                 )}
-                <button onClick={() => { setDrawingMode("none"); setDrawingCoords([]); }} style={hazardCancelButtonStyle}>
+                <button
+                  className="btn btn--sm btn--ghost"
+                  onClick={() => {
+                    setDrawingMode("none");
+                    setDrawingCoords([]);
+                  }}
+                >
                   Cancel
                 </button>
               </div>
@@ -669,19 +708,18 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
         </div>
       )}
 
-      {/* Green + Waypoints panel (left side, opposite the hazard panel) */}
+      {/* Green + waypoints panel, opposite the hazard panel */}
       {currentHole && (
-        <div style={greenPanelStyle}>
-          <div style={{ fontWeight: 700, fontSize: 13, borderBottom: "1px solid #2f5c3d", paddingBottom: 4 }}>
-            Green &amp; Waypoints
-          </div>
-
-          <div style={{ fontSize: 11, opacity: 0.8 }}>
-            {greenPos ? "Drag the red dot to move the green." : "No green yet — place one:"}
-          </div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        <div
+          className="popover glass"
+          style={{ top: "calc(66px + var(--safe-t))", left: 12, width: 190, maxHeight: "56vh", overflowY: "auto", marginTop: teeBoxes && teeBoxes.length ? 44 : 0 }}
+        >
+          <div className="section__title mb-2">Green &amp; waypoints</div>
+          <div className="tiny dim mb-2">{greenPos ? "Drag the red dot to move the green." : "No green yet — place one."}</div>
+          <div className="chip-row mb-2">
             {!greenPos && (
               <button
+                className="chip chip--sm"
                 onClick={() => {
                   const c = mapRef.current?.getCenter();
                   if (c) {
@@ -689,54 +727,53 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
                     setGreenDirty(true);
                   }
                 }}
-                style={hazardMiniButtonStyle}
               >
-                + Green (center)
+                Add at centre
               </button>
             )}
-            <button onClick={handleSaveGreen} disabled={!greenDirty} style={{ ...hazardSaveButtonStyle, opacity: greenDirty ? 1 : 0.5 }}>
+            <button className="btn btn--sm btn--primary" onClick={handleSaveGreen} disabled={!greenDirty}>
               Save green
             </button>
             {(currentHole.greenPoint || draftGreen) && (
-              <button onClick={handleResetGreen} style={hazardCancelButtonStyle}>
+              <button className="chip chip--sm" onClick={handleResetGreen}>
                 Reset
               </button>
             )}
           </div>
 
-          <div style={{ fontWeight: 600, fontSize: 12, marginTop: 6 }}>
-            Waypoints ({waypointMarkersRef.current.size})
+          <div className="section__title mb-1">Waypoints ({waypointMarkersRef.current.size})</div>
+          <div className="tiny dim mb-2">
+            {waypointMode ? "Tap to add. Drag to move, double-tap to remove." : "Saved layup points seed dots when you play the hole."}
           </div>
-          <div style={{ fontSize: 11, opacity: 0.8 }}>
-            {waypointMode ? "Tap the map to add layup points. Drag to move, double-tap to remove." : "Saved layup points seed dots when you play the hole."}
-          </div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          <div className="chip-row">
             <button
+              className={`chip chip--sm${waypointMode ? " chip--active" : ""}`}
               onClick={() => {
                 setWaypointMode((v) => !v);
                 setDrawingMode("none");
               }}
-              style={{ ...hazardMiniButtonStyle, ...(waypointMode ? { background: "#f5d90a", color: "#111" } : {}) }}
             >
-              {waypointMode ? "Done adding" : "+ Add waypoints"}
+              {waypointMode ? "Done" : "Add"}
             </button>
-            <button onClick={handleSaveWaypoints} disabled={!waypointDirty} style={{ ...hazardSaveButtonStyle, opacity: waypointDirty ? 1 : 0.5 }}>
-              Save waypoints
+            <button className="btn btn--sm btn--primary" onClick={handleSaveWaypoints} disabled={!waypointDirty}>
+              Save
             </button>
           </div>
         </div>
       )}
 
-      <div style={bottomPanelStyle}>
-        <div style={{ fontSize: 12, opacity: 0.75 }}>
-          {selectedTeeBox ? `Dragging "${selectedTeeBox.name}" — red dot is the green.` : "Edit the green/waypoints, or add a tee box."}
-          {status && <div style={{ color: "#10b981", marginTop: 4 }}>{status}</div>}
+      <div className="round-bar">
+        <div className="grow" style={{ minWidth: 0 }}>
+          <div className="small dim truncate">
+            {selectedTeeBox ? `Dragging "${selectedTeeBox.name}" — red dot is the green` : "Edit the green, waypoints or hazards"}
+          </div>
+          {status && <div className="tiny accent mt-1">{status}</div>}
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={handleClear} disabled={!isDirty} style={{ ...editorButtonStyle, opacity: isDirty ? 1 : 0.5 }}>
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn btn--sm btn--ghost" onClick={handleClear} disabled={!isDirty}>
             Clear
           </button>
-          <button onClick={handleSave} disabled={!isDirty} style={{ ...primaryEditorButtonStyle, opacity: isDirty ? 1 : 0.5 }}>
+          <button className="btn btn--sm btn--primary" onClick={handleSave} disabled={!isDirty}>
             Save
           </button>
         </div>
@@ -745,253 +782,3 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   );
 }
 
-const courseRowStyle: React.CSSProperties = {
-  display: "block",
-  padding: "12px 16px",
-  background: "#111813",
-  border: "1px solid #1c2c20",
-  borderRadius: 12,
-  color: "#eef2ef",
-  textDecoration: "none",
-  fontSize: 14
-};
-
-const backButtonStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 16,
-  left: 16,
-  zIndex: 3,
-  width: 40,
-  height: 40,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: "50%",
-  background: "#ffffff",
-  color: "#111",
-  fontSize: 18,
-  border: "none",
-  cursor: "pointer",
-  boxShadow: "0 2px 6px rgba(0,0,0,.4)"
-};
-
-const holeHeaderStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 12,
-  left: "50%",
-  transform: "translateX(-50%)",
-  zIndex: 2,
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  background: "#000000",
-  border: "1px solid #16a34a",
-  color: "#eef2ef",
-  padding: "7px 16px",
-  borderRadius: 999,
-  fontSize: 13,
-  fontWeight: 600,
-  whiteSpace: "nowrap"
-};
-
-const navButtonStyle: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  color: "#eef2ef",
-  fontSize: 22,
-  padding: "0 6px",
-  cursor: "pointer"
-};
-
-const teeChipRowStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 76,
-  left: 12,
-  zIndex: 2,
-  display: "flex",
-  flexDirection: "column",
-  gap: 6
-};
-
-const teeChipStyle: React.CSSProperties = {
-  padding: "6px 12px",
-  background: "rgba(11,15,12,0.85)",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 999,
-  fontSize: 12,
-  cursor: "pointer",
-  whiteSpace: "nowrap"
-};
-
-const teeChipActiveStyle: React.CSSProperties = {
-  background: "#f5d90a",
-  color: "#111",
-  border: "1px solid #f5d90a"
-};
-
-const emptyBannerStyle: React.CSSProperties = {
-  position: "absolute",
-  bottom: 84,
-  left: "50%",
-  transform: "translateX(-50%)",
-  zIndex: 2,
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  background: "rgba(11,15,12,0.9)",
-  color: "#fca5a5",
-  padding: "8px 12px",
-  borderRadius: 8,
-  fontSize: 12,
-  whiteSpace: "nowrap"
-};
-
-const addTeeButtonStyle: React.CSSProperties = {
-  padding: "6px 10px",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 6,
-  fontSize: 12,
-  fontWeight: 600,
-  cursor: "pointer",
-  whiteSpace: "nowrap"
-};
-
-const greenPanelStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 76,
-  left: 12,
-  zIndex: 2,
-  width: 190,
-  maxHeight: "60vh",
-  background: "rgba(11,15,12,0.92)",
-  border: "1px solid #2f5c3d",
-  borderRadius: 12,
-  padding: 10,
-  color: "#eef2ef",
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-  overflowY: "auto"
-};
-
-const bottomPanelStyle: React.CSSProperties = {
-  position: "absolute",
-  left: 0,
-  right: 0,
-  bottom: 0,
-  zIndex: 2,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 10,
-  background: "rgba(11,15,12,0.92)",
-  borderTop: "1px solid #2f5c3d",
-  padding: "12px 16px",
-  color: "#eef2ef"
-};
-
-const editorButtonStyle: React.CSSProperties = {
-  padding: "10px 16px",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 999,
-  fontSize: 14,
-  cursor: "pointer"
-};
-
-const primaryEditorButtonStyle: React.CSSProperties = {
-  padding: "10px 16px",
-  background: "#f5d90a",
-  color: "#111",
-  border: "none",
-  borderRadius: 999,
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: "pointer"
-};
-
-const hazardPanelStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 76,
-  right: 12,
-  zIndex: 2,
-  width: 200,
-  maxHeight: "60vh",
-  background: "rgba(11,15,12,0.92)",
-  border: "1px solid #2f5c3d",
-  borderRadius: 12,
-  padding: 10,
-  color: "#eef2ef",
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
-  overflowY: "auto"
-};
-
-const hazardMiniButtonStyle: React.CSSProperties = {
-  flex: 1,
-  padding: "5px 8px",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 4,
-  fontSize: 10,
-  fontWeight: 600,
-  cursor: "pointer",
-  textAlign: "center"
-};
-
-const hazardListStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 4,
-  maxHeight: 180,
-  overflowY: "auto"
-};
-
-const hazardItemStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  background: "#16271c",
-  border: "1px solid #223e2b",
-  padding: "4px 8px",
-  borderRadius: 6,
-  fontSize: 11
-};
-
-const hazardDeleteButtonStyle: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  color: "#f87171",
-  fontSize: 11,
-  cursor: "pointer",
-  padding: "0 2px"
-};
-
-const hazardSaveButtonStyle: React.CSSProperties = {
-  flex: 1,
-  padding: "6px 10px",
-  background: "#f5d90a",
-  color: "#111",
-  border: "none",
-  borderRadius: 6,
-  fontSize: 11,
-  fontWeight: 600,
-  cursor: "pointer"
-};
-
-const hazardCancelButtonStyle: React.CSSProperties = {
-  flex: 1,
-  padding: "6px 10px",
-  background: "#374151",
-  color: "#eef2ef",
-  border: "none",
-  borderRadius: 6,
-  fontSize: 11,
-  cursor: "pointer"
-};

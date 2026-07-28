@@ -11,15 +11,14 @@ import {
   setShotExcluded,
   setShotTargetPoint
 } from "../lib/roundRepo";
-import { setReviewFlagStatus } from "../lib/captureRepo";
-import { saveWatchData } from "../lib/captureRepo";
+import { saveWatchData, setReviewFlagStatus } from "../lib/captureRepo";
 import { parseFit } from "../lib/fit";
 import { reconcileRound } from "../lib/reconcileRunner";
 import { ALL_LIES, LIE_LABELS } from "../lib/lie";
 import { distanceYards } from "../lib/geo";
 import { ReviewMap } from "../components/ReviewMap";
-import { ScorecardSheet, relativeToParLabel } from "../components/RoundSheets";
-import { PageHeader } from "../components/PageHeader";
+import { ScorecardSheet } from "../components/RoundSheets";
+import { AppBar, Badge, EmptyState, Icon, Page, Stat, relativeToParLabel, scoreToneClass } from "../components/ui";
 import type { LatLng, PenaltyType, ReviewFlag, Shot } from "../types/domain";
 
 /** How far apart the FIT time range and the round's shot timestamps may sit before the file is
@@ -62,17 +61,21 @@ export function ReviewRoundsPage() {
         const course = version ? await db.courses.get(version.courseId) : undefined;
         const holes = version ? await getHolesForVersion(version.id) : [];
         const roundHoles = await db.roundHoles.where("roundId").equals(round.id).toArray();
-        // Total to-par across only the holes actually scored, so a partial round still summarizes.
+        // Total to-par across only the holes actually scored, so a partial round still summarises.
         let toPar = 0;
+        let strokes = 0;
         let scoredHoles = 0;
         for (const h of holes) {
           const rh = roundHoles.find((r) => r.holeId === h.id);
           if (rh?.score != null) {
             toPar += rh.score - h.par;
+            strokes += rh.score;
             scoredHoles += 1;
           }
         }
-        return { round, courseName: course?.name ?? "Unknown course", toPar, scoredHoles };
+        const flags = await db.reviewFlags.where("roundId").equals(round.id).toArray();
+        const openFlags = flags.filter((f) => f.status !== "resolved").length;
+        return { round, courseName: course?.name ?? "Unknown course", toPar, strokes, scoredHoles, openFlags };
       })
     );
   }, []);
@@ -81,7 +84,7 @@ export function ReviewRoundsPage() {
     useLiveQuery(() => (selectedRoundId ? db.rounds.get(selectedRoundId) : undefined), [selectedRoundId]) ?? null;
 
   // A round always renders against the geometry it was played on: holes come from the round's
-  // own courseVersionId, never "latest" (REVISION-SPEC 0.2).
+  // own courseVersionId, never "latest".
   const holes = useLiveQuery(
     () => (selectedRound ? getHolesForVersion(selectedRound.courseVersionId) : []),
     [selectedRound?.courseVersionId]
@@ -115,10 +118,7 @@ export function ReviewRoundsPage() {
     () => (selectedRound ? db.reviewFlags.where("roundId").equals(selectedRound.id).toArray() : []),
     [selectedRound?.id]
   );
-  const pendingFlags = useMemo(
-    () => (flags ?? []).filter((f) => f.status === "open" || f.status === "dismissed"),
-    [flags]
-  );
+  const pendingFlags = useMemo(() => (flags ?? []).filter((f) => f.status !== "resolved"), [flags]);
 
   const scorecardEntries = useMemo(() => {
     if (!holes) return [];
@@ -131,8 +131,13 @@ export function ReviewRoundsPage() {
       }));
   }, [holes, allRoundHoles]);
 
-  // A newly-selected round or hole shouldn't carry over an armed toggle from whatever was being
-  // reviewed before.
+  const roundTotals = useMemo(() => {
+    const played = scorecardEntries.filter((e) => e.score !== null);
+    const strokes = played.reduce((s, e) => s + (e.score as number), 0);
+    const toPar = played.reduce((s, e) => s + ((e.score as number) - e.par), 0);
+    return { strokes, toPar, holes: played.length };
+  }, [scorecardEntries]);
+
   useEffect(() => {
     setArmedShotId(null);
     setArmedPenaltyType(null);
@@ -155,11 +160,6 @@ export function ReviewRoundsPage() {
     }
   }
 
-  function openRound(roundId: string) {
-    setSelectedRoundId(roundId);
-    setHoleNumber(1);
-  }
-
   function jumpToFlag(flag: ReviewFlag) {
     const rh = allRoundHoles?.find((r) => r.id === flag.roundHoleId);
     const hole = holes?.find((h) => h.id === rh?.holeId);
@@ -167,7 +167,7 @@ export function ReviewRoundsPage() {
     if (flag.shotId) setEditingShotId(flag.shotId);
   }
 
-  // --- FIT ingest (spec 2.4/2.5): parse, overlap-guard, store, compute clock offset, reconcile ---
+  // --- FIT ingest: parse, overlap-guard, store, compute clock offset, reconcile ---
   async function handleFitFile(file: File) {
     if (!selectedRound) return;
     setFitBusy(true);
@@ -184,22 +184,19 @@ export function ReviewRoundsPage() {
           const shotEnd = Math.max(...times);
           if (parsed.range.end < shotStart - FIT_OVERLAP_SLACK_MS || parsed.range.start > shotEnd + FIT_OVERLAP_SLACK_MS) {
             throw new Error(
-              `This FIT file covers ${new Date(parsed.range.start).toLocaleString()} – ${new Date(parsed.range.end).toLocaleString()}, ` +
-                `but this round's shots span ${new Date(shotStart).toLocaleString()} – ${new Date(shotEnd).toLocaleString()}. Wrong file?`
+              `This file covers ${new Date(parsed.range.start).toLocaleString()} – ${new Date(parsed.range.end).toLocaleString()}, ` +
+                `but the round's shots span ${new Date(shotStart).toLocaleString()} – ${new Date(shotEnd).toLocaleString()}. Wrong file?`
             );
           }
         } else {
           const fitDay = new Date(parsed.range.start).toISOString().slice(0, 10);
           if (fitDay !== selectedRound.playedOn) {
-            throw new Error(
-              `This FIT file is from ${fitDay}, but the round was played on ${selectedRound.playedOn}. Wrong file?`
-            );
+            throw new Error(`This file is from ${fitDay}, but the round was played on ${selectedRound.playedOn}. Wrong file?`);
           }
         }
       }
 
-      // Clock offset from the calibration press when one was made (spec 2.5); reconcile
-      // estimates otherwise.
+      // Clock offset from the calibration press when one was made; reconcile estimates otherwise.
       let clockOffsetMs: number | null = null;
       if (selectedRound.watchCalibrationAt && parsed.laps.length) {
         const calibT = Date.parse(selectedRound.watchCalibrationAt);
@@ -219,8 +216,8 @@ export function ReviewRoundsPage() {
       });
       const summary = await reconcileRound(selectedRound.id);
       setFitMessage(
-        `Ingested ${parsed.laps.length} laps. Reconciled ${summary.shotCount} shots, ${summary.flagCount} flag(s); ` +
-          `clock offset ${(summary.clockOffsetMs / 1000).toFixed(1)}s (${summary.clockOffsetMethod.replace("_", " ")}).`
+        `Ingested ${parsed.laps.length} laps → ${summary.shotCount} shots, ${summary.flagCount} flag(s). ` +
+          `Clock offset ${(summary.clockOffsetMs / 1000).toFixed(1)}s (${summary.clockOffsetMethod.replace(/_/g, " ")}).`
       );
     } catch (e) {
       setFitMessage(e instanceof Error ? e.message : String(e));
@@ -242,70 +239,116 @@ export function ReviewRoundsPage() {
     }
   }
 
-  if (!selectedRoundId || !selectedRound) {
+  // ---------------------------------------------------------------- round list
+  if (!selectedRoundId) {
     return (
-      <div style={{ padding: 16 }}>
-        <PageHeader title="Review Rounds" />
-        {!completedRounds?.length ? (
-          <p style={{ opacity: 0.8 }}>
-            No completed rounds yet. Finish a round (hole out on 18, or the last hole of the
-            course) to see it here.
-          </p>
+      <Page>
+        <AppBar title="Rounds" subtitle={completedRounds ? `${completedRounds.length} completed` : undefined} />
+        {!completedRounds ? (
+          <div className="card dim small">Loading rounds…</div>
+        ) : completedRounds.length === 0 ? (
+          <EmptyState icon="🏁" title="No completed rounds yet">
+            Finish a round — hole out on the last hole — and it lands here for review.
+          </EmptyState>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {completedRounds.map(({ round, courseName, toPar, scoredHoles }) => (
-              <button key={round.id} onClick={() => openRound(round.id)} style={roundListItemStyle}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-                  <div style={{ fontWeight: 600 }}>{courseName}</div>
-                  {scoredHoles > 0 && (
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#f5d90a" }}>
-                      {relativeToParLabel(toPar)}
-                      <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 400 }}> · {scoredHoles} holes</span>
+          <div className="stack">
+            {completedRounds.map(({ round, courseName, toPar, strokes, scoredHoles, openFlags }) => (
+              <button
+                key={round.id}
+                className="card card--interactive"
+                onClick={() => {
+                  setSelectedRoundId(round.id);
+                  setHoleNumber(1);
+                }}
+              >
+                <div className="row row--between mb-2">
+                  <div className="grow">
+                    <div className="card__title truncate">{courseName}</div>
+                    <div className="card__meta">
+                      {new Date(round.playedOn).toLocaleDateString(undefined, {
+                        weekday: "short",
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric"
+                      })}
                     </div>
-                  )}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div className="accent num" style={{ fontSize: 24, fontWeight: 750, letterSpacing: "-0.03em" }}>
+                      {relativeToParLabel(toPar)}
+                    </div>
+                    <div className="tiny faint num">{strokes} strokes</div>
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  {round.playedOn}
-                  {round.fitIngestedAt ? " · ⌚ watch data attached" : ""}
+                <div className="row" style={{ gap: 6 }}>
+                  <Badge>{scoredHoles} holes</Badge>
+                  {round.fitIngestedAt && <Badge tone="info">Watch data</Badge>}
+                  {openFlags > 0 && <Badge tone="warn">{openFlags} to review</Badge>}
                 </div>
               </button>
             ))}
           </div>
         )}
-      </div>
+      </Page>
     );
   }
 
+  // Round selected but the row hasn't resolved yet — hold the frame rather than
+  // flashing the list back at the user.
+  if (!selectedRound) {
+    return (
+      <Page>
+        <AppBar title="Round" onBack={() => setSelectedRoundId(null)} />
+        <div className="card dim small row">
+          <span className="spinner" /> Loading round…
+        </div>
+      </Page>
+    );
+  }
+
+  // -------------------------------------------------------------- round detail
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ position: "relative", flex: "0 0 45%" }}>
-        <button onClick={() => setSelectedRoundId(null)} style={backButtonStyle} aria-label="Back to round list">
-          ←
+      <div style={{ position: "relative", flex: "0 0 42%", minHeight: 240 }}>
+        <button
+          className="map-btn glass"
+          onClick={() => setSelectedRoundId(null)}
+          style={{ position: "absolute", top: "calc(12px + var(--safe-t))", left: 12, zIndex: 4 }}
+          aria-label="Back to rounds"
+        >
+          <Icon.back size={19} />
         </button>
-        <button onClick={() => setShowScorecard(true)} style={scorecardButtonStyle} aria-label="Show scorecard" title="Scorecard">
-          📋 Scorecard
+        <button
+          className="btn btn--sm glass"
+          onClick={() => setShowScorecard(true)}
+          style={{ position: "absolute", top: "calc(12px + var(--safe-t))", right: 12, zIndex: 4 }}
+        >
+          Scorecard
         </button>
         {currentHole && (
-          <div style={holeHeaderStyle}>
-            <button onClick={() => setHoleNumber((n) => Math.max(1, n - 1))} disabled={holeNumber <= 1} style={navButtonStyle}>
+          <div className="hole-bar glass">
+            <button className="hole-bar__nav" onClick={() => setHoleNumber((n) => Math.max(1, n - 1))} disabled={holeNumber <= 1}>
               ‹
             </button>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 15 }}>
-                Hole {currentHole.number} · Par {currentHole.par}
-              </div>
-            </div>
+            <span className="hole-bar__label">
+              {currentHole.number}
+              <span className="hole-bar__par">
+                {" · "}Par {currentHole.par}
+              </span>
+            </span>
             <button
+              className="hole-bar__nav"
               onClick={() => setHoleNumber((n) => Math.min(maxHoleNumber, n + 1))}
               disabled={holeNumber >= maxHoleNumber}
-              style={navButtonStyle}
             >
               ›
             </button>
           </div>
         )}
         {armedPenaltyType && (
-          <div style={armedBannerStyle}>Tap where the penalty happened ({PENALTY_OPTIONS.find((p) => p.value === armedPenaltyType)?.label})…</div>
+          <div className="toast glass" style={{ top: "auto", bottom: 12, color: "var(--warn)" }}>
+            Tap the map where the penalty happened
+          </div>
         )}
         <ReviewMap
           shots={shots ?? []}
@@ -316,352 +359,203 @@ export function ReviewRoundsPage() {
         />
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", background: "#0b0f0c", color: "#eef2ef" }}>
-        {/* --- Watch-file ingest --- */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
-          <input
-            ref={fitInputRef}
-            type="file"
-            accept=".fit,application/octet-stream"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (file) handleFitFile(file);
-            }}
-          />
-          <button onClick={() => fitInputRef.current?.click()} disabled={fitBusy} style={smallButtonStyle}>
-            ⌚ {selectedRound.fitIngestedAt ? "Re-attach watch file…" : "Attach watch file…"}
-          </button>
-          {selectedRound.fitIngestedAt && (
-            <button onClick={handleRerunReconcile} disabled={fitBusy} style={smallButtonStyle}>
-              ↻ Re-run reconciliation
-            </button>
-          )}
-          {fitBusy && <span style={{ fontSize: 12, opacity: 0.7 }}>Working…</span>}
-        </div>
-        {fitMessage && <p style={{ fontSize: 12.5, color: "#8fd694", marginBottom: 10 }}>{fitMessage}</p>}
-
-        {/* --- Flag queue (4.2): every open + dismissed flag, grouped by hole --- */}
-        {pendingFlags.length > 0 && (
-          <div style={flagQueueStyle}>
-            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
-              ⚠️ {pendingFlags.length} item{pendingFlags.length === 1 ? "" : "s"} to review
-            </div>
-            {pendingFlags.map((f) => (
-              <div key={f.id} style={flagRowStyle}>
-                <button onClick={() => jumpToFlag(f)} style={flagJumpStyle}>
-                  <span style={{ opacity: 0.7, marginRight: 6 }}>
-                    H{holes?.find((h) => h.id === allRoundHoles?.find((r) => r.id === f.roundHoleId)?.holeId)?.number ?? "?"}
-                  </span>
-                  {f.detail}
-                  {f.status === "dismissed" ? " (deferred)" : ""}
-                </button>
-                <button onClick={() => setReviewFlagStatus(f.id, "resolved")} style={flagActionStyle} title="Mark resolved">
-                  ✓
-                </button>
-              </div>
-            ))}
+      <div style={{ flex: 1, overflowY: "auto", background: "var(--bg)" }}>
+        <div style={{ padding: "14px 16px 28px", maxWidth: 720, margin: "0 auto" }}>
+          {/* Round summary */}
+          <div className="stat-row mb-3">
+            <Stat value={roundTotals.strokes || "—"} label="Strokes" />
+            <Stat value={relativeToParLabel(roundTotals.toPar)} label="To par" />
+            <Stat
+              value={
+                currentRoundHole?.score != null ? (
+                  <span className={scoreToneClass(currentRoundHole.score, currentHole?.par ?? 4)}>{currentRoundHole.score}</span>
+                ) : (
+                  "—"
+                )
+              }
+              label={`Hole ${holeNumber}`}
+            />
           </div>
-        )}
 
-        {/* --- Penalty entry (4.2) --- */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
-          <span style={{ fontSize: 12.5, opacity: 0.75 }}>Add penalty:</span>
-          <select
-            value={armedPenaltyType ?? ""}
-            onChange={(e) => setArmedPenaltyType((e.target.value || null) as PenaltyType | null)}
-            style={penaltySelectStyle}
-          >
-            <option value="">— choose type, then tap map —</option>
-            {PENALTY_OPTIONS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </div>
+          {/* Watch ingest */}
+          <div className="row row--wrap mb-2" style={{ gap: 8 }}>
+            <input
+              ref={fitInputRef}
+              type="file"
+              accept=".fit,application/octet-stream"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) handleFitFile(file);
+              }}
+            />
+            <button className="btn btn--sm" onClick={() => fitInputRef.current?.click()} disabled={fitBusy}>
+              <Icon.watch size={15} /> {selectedRound.fitIngestedAt ? "Re-attach watch file" : "Attach watch file"}
+            </button>
+            {selectedRound.fitIngestedAt && (
+              <button className="btn btn--sm btn--ghost" onClick={handleRerunReconcile} disabled={fitBusy}>
+                Re-run reconciliation
+              </button>
+            )}
+            {fitBusy && <span className="spinner" />}
+          </div>
+          {fitMessage && (
+            <div className="mb-3">
+              <div className="note note--ok">{fitMessage}</div>
+            </div>
+          )}
 
-        {/* --- Shot table (4.2): every stroke; club / lie / target editable --- */}
-        {!shots?.length ? (
-          <p style={{ opacity: 0.7, fontSize: 13 }}>No shots recorded for this hole.</p>
-        ) : (
-          shots.map((s) => {
-            const club = clubs?.find((c) => c.id === s.clubId);
-            const isEditing = editingShotId === s.id;
-            const dist = s.endPoint ? Math.round(distanceYards(s.startPoint, s.endPoint)) : null;
-            const badPosition = s.positionSource === "tee_fallback" || (s.accuracyM !== null && s.accuracyM > 15);
-            return (
-              <div key={s.id} style={shotRowStyle}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>
-                      {s.penaltyType
-                        ? `Penalty — ${PENALTY_OPTIONS.find((p) => p.value === s.penaltyType)?.label ?? s.penaltyType}`
-                        : `Shot ${s.shotNumber}${s.swingType === "putt" ? " (putt)" : s.swingType === "partial" ? " (partial)" : ""}${club ? ` — ${club.name}` : s.reconciliation === "lap_only" ? " — club?" : ""}`}
-                      {dist !== null && !s.penaltyType ? ` · ${dist}y` : ""}
+          {/* Flag queue */}
+          {pendingFlags.length > 0 && (
+            <div className="mb-3">
+              <div className="section__title mb-2">
+                {pendingFlags.length} item{pendingFlags.length === 1 ? "" : "s"} to review
+              </div>
+              <div className="stack" style={{ gap: 6 }}>
+                {pendingFlags.map((f) => {
+                  const rh = allRoundHoles?.find((r) => r.id === f.roundHoleId);
+                  const hole = holes?.find((h) => h.id === rh?.holeId);
+                  return (
+                    <div key={f.id} className="list-row" style={{ borderColor: "rgba(255,192,67,.28)", background: "var(--warn-soft)" }}>
+                      <button className="row grow" style={{ background: "none", border: "none", textAlign: "left", padding: 0 }} onClick={() => jumpToFlag(f)}>
+                        <Badge tone="warn">H{hole?.number ?? "?"}</Badge>
+                        <span className="small grow">{f.detail}</span>
+                      </button>
+                      <button className="map-btn" style={{ width: 30, height: 30, color: "var(--accent)" }} onClick={() => setReviewFlagStatus(f.id, "resolved")} title="Mark resolved">
+                        <Icon.check size={16} />
+                      </button>
                     </div>
-                    <div style={{ fontSize: 11.5, opacity: 0.65 }}>
-                      {s.lieStart ? LIE_LABELS[s.lieStart] : "—"} · {POSITION_SOURCE_LABELS[s.positionSource]}
-                      {s.accuracyM !== null ? ` ±${Math.round(s.accuracyM)}m` : ""}
-                      {s.targetPoint ? ` · target: ${s.targetSource.replace("default_", "")}` : " · no target"}
-                      {s.excluded ? ` · excluded (${s.excluded})` : ""}
-                      {s.userEdited ? " · edited" : ""}
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Penalty entry */}
+          <div className="row mb-3" style={{ gap: 8 }}>
+            <span className="small dim" style={{ flex: "none" }}>
+              Penalty
+            </span>
+            <select
+              className="field grow"
+              value={armedPenaltyType ?? ""}
+              onChange={(e) => setArmedPenaltyType((e.target.value || null) as PenaltyType | null)}
+              style={{ padding: "8px 10px" }}
+            >
+              <option value="">Add… then tap the map</option>
+              {PENALTY_OPTIONS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Shot list */}
+          <div className="section__title mb-2">Shots</div>
+          {!shots?.length ? (
+            <div className="note">No shots recorded for this hole.</div>
+          ) : (
+            <div className="stack" style={{ gap: 8 }}>
+              {shots.map((s) => {
+                const club = clubs?.find((c) => c.id === s.clubId);
+                const isEditing = editingShotId === s.id;
+                // Putts are measured in feet, everything else in yards — the units golfers
+                // actually use, and the ones the rest of the app stores.
+                const rawYards = s.endPoint ? distanceYards(s.startPoint, s.endPoint) : null;
+                const distLabel =
+                  rawYards === null ? null : s.swingType === "putt" ? `${Math.round(rawYards * 3)}ft` : `${Math.round(rawYards)}y`;
+                const badPosition = s.positionSource === "tee_fallback" || (s.accuracyM !== null && s.accuracyM > 15);
+                return (
+                  <div key={s.id} className="card card--tight">
+                    <div className="row row--between">
+                      <div className="grow" style={{ minWidth: 0 }}>
+                        <div className="row" style={{ gap: 8 }}>
+                          <span className="bold">
+                            {s.penaltyType
+                              ? PENALTY_OPTIONS.find((p) => p.value === s.penaltyType)?.label ?? "Penalty"
+                              : `${s.shotNumber}. ${club?.name ?? (s.reconciliation === "lap_only" ? "Club?" : "—")}`}
+                          </span>
+                          {s.swingType === "putt" && <Badge>putt</Badge>}
+                          {s.swingType === "partial" && <Badge tone="info">partial</Badge>}
+                          {s.penaltyType && <Badge tone="danger">+1</Badge>}
+                          {s.excluded && <Badge tone="warn">excluded</Badge>}
+                        </div>
+                        <div className="tiny faint mt-1">
+                          {s.lieStart ? LIE_LABELS[s.lieStart] : "—"}
+                          {distLabel !== null && !s.penaltyType ? ` · ${distLabel}` : ""}
+                          {` · ${POSITION_SOURCE_LABELS[s.positionSource]}`}
+                          {s.targetPoint ? ` · target ${s.targetSource.replace("default_", "")}` : ""}
+                          {s.userEdited ? " · edited" : ""}
+                        </div>
+                        {badPosition && (
+                          <div className="tiny danger mt-1">
+                            {s.positionSource === "tee_fallback" ? "No GPS — recorded at the tee box" : "Low GPS accuracy"} · not in stats
+                          </div>
+                        )}
+                      </div>
+                      <button className="btn btn--sm btn--ghost" onClick={() => setEditingShotId(isEditing ? null : s.id)}>
+                        {isEditing ? "Done" : "Edit"}
+                      </button>
                     </div>
-                    {badPosition && (
-                      <div style={{ fontSize: 11.5, color: "#fca5a5" }}>
-                        ⚠️ {s.positionSource === "tee_fallback" ? "No GPS — recorded at tee box" : "Low GPS accuracy"} — excluded from stats
+
+                    {isEditing && (
+                      <div className="mt-2">
+                        {s.penaltyType ? (
+                          <button className="btn btn--sm btn--danger" onClick={() => removePenaltyStroke(s.id)}>
+                            <Icon.trash size={14} /> Remove penalty
+                          </button>
+                        ) : (
+                          <>
+                            <div className="tiny faint mb-1">Club</div>
+                            <div className="chip-row mb-2">
+                              {clubs?.map((c) => (
+                                <button
+                                  key={c.id}
+                                  className={`chip chip--sm${s.clubId === c.id ? " chip--active" : ""}`}
+                                  onClick={() => correctShot(s.id, { clubId: c.id })}
+                                >
+                                  {c.name}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="tiny faint mb-1">Lie</div>
+                            <div className="chip-row mb-2">
+                              {ALL_LIES.map((l) => (
+                                <button
+                                  key={l}
+                                  className={`chip chip--sm${s.lieStart === l ? " chip--active" : ""}`}
+                                  onClick={() => correctShot(s.id, { lieStart: l })}
+                                >
+                                  {LIE_LABELS[l]}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="row row--wrap" style={{ gap: 8 }}>
+                              <button
+                                className={`btn btn--sm${armedShotId === s.id ? " btn--primary" : ""}`}
+                                onClick={() => setArmedShotId((id) => (id === s.id ? null : s.id))}
+                              >
+                                <Icon.target size={14} /> {armedShotId === s.id ? "Tap map…" : "Set target"}
+                              </button>
+                              <button className="btn btn--sm btn--ghost" onClick={() => setShotExcluded(s.id, s.excluded === null)}>
+                                {s.excluded === null ? "Exclude from stats" : "Include in stats"}
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
-                  <button onClick={() => setEditingShotId(isEditing ? null : s.id)} style={aimToggleStyle}>
-                    {isEditing ? "Close" : "Edit"}
-                  </button>
-                </div>
-
-                {isEditing && (
-                  <div style={{ marginTop: 8 }}>
-                    {s.penaltyType ? (
-                      <button onClick={() => removePenaltyStroke(s.id)} style={{ ...aimToggleStyle, color: "#fca5a5" }}>
-                        🗑 Remove penalty stroke
-                      </button>
-                    ) : (
-                      <>
-                        <div style={editLabelStyle}>Club</div>
-                        <div style={chipRowStyle}>
-                          {clubs?.map((c) => (
-                            <button
-                              key={c.id}
-                              onClick={() => correctShot(s.id, { clubId: c.id })}
-                              style={{ ...editChipStyle, ...(s.clubId === c.id ? editChipActiveStyle : {}) }}
-                            >
-                              {c.name}
-                            </button>
-                          ))}
-                        </div>
-                        <div style={editLabelStyle}>Lie</div>
-                        <div style={chipRowStyle}>
-                          {ALL_LIES.map((l) => (
-                            <button
-                              key={l}
-                              onClick={() => correctShot(s.id, { lieStart: l })}
-                              style={{ ...editChipStyle, ...(s.lieStart === l ? editChipActiveStyle : {}) }}
-                            >
-                              {LIE_LABELS[l]}
-                            </button>
-                          ))}
-                        </div>
-                        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                          <button
-                            onClick={() => setArmedShotId((id) => (id === s.id ? null : s.id))}
-                            style={{ ...aimToggleStyle, ...(armedShotId === s.id ? aimToggleActiveStyle : {}) }}
-                          >
-                            🎯 {armedShotId === s.id ? "Tap map…" : "Set target"}
-                          </button>
-                          <button onClick={() => setShotExcluded(s.id, s.excluded === null)} style={aimToggleStyle}>
-                            {s.excluded === null ? "🚫 Exclude from stats" : "✓ Include in stats"}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {showScorecard && <ScorecardSheet entries={scorecardEntries} onClose={() => setShowScorecard(false)} />}
     </div>
   );
 }
-
-const scorecardButtonStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 12,
-  right: 12,
-  zIndex: 3,
-  padding: "8px 14px",
-  background: "rgba(11,15,12,0.85)",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 999,
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: "pointer"
-};
-
-const roundListItemStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  textAlign: "left",
-  padding: "12px 14px",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 10,
-  cursor: "pointer"
-};
-
-const backButtonStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 12,
-  left: 12,
-  zIndex: 3,
-  width: 36,
-  height: 36,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: "50%",
-  background: "#ffffff",
-  color: "#111",
-  fontSize: 16,
-  border: "none",
-  cursor: "pointer",
-  boxShadow: "0 2px 6px rgba(0,0,0,.4)"
-};
-
-const holeHeaderStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 12,
-  left: "50%",
-  transform: "translateX(-50%)",
-  zIndex: 2,
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  background: "rgba(11,15,12,0.75)",
-  color: "#eef2ef",
-  padding: "6px 12px",
-  borderRadius: 8
-};
-
-const navButtonStyle: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  color: "#eef2ef",
-  fontSize: 22,
-  padding: "0 6px",
-  cursor: "pointer"
-};
-
-const armedBannerStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 56,
-  left: 12,
-  right: 12,
-  zIndex: 2,
-  background: "rgba(245,217,10,0.95)",
-  color: "#111",
-  padding: "8px 12px",
-  borderRadius: 8,
-  fontSize: 13,
-  fontWeight: 600
-};
-
-const smallButtonStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 999,
-  fontSize: 13,
-  cursor: "pointer"
-};
-
-const flagQueueStyle: React.CSSProperties = {
-  background: "#191307",
-  border: "1px solid #6b4d16",
-  borderRadius: 10,
-  padding: 10,
-  marginBottom: 12
-};
-
-const flagRowStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "4px 0"
-};
-
-const flagJumpStyle: React.CSSProperties = {
-  flex: 1,
-  textAlign: "left",
-  background: "none",
-  border: "none",
-  color: "#eef2ef",
-  fontSize: 12.5,
-  cursor: "pointer",
-  padding: 0
-};
-
-const flagActionStyle: React.CSSProperties = {
-  background: "#1a3a24",
-  border: "1px solid #2f5c3d",
-  color: "#8fd694",
-  borderRadius: 999,
-  width: 28,
-  height: 28,
-  cursor: "pointer"
-};
-
-const penaltySelectStyle: React.CSSProperties = {
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 8,
-  padding: "6px 10px",
-  fontSize: 13
-};
-
-const shotRowStyle: React.CSSProperties = {
-  padding: "10px 0",
-  borderBottom: "1px solid #1a3a24"
-};
-
-const editLabelStyle: React.CSSProperties = {
-  fontSize: 11,
-  opacity: 0.6,
-  margin: "6px 0 4px"
-};
-
-const chipRowStyle: React.CSSProperties = {
-  display: "flex",
-  gap: 6,
-  flexWrap: "wrap"
-};
-
-const editChipStyle: React.CSSProperties = {
-  padding: "6px 10px",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 999,
-  fontSize: 12,
-  cursor: "pointer"
-};
-
-const editChipActiveStyle: React.CSSProperties = {
-  background: "#f5d90a",
-  color: "#111",
-  border: "1px solid #f5d90a"
-};
-
-const aimToggleStyle: React.CSSProperties = {
-  padding: "6px 10px",
-  background: "#1a3a24",
-  color: "#eef2ef",
-  border: "1px solid #2f5c3d",
-  borderRadius: 999,
-  fontSize: 12,
-  whiteSpace: "nowrap",
-  cursor: "pointer"
-};
-
-const aimToggleActiveStyle: React.CSSProperties = {
-  background: "#f5d90a",
-  color: "#111",
-  border: "1px solid #f5d90a"
-};
