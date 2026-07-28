@@ -14,9 +14,13 @@ import {
   setRoundHolePinLocation,
   startRound
 } from "../lib/roundRepo";
-import { detectLie } from "../lib/lie";
+import { ALL_LIES, LIE_LABELS, detectLie } from "../lib/lie";
 import { classifyFairwayResult } from "../lib/fairway";
+import { correctShot, saveGreenMarks } from "../lib/roundRepo";
+import { addReviewFlag, clubIdForSerial, recordClubTap, recordWatchCalibration, setReviewFlagStatus } from "../lib/captureRepo";
+import { armScanning, isNfcSupported } from "../lib/nfc";
 import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE, type DispersionEllipseSpec } from "../components/CourseMap";
+import { GreenMap } from "../components/GreenMap";
 import { HoleScoreSheet, ScorecardSheet, ShotSheet, relativeToParLabel } from "../components/RoundSheets";
 import { bearingDegrees, distanceMeters, distanceYards, fromDownrangeOffline } from "../lib/geo";
 import { getClubDispersion } from "../lib/dispersion";
@@ -110,7 +114,9 @@ export function RoundMapPage() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [roundHoleId, setRoundHoleId] = useState<string | null>(null);
   const [openSheet, setOpenSheet] = useState<"shot" | "score" | "scorecard" | null>(null);
-  const lastPositionRef = useRef<LatLng | null>(null);
+  // Latest GPS fix + its reported accuracy. Kept together so a recorded shot can carry honest
+  // provenance (positionSource/accuracyM) instead of a bare coordinate of unknown quality.
+  const lastPositionRef = useRef<{ point: LatLng; accuracyM: number | null } | null>(null);
   // Tracks pointerdown position on the map wrapper to distinguish a tap (dismisses the notes
   // popover) from a drag/pan (which also ends in a native click but shouldn't dismiss anything).
   const mapPointerDownRef = useRef<{ x: number; y: number } | null>(null);
@@ -145,6 +151,159 @@ export function RoundMapPage() {
   // Live GPS on/off (Settings toggle). Read once on mount — flipping it takes effect next time the
   // round map is opened, which is fine for a rarely-touched preference.
   const [gpsEnabled] = useState(isGpsEnabled);
+
+  // --- Capture streams (REVISION-SPEC Phase 2): NFC club taps + screen wake lock + green marking ---
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function showToast(msg: string) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(msg);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2500);
+  }
+
+  const [nfcActive, setNfcActive] = useState(false);
+  const nfcStopRef = useRef<(() => void) | null>(null);
+  // Arms continuous tag scanning for the round. Must be called from a user gesture (Start round,
+  // or the 🏷️ indicator after a mid-round reload). Every read = one ClubTap row + a toast —
+  // deliberately NO sheet, NO confirmation (spec 2.1): tap the bag, keep walking.
+  async function armNfc(roundId: string) {
+    if (!isNfcSupported() || nfcStopRef.current) return;
+    try {
+      nfcStopRef.current = await armScanning(
+        async (serial, at) => {
+          const clubId = await clubIdForSerial(serial);
+          if (!clubId) {
+            showToast("Unpaired tag");
+            return;
+          }
+          const fix = lastPositionRef.current;
+          await recordClubTap({
+            roundId,
+            clubId,
+            serialNumber: serial,
+            at,
+            point: fix?.point ?? null,
+            accuracyM: fix?.accuracyM ?? null
+          });
+          const club = (await ensureDefaultClubs()).find((c) => c.id === clubId);
+          showToast(`🏷️ ${club?.name ?? "Club"}`);
+        },
+        (msg) => showToast(`NFC: ${msg}`)
+      );
+      setNfcActive(true);
+    } catch {
+      showToast("NFC unavailable on this device");
+    }
+  }
+  function stopNfc() {
+    nfcStopRef.current?.();
+    nfcStopRef.current = null;
+    setNfcActive(false);
+  }
+  useEffect(() => stopNfc, []); // page unmount
+
+  // Screen wake lock while a round is active (spec 2.2): NFC only delivers while the page is
+  // visible, so the screen staying on IS the capture reliability story. Re-acquired on
+  // visibilitychange because the OS silently releases it whenever the page is hidden.
+  const [wakeLockHeld, setWakeLockHeld] = useState(false);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  useEffect(() => {
+    if (!round) return;
+    let cancelled = false;
+    async function acquire() {
+      if (cancelled || !("wakeLock" in navigator)) return;
+      try {
+        const lock = await navigator.wakeLock.request("screen");
+        if (cancelled) {
+          lock.release().catch(() => {});
+          return;
+        }
+        wakeLockRef.current = lock;
+        setWakeLockHeld(true);
+        lock.addEventListener("release", () => {
+          if (!cancelled) setWakeLockHeld(false);
+        });
+      } catch {
+        // Denied (battery saver etc.) — indicator simply stays off.
+      }
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") acquire();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    acquire();
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibility);
+      wakeLockRef.current?.release().catch(() => {});
+      wakeLockRef.current = null;
+      setWakeLockHeld(false);
+    };
+  }, [round?.id]);
+
+  // Green-marking screen (spec 2.3): openable any time via the ⛳ pill, and force-shown at
+  // hole-out when the hole has no marks yet (no pinLocation).
+  const [greenMapOpen, setGreenMapOpen] = useState(false);
+  const pendingHoleOutRef = useRef(false);
+  async function handleGreenFinish(pin: LatLng, puttStarts: LatLng[]) {
+    if (!roundHoleId) return;
+    await saveGreenMarks({
+      roundHoleId,
+      pin,
+      puttStarts,
+      detectLieAt: (p) => detectLie(p, holeFeatures ?? [])
+    });
+    setGreenMapOpen(false);
+    if (pendingHoleOutRef.current) {
+      pendingHoleOutRef.current = false;
+      setOpenSheet("score");
+    }
+  }
+
+  async function handleCalibrateWatch() {
+    if (!round) return;
+    await recordWatchCalibration(round.id);
+    setRound({ ...round, watchCalibrationAt: new Date().toISOString() });
+    showToast("⌚ Now press the watch lap button!");
+  }
+
+  // --- Next-tee prompt (REVISION-SPEC 4.1): open flags on the just-completed hole surface as a
+  // compact card. Never blocks play; "Later" defers to the end-of-round queue (dismissed ≠
+  // resolved). Live flags come from the hole-out balance check below; post-ingest flags surface
+  // in review instead. ---
+  const [lastCompletedRoundHoleId, setLastCompletedRoundHoleId] = useState<string | null>(null);
+  const nextTeeFlags = useLiveQuery(async () => {
+    if (!round || !lastCompletedRoundHoleId) return [];
+    const flags = await db.reviewFlags.where("roundId").equals(round.id).toArray();
+    return flags.filter((f) => f.roundHoleId === lastCompletedRoundHoleId && f.status === "open");
+  }, [round?.id, lastCompletedRoundHoleId]);
+  const nextTeeFlag = nextTeeFlags?.[0] ?? null;
+  const flaggedShot = useLiveQuery(
+    () => (nextTeeFlag?.shotId ? db.shots.get(nextTeeFlag.shotId) : undefined),
+    [nextTeeFlag?.shotId]
+  );
+
+  async function dismissNextTeeFlags() {
+    for (const f of nextTeeFlags ?? []) await setReviewFlagStatus(f.id, "dismissed");
+  }
+  async function fixFlagNow() {
+    if (!nextTeeFlag) return;
+    if (nextTeeFlag.type === "score_mismatch") {
+      // Jump back to the flagged hole and reopen the score sheet — saving a balancing score
+      // resolves the flag in handleSaveHole.
+      const rh = allRoundHoles?.find((r) => r.id === nextTeeFlag.roundHoleId);
+      const hole = holes?.find((h) => h.id === rh?.holeId);
+      if (hole) {
+        setHoleNumber(hole.number);
+        setOpenSheet("score");
+      }
+    }
+  }
+  async function fixFlagLie(lie: Lie) {
+    if (!nextTeeFlag?.shotId) return;
+    await correctShot(nextTeeFlag.shotId, { lieStart: lie });
+    await setReviewFlagStatus(nextTeeFlag.id, "resolved");
+  }
 
   // --- Per-hole notes: freeform text tied to the hole (not the round), auto-saved on a short
   // debounce so there's no explicit save action to remember to tap ---
@@ -217,7 +376,10 @@ export function RoundMapPage() {
     () => (roundHoleId ? db.shots.where("roundHoleId").equals(roundHoleId).toArray() : []),
     [roundHoleId]
   );
-  const shotCount = shots?.length ?? 0;
+  // Putts are Shot rows now (reconciliation "green_mark") — swing numbering, the score sheet's
+  // "recorded shots" and dispersion centering all count SWINGS only, or green marking would
+  // double-count against the putts stepper.
+  const shotCount = shots?.filter((s) => s.reconciliation !== "green_mark").length ?? 0;
 
   // All roundHoles played so far this round, for the bottom-bar relative score + scorecard sheet.
   const allRoundHoles = useLiveQuery(
@@ -276,8 +438,10 @@ export function RoundMapPage() {
     // immediately on hole change (key={currentHole.id}), so trusting mismatched data here would
     // permanently lock the new hole's camera onto the old hole's green.
     if (!holeFeatures.every((f) => f.holeId === currentHole.id)) return null;
-    const green = holeFeatures.find((f) => f.featureType === "green") ?? holeFeatures.find((f) => f.featureType === "fairway");
-    return green ? centroidLatLng(green.geometry) : null;
+    const green =
+      holeFeatures.find((f) => f.featureType === "green" && f.geometry.type === "Polygon") ??
+      holeFeatures.find((f) => f.featureType === "fairway" && f.geometry.type === "Polygon");
+    return green ? centroidLatLng(green.geometry as GeoJSON.Polygon) : null;
   }, [holeFeatures, currentHole]);
 
   // A custom dragged/tapped pin overrides the green centroid default, once one's been set for
@@ -335,12 +499,12 @@ export function RoundMapPage() {
     if (!holeFeatures.every((f) => f.holeId === currentHole.id)) return null;
     if (currentHole.par === 3) return null;
     if (currentHole.defaultYardage !== null && currentHole.defaultYardage < AUTO_LAYUP_MIN_HOLE_YARDS) return null;
-    const fairway = holeFeatures.find((f) => f.featureType === "fairway");
+    const fairway = holeFeatures.find((f) => f.featureType === "fairway" && f.geometry.type === "Polygon");
     if (!fairway) return null;
 
     const bearing = bearingDegrees(fallbackOrigin, greenCentroid);
     const candidate = fromDownrangeOffline(fallbackOrigin, bearing, AUTO_LAYUP_DOWNRANGE_YARDS, 0);
-    const fairwayPolygon = turf.polygon(fairway.geometry.coordinates);
+    const fairwayPolygon = turf.polygon((fairway.geometry as GeoJSON.Polygon).coordinates);
     if (turf.booleanPointInPolygon(turf.point([candidate.lng, candidate.lat]), fairwayPolygon)) {
       return candidate;
     }
@@ -362,6 +526,9 @@ export function RoundMapPage() {
     if (!courseVersion) return;
     const r = await startRound(courseVersion.id);
     setRound(r);
+    // This click IS the user gesture Web NFC's permission prompt needs — arm here, not in an
+    // effect (spec 2.1).
+    armNfc(r.id);
   }
 
   async function handleTargetChange(point: LatLng) {
@@ -372,22 +539,31 @@ export function RoundMapPage() {
   async function handleSaveShot(clubId: string | null, lie: Lie) {
     if (!roundHoleId) return;
     // Fall back to the tee box when GPS hasn't locked yet (indoors, cold start) so the shot
-    // still saves with a usable coordinate for strokes-gained baselines, rather than blocking.
-    const point = lastPositionRef.current ?? fallbackOrigin;
+    // still saves rather than blocking — but flagged as "tee_fallback" so distance statistics
+    // can exclude it instead of treating a guessed coordinate as a real fix.
+    const fix = lastPositionRef.current;
+    const point = fix?.point ?? fallbackOrigin;
     if (!point) return;
     const resolvedLie: Lie =
       lie === "bunker_greenside" && greenCentroid && distanceYards(point, greenCentroid) > GREENSIDE_BUNKER_MAX_YARDS
         ? "bunker_fairway"
         : lie;
-    await recordShot({ roundHoleId, clubId, point, lie: resolvedLie });
+    await recordShot({
+      roundHoleId,
+      clubId,
+      point,
+      lie: resolvedLie,
+      positionSource: fix ? "gps" : "tee_fallback",
+      accuracyM: fix?.accuracyM ?? null
+    });
 
     // Auto-detect the fairway result the instant Shot 2 lands (this point is both Shot 1's end
     // and Shot 2's start) — Par 4+ only, only when there's a mapped fairway to test against.
     // Still overridable later in the hole-out sheet (HoleScoreSheet pre-selects this value).
     if (shotCount === 1 && currentHole && currentHole.par >= 4 && fallbackOrigin && greenCentroid && holeFeatures) {
-      const fairway = holeFeatures.find((f) => f.featureType === "fairway");
+      const fairway = holeFeatures.find((f) => f.featureType === "fairway" && f.geometry.type === "Polygon");
       if (fairway) {
-        const result = classifyFairwayResult(fairway.geometry, fallbackOrigin, greenCentroid, point);
+        const result = classifyFairwayResult(fairway.geometry as GeoJSON.Polygon, fallbackOrigin, greenCentroid, point);
         await setRoundHoleFairwayResult(roundHoleId, result);
       }
     }
@@ -395,26 +571,45 @@ export function RoundMapPage() {
     setOpenSheet(null);
   }
 
-  async function handleSaveHole(
-    score: number,
-    putts: number,
-    puttDistancesFeet: (number | null)[],
-    fairwayResult: FairwayResult | null
-  ) {
+  async function handleSaveHole(score: number, putts: number, fairwayResult: FairwayResult | null) {
     if (!roundHoleId) return;
-    await saveHoleResult({ roundHoleId, score, putts, puttDistancesFeet, fairwayResult, holeOutPoint: greenCentroid });
+    await saveHoleResult({ roundHoleId, score, putts, fairwayResult, holeOutPoint: greenCentroid });
+
+    // Live balance check (feeds the 4.1 next-tee card). Only when shots were actually being
+    // recorded — a score-only hole shouldn't nag about "0 swings".
+    if (round) {
+      const openMismatch = (await db.reviewFlags.where("roundId").equals(round.id).toArray()).filter(
+        (f) => f.roundHoleId === roundHoleId && f.type === "score_mismatch" && f.status !== "resolved"
+      );
+      if (shotCount > 0 && shotCount + putts !== score) {
+        if (!openMismatch.length) {
+          await addReviewFlag({
+            roundId: round.id,
+            roundHoleId,
+            shotId: null,
+            type: "score_mismatch",
+            detail: `Hole ${currentHole?.number}: score ${score}, but ${shotCount} swing${shotCount === 1 ? "" : "s"} + ${putts} putt${putts === 1 ? "" : "s"} recorded.`
+          });
+        }
+      } else {
+        for (const f of openMismatch) await setReviewFlagStatus(f.id, "resolved");
+      }
+    }
+    setLastCompletedRoundHoleId(roundHoleId);
+
     setOpenSheet(null);
     if (holeNumber < maxHoleNumber) {
       setHoleNumber(holeNumber + 1);
     } else if (round) {
       await completeRound(round.id);
+      stopNfc();
       setRound(null);
     }
   }
 
   const detectedLie = useMemo(() => {
     if (!lastPositionRef.current || !holeFeatures?.length) return "rough" as const;
-    return detectLie(lastPositionRef.current, holeFeatures);
+    return detectLie(lastPositionRef.current.point, holeFeatures);
   }, [openSheet, holeFeatures]); // recompute when the sheet opens, at the position you're standing
 
   const frontDistance = centerDistance !== null ? Math.max(0, centerDistance - GREEN_HALF_DEPTH_YARDS) : null;
@@ -497,6 +692,27 @@ export function RoundMapPage() {
           >
             📐
           </button>
+          {round && (
+            <button
+              onClick={() => setGreenMapOpen(true)}
+              disabled={!roundHoleId}
+              style={{ ...pillButtonStyle, ...(currentRoundHole?.pinLocation ? pillButtonActiveStyle : {}), opacity: roundHoleId ? 1 : 0.5 }}
+              aria-label="Mark green"
+              title="Mark Pin & Putts"
+            >
+              ⛳
+            </button>
+          )}
+          {round && !round.watchCalibrationAt && (
+            <button
+              onClick={handleCalibrateWatch}
+              style={pillButtonStyle}
+              aria-label="Calibrate watch"
+              title="Calibrate watch clock: tap this and press the watch lap button at the same moment"
+            >
+              ⌚
+            </button>
+          )}
           <button
             onClick={() => setOpenSheet("scorecard")}
             style={{ ...pillButtonStyle, fontSize: 16, fontWeight: 800 }}
@@ -505,6 +721,31 @@ export function RoundMapPage() {
           >
             {round ? relativeToParLabel(relativeScore) : "–"}
           </button>
+        </div>
+      )}
+
+      {!isDemo && toast && <div style={toastStyle}>{toast}</div>}
+
+      {!isDemo && round && (
+        <div style={captureIndicatorStyle}>
+          <button
+            onClick={() => (nfcActive ? stopNfc() : armNfc(round.id))}
+            style={{ ...captureChipStyle, opacity: nfcActive ? 1 : 0.45 }}
+            title={
+              isNfcSupported()
+                ? nfcActive
+                  ? "NFC club tags: scanning (tap to stop)"
+                  : "NFC club tags: off (tap to arm)"
+                : "Web NFC not supported on this device"
+            }
+          >
+            🏷️ {nfcActive ? "NFC" : "NFC off"}
+          </button>
+          {wakeLockHeld && (
+            <span style={captureChipStyle} title="Screen staying awake so NFC taps register">
+              ☀️ Awake
+            </span>
+          )}
         </div>
       )}
 
@@ -593,8 +834,8 @@ export function RoundMapPage() {
             initialTarget={activeTarget}
             fallbackOrigin={fallbackOrigin}
             holeFeatures={holeFeatures}
-            onPositionChange={(p) => {
-              lastPositionRef.current = p;
+            onPositionChange={(p, accuracyM) => {
+              lastPositionRef.current = { point: p, accuracyM };
             }}
             onDistanceUpdate={setCenterDistance}
             onWaterWarning={setWaterWarningYards}
@@ -635,6 +876,38 @@ export function RoundMapPage() {
         </div>
       )}
 
+      {!isDemo && round && nextTeeFlag && (
+        <div style={nextTeeCardStyle}>
+          <div style={{ fontSize: 13.5, marginBottom: 8 }}>⚠️ {nextTeeFlag.detail}</div>
+          {nextTeeFlag.type === "ambiguous_lie" && flaggedShot ? (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+              {ALL_LIES.filter((l) => l !== "tee").map((l) => (
+                <button
+                  key={l}
+                  onClick={() => fixFlagLie(l)}
+                  style={{
+                    ...nextTeeButtonStyle,
+                    ...(flaggedShot.lieStart === l ? { background: "#f5d90a", color: "#111", border: "1px solid #f5d90a" } : {})
+                  }}
+                >
+                  {LIE_LABELS[l]}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            {nextTeeFlag.type === "score_mismatch" && (
+              <button onClick={fixFlagNow} style={{ ...nextTeeButtonStyle, background: "#f5d90a", color: "#111", border: "1px solid #f5d90a" }}>
+                Fix now
+              </button>
+            )}
+            <button onClick={dismissNextTeeFlags} style={nextTeeButtonStyle}>
+              Later
+            </button>
+          </div>
+        </div>
+      )}
+
       {!isDemo && currentHole && (
         <div style={bottomBarStyle}>
           <div style={profileRowStyle}>
@@ -658,7 +931,20 @@ export function RoundMapPage() {
                 >
                   🏌️ Shot {shotCount + 1}
                 </button>
-                <button onClick={() => setOpenSheet("score")} disabled={!roundHoleId} style={roundButtonStyle}>
+                <button
+                  onClick={() => {
+                    // Force the green-marking screen at hole-out when the hole has no marks yet
+                    // (spec 2.3) — the score sheet opens right after Finish.
+                    if (!currentRoundHole?.pinLocation) {
+                      pendingHoleOutRef.current = true;
+                      setGreenMapOpen(true);
+                    } else {
+                      setOpenSheet("score");
+                    }
+                  }}
+                  disabled={!roundHoleId}
+                  style={roundButtonStyle}
+                >
                   🏁 Hole Out
                 </button>
               </>
@@ -681,12 +967,31 @@ export function RoundMapPage() {
           holeNumber={currentHole.number}
           par={currentHole.par}
           recordedShots={shotCount}
+          markedPutts={currentRoundHole?.pinLocation ? currentRoundHole.putts : null}
           autoDetectedFairwayResult={currentRoundHole?.fairwayResult}
           onSave={handleSaveHole}
           onClose={() => setOpenSheet(null)}
         />
       )}
       {openSheet === "scorecard" && <ScorecardSheet entries={scorecardEntries} onClose={() => setOpenSheet(null)} />}
+
+      {greenMapOpen && currentHole && greenCentroid && (
+        <GreenMap
+          greenPolygon={
+            (holeFeatures?.find((f) => f.featureType === "green" && f.geometry.type === "Polygon")?.geometry as
+              | GeoJSON.Polygon
+              | undefined) ?? null
+          }
+          fallbackCenter={activeTarget ?? greenCentroid}
+          initialPin={currentRoundHole?.pinLocation ?? null}
+          holeNumber={currentHole.number}
+          onFinish={handleGreenFinish}
+          onClose={() => {
+            pendingHoleOutRef.current = false;
+            setGreenMapOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -922,6 +1227,71 @@ const notesTextareaStyle: React.CSSProperties = {
   fontSize: 13,
   fontFamily: "inherit",
   resize: "vertical"
+};
+
+// 4.1 next-tee prompt: centered above the bottom bar, clear of the left HUD stack and the right
+// pill — informative but never blocking (one-tap "Later" defers it to the review queue).
+const nextTeeCardStyle: React.CSSProperties = {
+  position: "absolute",
+  bottom: 76,
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 3,
+  width: "min(340px, 88vw)",
+  background: "rgba(11,15,12,0.95)",
+  border: "1px solid #d4a017",
+  borderRadius: 12,
+  padding: 12,
+  color: "#eef2ef"
+};
+
+const nextTeeButtonStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  background: "#1a3a24",
+  color: "#eef2ef",
+  border: "1px solid #2f5c3d",
+  borderRadius: 999,
+  fontSize: 13,
+  cursor: "pointer"
+};
+
+const toastStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 64,
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 4,
+  background: "rgba(0,0,0,0.88)",
+  border: "1px solid #16a34a",
+  color: "#eef2ef",
+  padding: "10px 20px",
+  borderRadius: 999,
+  fontSize: 17,
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+  pointerEvents: "none"
+};
+
+// Small capture-status chips (NFC scanning, wake lock) bottom-right above the bottom bar —
+// out of the way of the left HUD stack and the tee selector's pre-round slot.
+const captureIndicatorStyle: React.CSSProperties = {
+  position: "absolute",
+  bottom: 76,
+  right: 12,
+  zIndex: 2,
+  display: "flex",
+  gap: 6
+};
+
+const captureChipStyle: React.CSSProperties = {
+  background: "rgba(11,15,12,0.85)",
+  border: "1px solid #2f5c3d",
+  color: "#eef2ef",
+  padding: "6px 10px",
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer"
 };
 
 const waterWarningRowStyle: React.CSSProperties = {

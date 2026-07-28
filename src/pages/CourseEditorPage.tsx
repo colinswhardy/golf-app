@@ -7,6 +7,7 @@ import * as turf from "@turf/turf";
 import { createTeeBox, deleteHoleFeature, getFeaturesForHole, getHolesForVersion, getLatestCourseVersion, getTeeBoxesForHole, listCourses, saveCustomHazard, updateHoleGreenPoint, updateHoleWaypoints, updateTeeBoxLocation } from "../lib/courseRepo";
 import { PageHeader } from "../components/PageHeader";
 import { SATELLITE_STYLE } from "../components/CourseMap";
+import { applyTouchDragOffset } from "../lib/mapTouch";
 import type { LatLng, TeeBox } from "../types/domain";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -51,14 +52,6 @@ function CourseEditorCourseList() {
   );
 }
 
-const TOUCH_DRAG_OFFSET_PX = 50;
-function applyTouchDragOffset(map: mapboxgl.Map, marker: mapboxgl.Marker): LatLng {
-  const raw = marker.getLngLat();
-  const px = map.project(raw);
-  const offset = map.unproject([px.x, px.y - TOUCH_DRAG_OFFSET_PX]);
-  marker.setLngLat(offset);
-  return { lat: offset.lat, lng: offset.lng };
-}
 
 function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   const navigate = useNavigate();
@@ -73,8 +66,10 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   const holeFeatures = useLiveQuery(() => (currentHole ? getFeaturesForHole(currentHole.id) : []), [currentHole?.id]);
   const greenCentroid = useMemo(() => {
     if (!holeFeatures?.length || !currentHole || !holeFeatures.every((f) => f.holeId === currentHole.id)) return null;
-    const green = holeFeatures.find((f) => f.featureType === "green") ?? holeFeatures.find((f) => f.featureType === "fairway");
-    return green ? centroidLatLng(green.geometry) : null;
+    const green =
+      holeFeatures.find((f) => f.featureType === "green" && f.geometry.type === "Polygon") ??
+      holeFeatures.find((f) => f.featureType === "fairway" && f.geometry.type === "Polygon");
+    return green ? centroidLatLng(green.geometry as GeoJSON.Polygon) : null;
   }, [holeFeatures, currentHole]);
 
   const [selectedTeeBoxId, setSelectedTeeBoxId] = useState<string | null>(null);

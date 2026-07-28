@@ -3,6 +3,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import * as turf from "@turf/turf";
 import { bearingDegrees, distanceMeters, distanceYards, fromDownrangeOffline, nearestPointOnSegment } from "../lib/geo";
+import { applyTouchDragOffset } from "../lib/mapTouch";
 import type { FeatureType, LatLng } from "../types/domain";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -17,33 +18,17 @@ const ON_LINE_TOLERANCE_METERS = 8;
 // whenever I'm anywhere on/near the course" request.)
 const GPS_ACTIVE_MAX_METERS = 1828.8;
 const MAX_MEASURE_DOTS = 5;
+// Once the origin is this close to the target, intermediate layup dots are behind you and the
+// camera (which frames origin->target) pushes them off-screen, where they can't be tapped or
+// dragged back. At that range they've served their purpose, so they're cleared. See the
+// clearedNearTargetRef effect for why this fires once per approach rather than continuously.
+const CLEAR_DOTS_WITHIN_YARDS = 200;
 // Two measure dots whose on-screen centers land within this many pixels of each other are treated
 // as the same point — the later one is auto-removed so dragging dots on top of each other (or
 // tapping to add one right where another sits) collapses to a single dot rather than a pile.
 const DEDUPE_PX = 26;
-// ~1cm on a typical phone screen — how far above the actual touch point a dragged marker's REAL
-// coordinate sits, not just a visual nudge, so a thumb never obscures the spot it's about to drop
-// a dot/pin on. See applyTouchDragOffset below.
-const TOUCH_DRAG_OFFSET_PX = 50;
 export const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
 export const OUTDOORS_STYLE = "mapbox://styles/mapbox/outdoors-v12";
-
-// Mathematically offsets a dragged marker's REAL geographic position 50px up the screen from
-// wherever the pointer actually is: project the marker's current (pointer-driven) LngLat to
-// screen pixels, subtract TOUCH_DRAG_OFFSET_PX from Y, unproject back, and snap the marker there.
-// Unlike a CSS transform (which only nudges the rendered position, leaving the marker's actual
-// coordinate under the thumb), this changes what the marker IS — the line/labels/dispersion
-// ellipse and the eventual drop point all follow the offset position, not the raw touch point.
-// Safe to call on every "drag" tick: Mapbox's own marker-drag math bases each tick's raw position
-// on the pointer's cumulative delta from drag-start, not on wherever this last snapped the marker
-// to, so repeated calls don't compound/drift.
-function applyTouchDragOffset(map: mapboxgl.Map, marker: mapboxgl.Marker): LatLng {
-  const raw = marker.getLngLat();
-  const px = map.project(raw);
-  const offset = map.unproject([px.x, px.y - TOUCH_DRAG_OFFSET_PX]);
-  marker.setLngLat(offset);
-  return { lat: offset.lat, lng: offset.lng };
-}
 
 export interface BunkerYardages {
   front: number;
@@ -64,11 +49,14 @@ interface CourseMapProps {
   initialTarget?: LatLng | null;
   /** Tee box (or similar) used as the line/camera origin when live GPS is missing or far from this hole. */
   fallbackOrigin?: LatLng | null;
-  /** This hole's polygon features — used for water-crossing warnings and bunker F/M/B distance
-   * cards. Still never rendered visually (see the file-level doc comment). */
-  holeFeatures?: { featureType: FeatureType; geometry: GeoJSON.Polygon }[];
-  /** Fires on every GPS fix — lets the parent (e.g. shot recording) know where the player is. */
-  onPositionChange?: (p: LatLng) => void;
+  /** This hole's features — used for water-crossing warnings and bunker F/M/B distance
+   * cards. Still never rendered visually (see the file-level doc comment). May now include
+   * LineString centerlines (featureType "centerline"); all polygon consumers narrow on
+   * geometry.type before using coordinates. */
+  holeFeatures?: { featureType: FeatureType; geometry: GeoJSON.Polygon | GeoJSON.LineString }[];
+  /** Fires on every GPS fix — lets the parent (e.g. shot recording) know where the player is
+   * and how good the fix is (GeolocationPosition.coords.accuracy, metres). */
+  onPositionChange?: (p: LatLng, accuracyM: number | null) => void;
   /** Fires whenever the origin->target distance changes (yards), so a parent HUD can show it. */
   onDistanceUpdate?: (distanceYards: number | null) => void;
   /** Fires whenever the current aim line's closest water-hazard crossing changes (yards from
@@ -220,7 +208,7 @@ export function CourseMap({
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setMe(p);
         setGeoError(null);
-        stateRef.current.onPositionChange?.(p);
+        stateRef.current.onPositionChange?.(p, pos.coords.accuracy ?? null);
       },
       (err) => setGeoError(err.message),
       { enableHighAccuracy: true, maximumAge: 1000 }
@@ -344,6 +332,7 @@ export function CourseMap({
       // remount skips re-seeding — so saved waypoints silently never appear (the auto-layup dot does
       // instead). Same class of bug the marker refs above guard against.
       waypointsSeededRef.current = false;
+      clearedNearTargetRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -419,7 +408,9 @@ export function CourseMap({
     const source = map?.getSource(BUNKER_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
     if (!source) return;
     const bunkers = (stateRef.current.holeFeatures ?? []).filter(
-      (f) => f.featureType === "bunker_greenside" || f.featureType === "bunker_fairway"
+      (f) =>
+        (f.featureType === "bunker_greenside" || f.featureType === "bunker_fairway") &&
+        f.geometry.type === "Polygon"
     );
     source.setData({
       type: "FeatureCollection",
@@ -449,7 +440,10 @@ export function CourseMap({
     const map = mapRef.current;
     if (!map) return;
     const { origin: curOrigin, holeFeatures, onWaterWarning: curOnWaterWarning } = stateRef.current;
-    const hazards = (holeFeatures ?? []).filter((f) => f.featureType === "hazard");
+    const hazards = (holeFeatures ?? []).filter(
+      (f): f is { featureType: FeatureType; geometry: GeoJSON.Polygon } =>
+        f.featureType === "hazard" && f.geometry.type === "Polygon"
+    );
 
     let closest: { yards: number; point: LatLng } | null = null;
     if (curOrigin && hazards.length > 0) {
@@ -857,6 +851,32 @@ export function CourseMap({
     if (measureMarkersRef.current.size === 0) addMeasureMarker(autoLayupPoint);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLayupPoint]);
+
+  // Clears the intermediate layup dots (auto-placed or hand-placed) once you get within
+  // CLEAR_DOTS_WITHIN_YARDS of the target. Walking up the hole leaves those dots *behind* the
+  // origin, and since the camera fits origin->target they end up off-screen — unreachable to tap or
+  // drag, and no longer useful now that you're playing the approach.
+  //
+  // Fires once per approach, not on every GPS tick: the ref latches when you cross inside the
+  // threshold and only resets when you're back outside it. Without that latch, any dot you
+  // deliberately placed while already inside 200y (e.g. measuring to a greenside bunker) would be
+  // deleted the instant the next position update landed.
+  const clearedNearTargetRef = useRef(false);
+  useEffect(() => {
+    if (!origin || !target) return;
+    if (distanceYards(origin, target) > CLEAR_DOTS_WITHIN_YARDS) {
+      clearedNearTargetRef.current = false;
+      return;
+    }
+    if (clearedNearTargetRef.current) return;
+    clearedNearTargetRef.current = true;
+    if (measureMarkersRef.current.size === 0) return;
+    measureMarkersRef.current.forEach(({ marker }) => marker.remove());
+    measureMarkersRef.current.clear();
+    updateLineAndLabels();
+    updateDispersionEllipse();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [origin, target]);
 
   if (!TOKEN) {
     return (
