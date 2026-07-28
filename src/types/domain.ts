@@ -114,6 +114,9 @@ export interface Round {
   fitIngestedAt: string | null;
   /** watch clock − phone clock, in ms; null until calibrated or estimated at ingest. */
   clockOffsetMs: number | null;
+  /** Marks the generated sample round (lib/demoRound.ts) so it can be removed cleanly and never
+   * mistaken for real play. Absent on every genuine round. */
+  isDemo?: boolean;
   /** Phone timestamp of the "Calibrate watch" press (user hits the watch lap button at the same
    * moment); used at ingest to compute clockOffsetMs. */
   watchCalibrationAt: string | null;

@@ -74,7 +74,11 @@ export async function recordShot(params: {
 }): Promise<Shot> {
   return db.transaction("rw", [db.shots, db.outbox], async () => {
     const existing = await listShotsForRoundHole(params.roundHoleId);
-    const prev = existing[existing.length - 1];
+    // Close out the previous SWING, not the previous row. If the green has already been marked,
+    // the last rows are putts whose positions came from the marking screen — chaining a new
+    // swing's start onto a putt would overwrite a real coordinate with an unrelated one.
+    const swings = existing.filter((s) => s.reconciliation !== "green_mark" && s.penaltyType === null);
+    const prev = swings[swings.length - 1];
 
     if (prev && !prev.endPoint) {
       const updatedPrev: Shot = { ...prev, endPoint: params.point, lieEnd: params.lie, updatedAt: now() };

@@ -199,8 +199,16 @@ const DEFAULT_CLUB_NAMES = ["Driver", "5 Wood", "4 Iron", "5 Iron", "6 Iron", "7
 // install still has the pre-migration clubs and needs a one-time reseed onto the new list.
 const LEGACY_ONLY_CLUB_NAMES = ["3 Wood", "PW", "GW", "SW", "LW"];
 
-// Spec 5.4 defaults: shots inside these pin distances are PARTIAL swings for these clubs.
-const DEFAULT_PARTIAL_THRESHOLDS: Record<string, number> = { "56°": 80, "50°": 100 };
+// Shots inside these pin distances are PARTIAL swings for these clubs, so they're reported as
+// proximity rather than polluting full-swing distance averages.
+//
+// The 56°/50° values come straight from the spec. The 60° entry is a deliberate addition: the
+// spec leaves every other club null, but a lob wedge is overwhelmingly a greenside club, and
+// without a threshold every 20-yard chip counts as a "full swing 60°" — which reported the club
+// as a 21-yard stick with HIGH confidence off a single sample round. A touch shot is not a full
+// swing, and the spec's own intent (partials excluded from full-swing distances) requires this.
+// All three remain user-editable in Settings.
+const DEFAULT_PARTIAL_THRESHOLDS: Record<string, number> = { "56°": 80, "50°": 100, "60°": 60 };
 
 export async function ensureDefaultClubs(): Promise<Club[]> {
   // Whole read-check-write runs as one Dexie transaction so two concurrent callers (e.g.
@@ -211,11 +219,15 @@ export async function ensureDefaultClubs(): Promise<Club[]> {
     const existing = await db.clubs.toArray();
     const hasLegacy = existing.some((c) => LEGACY_ONLY_CLUB_NAMES.includes(c.name));
     if (existing.length && !hasLegacy) {
-      // One-time idempotent backfill of the partial-swing thresholds on already-seeded clubs.
+      // Idempotent backfill of the partial-swing thresholds on already-seeded clubs. Null counts
+      // as unset here, not as a deliberate choice: earlier seeds wrote null for every club, and
+      // leaving the wedges that way let greenside chips masquerade as full swings. To genuinely
+      // mean "never partial" for a scoring club, set it to 0 in Settings — no shot is inside
+      // zero yards, and 0 is preserved here.
       let changed = false;
       for (const c of existing) {
         const threshold = DEFAULT_PARTIAL_THRESHOLDS[c.name];
-        if (threshold !== undefined && c.fullSwingMinYards === undefined) {
+        if (threshold !== undefined && c.fullSwingMinYards == null) {
           c.fullSwingMinYards = threshold;
           await db.clubs.put(c);
           changed = true;
