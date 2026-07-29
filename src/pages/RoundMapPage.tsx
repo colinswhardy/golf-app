@@ -26,6 +26,7 @@ import {
 import {
   addReviewFlag,
   clubIdForSerial,
+  countCapturedSwings,
   recordClubTap,
   recordWatchCalibration,
   recordWatchLap,
@@ -34,7 +35,7 @@ import {
 import { armScanning, isNfcSupported } from "../lib/nfc";
 import { ALL_LIES, LIE_LABELS, detectLie } from "../lib/lie";
 import { classifyFairwayResult } from "../lib/fairway";
-import { CourseMap, OUTDOORS_STYLE, SATELLITE_STYLE, type DispersionEllipseSpec } from "../components/CourseMap";
+import { CourseMap, type DispersionEllipseSpec } from "../components/CourseMap";
 import { GreenMap } from "../components/GreenMap";
 import { HoleScoreSheet, ScorecardSheet, ShotSheet } from "../components/RoundSheets";
 import { Icon, relativeToParLabel } from "../components/ui";
@@ -93,6 +94,79 @@ function fairwayCenterlineSegmentMidpoint(tee: LatLng, green: LatLng, fairwayPol
     if (!best || span > best.span) best = { mid, span };
   }
   return best?.mid ?? null;
+}
+
+/** How long a rail button must be held before it explains itself instead of firing. */
+const TOOL_HINT_HOLD_MS = 450;
+
+interface ToolHint {
+  label: string;
+  hint: string;
+}
+
+/**
+ * A map rail button that describes itself on a long press. Phones never show `title`, so without
+ * this the rail is a column of unlabelled glyphs. Holding shows the description and cancels the
+ * button's action, so nothing fires by accident while you're reading it.
+ */
+function ToolButton({
+  icon,
+  label,
+  hint,
+  active,
+  disabled,
+  onPress,
+  onHint
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint: string;
+  active?: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+  onHint: (h: ToolHint | null) => void;
+}) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heldRef = useRef(false);
+
+  function clear() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+  }
+  useEffect(() => clear, []);
+
+  return (
+    <button
+      className={`map-btn${active ? " is-active" : ""}`}
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onPointerDown={() => {
+        heldRef.current = false;
+        clear();
+        timerRef.current = setTimeout(() => {
+          heldRef.current = true;
+          onHint({ label, hint });
+        }, TOOL_HINT_HOLD_MS);
+      }}
+      onPointerUp={() => {
+        clear();
+        // Give the hint a moment to be read before it clears.
+        if (heldRef.current) setTimeout(() => onHint(null), 1400);
+      }}
+      onPointerLeave={() => {
+        clear();
+        if (heldRef.current) onHint(null);
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={() => {
+        if (heldRef.current) return; // the hold explained it; don't also act on it
+        onPress();
+      }}
+    >
+      {icon}
+    </button>
+  );
 }
 
 function getHoleOrdinal(n: number): string {
@@ -171,7 +245,7 @@ export function RoundMapPage() {
 
   // --- Map controls, lifted so the tool rail can drive CourseMap externally ---
   const [settingTarget, setSettingTarget] = useState(false);
-  const [mapStyle, setMapStyle] = useState(SATELLITE_STYLE);
+  const [toolHint, setToolHint] = useState<ToolHint | null>(null);
   const [centerDistance, setCenterDistance] = useState<number | null>(null);
   const [waterWarningYards, setWaterWarningYards] = useState<number | null>(null);
 
@@ -227,6 +301,9 @@ export function RoundMapPage() {
           const fix = lastPositionRef.current;
           await recordClubTap({
             roundId,
+            // Ref, not the render-time value: this callback is armed once at round start and
+            // would otherwise pin every tap of the round to the first hole's id.
+            roundHoleId: roundHoleIdRef.current,
             clubId,
             serialNumber: serial,
             at,
@@ -339,6 +416,11 @@ export function RoundMapPage() {
     });
   }, [round, currentHole?.id]);
 
+  // Live mirror for imperative callbacks (the NFC reader is armed once per round, so reading
+  // roundHoleId from its closure would attribute every tap to the hole you started on).
+  const roundHoleIdRef = useRef<string | null>(null);
+  roundHoleIdRef.current = roundHoleId;
+
   const currentRoundHoleLive = useLiveQuery(
     () => (roundHoleId ? db.roundHoles.get(roundHoleId) : undefined),
     [roundHoleId]
@@ -352,7 +434,30 @@ export function RoundMapPage() {
   // Putts are Shot rows now (reconciliation "green_mark") — swing numbering, the score sheet's
   // "recorded shots" and dispersion centering all count SWINGS only, or green marking would
   // double-count against the putts stepper.
-  const shotCount = shots?.filter((s) => s.reconciliation !== "green_mark").length ?? 0;
+  const manualShotCount = shots?.filter((s) => s.reconciliation !== "green_mark").length ?? 0;
+
+  // Swings signalled on this hole through the capture streams (watch lap presses and NFC club
+  // tags). These don't become Shot rows until the watch file is ingested and reconciled after the
+  // round, so without counting them here the live score would ignore every stroke played the way
+  // the app is actually meant to be used.
+  const capturedLaps = useLiveQuery(
+    () => (roundHoleId ? db.watchLaps.where("roundId").equals(round?.id ?? "").toArray() : []),
+    [roundHoleId, round?.id]
+  );
+  const capturedTaps = useLiveQuery(
+    () => (roundHoleId ? db.clubTaps.where("roundId").equals(round?.id ?? "").toArray() : []),
+    [roundHoleId, round?.id]
+  );
+  const capturedSwings = useMemo(() => {
+    if (!roundHoleId) return 0;
+    return countCapturedSwings(
+      (capturedLaps ?? []).filter((l) => l.roundHoleId === roundHoleId),
+      (capturedTaps ?? []).filter((t) => t.roundHoleId === roundHoleId)
+    );
+  }, [capturedLaps, capturedTaps, roundHoleId]);
+
+  // The stroke count the whole screen works from: hand-entered shots plus captured swings.
+  const shotCount = manualShotCount + capturedSwings;
 
   // All roundHoles played so far this round, for the score badge + scorecard sheet.
   const allRoundHoles = useLiveQuery(
@@ -522,7 +627,7 @@ export function RoundMapPage() {
 
   async function handleSimLap() {
     if (!round || !simPosition) return;
-    await recordWatchLap(round.id, simPosition);
+    await recordWatchLap(round.id, simPosition, null, roundHoleId);
     setSimCounts((c) => ({ ...c, laps: c.laps + 1 }));
     showToast("Lap recorded");
   }
@@ -531,6 +636,7 @@ export function RoundMapPage() {
     if (!round || !simPosition) return;
     await recordClubTap({
       roundId: round.id,
+      roundHoleId,
       clubId: club.id,
       serialNumber: `sim-${club.name}`,
       at: new Date(),
@@ -708,68 +814,80 @@ export function RoundMapPage() {
 
       {!isDemo && currentHole && (
         <div className="tool-rail glass">
-          <button
-            className={`map-btn${settingTarget ? " is-active" : ""}`}
-            onClick={() => setSettingTarget((s) => !s)}
-            aria-label="Set target"
-            title="Set target"
-          >
-            <Icon.target size={19} />
-          </button>
-          <button
-            className="map-btn"
-            onClick={() => setMapStyle((s) => (s === SATELLITE_STYLE ? OUTDOORS_STYLE : SATELLITE_STYLE))}
-            aria-label="Toggle map style"
-            title="Map type"
-          >
-            <Icon.layers size={19} />
-          </button>
-          <button
-            className={`map-btn${notesOpen ? " is-active" : ""}`}
-            onClick={() => setNotesOpen((v) => !v)}
-            aria-label="Hole notes"
-            title="Hole notes"
-          >
-            <Icon.note size={19} />
-          </button>
-          <button
-            className={`map-btn${dispersionEllipse ? " is-active" : ""}`}
-            onClick={() => setDispersionPickerOpen((v) => !v)}
-            aria-label="Shot dispersion"
-            title="Shot dispersion"
-          >
-            <Icon.ellipse size={19} />
-          </button>
+          <ToolButton
+            icon={<Icon.target size={19} />}
+            label="Set target"
+            hint="Tap the map to move the pin. Distances update to wherever you put it."
+            active={settingTarget}
+            onPress={() => setSettingTarget((s) => !s)}
+            onHint={setToolHint}
+          />
+          <ToolButton
+            icon={<Icon.note size={19} />}
+            label="Hole notes"
+            hint="Notes for this hole — they save automatically and reload every time you play here."
+            active={notesOpen}
+            onPress={() => setNotesOpen((v) => !v)}
+            onHint={setToolHint}
+          />
+          <ToolButton
+            icon={<Icon.ellipse size={19} />}
+            label="Shot dispersion"
+            hint="Overlay a club's shot pattern on the hole, centred on what you're aiming at."
+            active={!!dispersionEllipse}
+            onPress={() => setDispersionPickerOpen((v) => !v)}
+            onHint={setToolHint}
+          />
           {round && (
-            <button
-              className={`map-btn${greenMarked ? " is-active" : ""}`}
-              onClick={() => setGreenMapOpen(true)}
+            <ToolButton
+              icon={<Icon.pin size={19} />}
+              label="Mark green"
+              hint="Mark where the pin was and where each putt started. Sets your putt count."
+              active={greenMarked}
               disabled={!roundHoleId}
-              aria-label="Mark green"
-              title="Mark pin & putts"
-            >
-              <Icon.pin size={19} />
-            </button>
+              onPress={() => setGreenMapOpen(true)}
+              onHint={setToolHint}
+            />
           )}
           {round && !round.watchCalibrationAt && (
-            <button
-              className="map-btn"
-              onClick={handleCalibrateWatch}
-              aria-label="Calibrate watch"
-              title="Calibrate watch: tap this and press the watch lap button together"
-            >
-              <Icon.watch size={19} />
-            </button>
+            <ToolButton
+              icon={<Icon.watch size={19} />}
+              label="Calibrate watch"
+              hint="Tap this and press the watch lap button at the same moment, so the two clocks line up."
+              onPress={handleCalibrateWatch}
+              onHint={setToolHint}
+            />
           )}
-          <button
-            className="map-btn"
-            onClick={() => setOpenSheet("scorecard")}
-            aria-label="Scorecard"
-            title="Scorecard"
-            style={{ fontSize: 14, fontWeight: 800 }}
-          >
-            {round ? relativeToParLabel(relativeScore) : "–"}
-          </button>
+          <ToolButton
+            icon={<span style={{ fontSize: 14, fontWeight: 800 }}>{round ? relativeToParLabel(relativeScore) : "–"}</span>}
+            label="Scorecard"
+            hint="Your scorecard for this round so far."
+            onPress={() => setOpenSheet("scorecard")}
+            onHint={setToolHint}
+          />
+        </div>
+      )}
+
+      {/* Long-press hint. `title` never appears on a phone, so holding a rail button explains it
+          here instead — and the hold suppresses the button's own action. */}
+      {toolHint && (
+        <div
+          className="glass"
+          style={{
+            position: "absolute",
+            top: "calc(66px + var(--safe-t))",
+            right: 62,
+            zIndex: 7,
+            maxWidth: "min(250px, 66vw)",
+            borderRadius: 12,
+            padding: "10px 13px",
+            pointerEvents: "none"
+          }}
+        >
+          <div className="bold small mb-1">{toolHint.label}</div>
+          <div className="tiny dim" style={{ lineHeight: 1.45 }}>
+            {toolHint.hint}
+          </div>
         </div>
       )}
 
@@ -856,7 +974,6 @@ export function RoundMapPage() {
             onTargetChange={handleTargetChange}
             settingTarget={settingTarget}
             onSettingTargetChange={setSettingTarget}
-            mapStyle={mapStyle}
             hideInternalHud
             dispersionEllipse={dispersionEllipse}
             autoLayupPoint={fairwayLayupPoint}
@@ -1109,7 +1226,28 @@ export function RoundMapPage() {
             <div className="avatar">{PLAYER_INITIALS}</div>
             <div className="grow">
               <div className="round-bar__name">{PLAYER_NAME}</div>
-              <div className="round-bar__score">{round ? `${relativeToParLabel(relativeScore)} thru round` : "Not started"}</div>
+              <div className="round-bar__score">
+                {!round ? (
+                  "Not started"
+                ) : (
+                  <>
+                    {relativeToParLabel(relativeScore)}
+                    {shotCount > 0 && (
+                      <span className="faint">
+                        {" · "}
+                        {shotCount} on this hole
+                        {/* Where the count came from, so tagged strokes and hand-entered ones are
+                            never silently conflated. */}
+                        {capturedSwings > 0 && manualShotCount > 0
+                          ? ` (${capturedSwings} tagged, ${manualShotCount} manual)`
+                          : capturedSwings > 0
+                            ? " (tagged)"
+                            : ""}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <div className="row" style={{ gap: 8 }}>

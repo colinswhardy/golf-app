@@ -194,21 +194,45 @@ export async function createTeeBox(holeId: string, name: string, location: LatLn
   return teeBox;
 }
 
-const DEFAULT_CLUB_NAMES = ["Driver", "5 Wood", "4 Iron", "5 Iron", "6 Iron", "7 Iron", "8 Iron", "9 Iron", "50°", "56°", "60°", "Putter"];
+// The bag, in the order it's carried: longest to shortest, putter last. This is the order clubs
+// appear everywhere they're listed, and it's re-applied once per install (see CLUB_ORDER_KEY) so
+// existing bags pick up new clubs without losing dispersion values, tag pairings or manual edits.
+const DEFAULT_CLUB_NAMES = [
+  "Driver",
+  "5 Wood",
+  "4 Hybrid",
+  "4 Iron",
+  "5 Iron",
+  "6 Iron",
+  "7 Iron",
+  "8 Iron",
+  "9 Iron",
+  "Pitching Wedge",
+  "50°",
+  "56°",
+  "60°",
+  "Putter"
+];
 // Names only ever seeded by the old default list — presence of any of these means this
 // install still has the pre-migration clubs and needs a one-time reseed onto the new list.
 const LEGACY_ONLY_CLUB_NAMES = ["3 Wood", "PW", "GW", "SW", "LW"];
+// Bumped when the canonical bag changes. Applied once per install, then never again, so a bag
+// reordered by hand in Settings stays reordered.
+const CLUB_ORDER_KEY = "caddyshot_club_order_v2";
 
 // Shots inside these pin distances are PARTIAL swings for these clubs, so they're reported as
 // proximity rather than polluting full-swing distance averages.
 //
-// The 56°/50° values come straight from the spec. The 60° entry is a deliberate addition: the
-// spec leaves every other club null, but a lob wedge is overwhelmingly a greenside club, and
-// without a threshold every 20-yard chip counts as a "full swing 60°" — which reported the club
-// as a 21-yard stick with HIGH confidence off a single sample round. A touch shot is not a full
-// swing, and the spec's own intent (partials excluded from full-swing distances) requires this.
-// All three remain user-editable in Settings.
-const DEFAULT_PARTIAL_THRESHOLDS: Record<string, number> = { "56°": 80, "50°": 100, "60°": 60 };
+// The 56°/50° values come straight from the spec. The 60° and Pitching Wedge entries extend the
+// same treatment to every scoring club, forming a descending ladder: without a threshold a
+// 20-yard chip counts as a "full swing", which reported the lob wedge as a 21-yard stick at HIGH
+// confidence off one round. A touch shot is not a full swing. All remain user-editable.
+const DEFAULT_PARTIAL_THRESHOLDS: Record<string, number> = {
+  "Pitching Wedge": 105,
+  "50°": 100,
+  "56°": 80,
+  "60°": 60
+};
 
 export async function ensureDefaultClubs(): Promise<Club[]> {
   // Whole read-check-write runs as one Dexie transaction so two concurrent callers (e.g.
@@ -219,12 +243,13 @@ export async function ensureDefaultClubs(): Promise<Club[]> {
     const existing = await db.clubs.toArray();
     const hasLegacy = existing.some((c) => LEGACY_ONLY_CLUB_NAMES.includes(c.name));
     if (existing.length && !hasLegacy) {
+      let changed = false;
+
       // Idempotent backfill of the partial-swing thresholds on already-seeded clubs. Null counts
       // as unset here, not as a deliberate choice: earlier seeds wrote null for every club, and
       // leaving the wedges that way let greenside chips masquerade as full swings. To genuinely
       // mean "never partial" for a scoring club, set it to 0 in Settings — no shot is inside
       // zero yards, and 0 is preserved here.
-      let changed = false;
       for (const c of existing) {
         const threshold = DEFAULT_PARTIAL_THRESHOLDS[c.name];
         if (threshold !== undefined && c.fullSwingMinYards == null) {
@@ -233,7 +258,46 @@ export async function ensureDefaultClubs(): Promise<Club[]> {
           changed = true;
         }
       }
-      return changed ? db.clubs.toArray() : existing;
+
+      // One-time migration onto the current canonical bag: add clubs the default list gained,
+      // and re-apply its order. ADDITIVE — custom clubs are kept (sorted after the defaults) and
+      // every existing club's dispersion, thresholds and tag pairing are untouched. Runs once so
+      // a bag reordered by hand afterwards stays that way.
+      const orderApplied = typeof localStorage !== "undefined" && !!localStorage.getItem(CLUB_ORDER_KEY);
+      if (!orderApplied) {
+        const byName = new Map(existing.map((c) => [c.name, c]));
+        for (const name of DEFAULT_CLUB_NAMES) {
+          if (byName.has(name)) continue;
+          const club: Club = {
+            id: uuid(),
+            name,
+            sortOrder: 0,
+            fullSwingMinYards: DEFAULT_PARTIAL_THRESHOLDS[name] ?? null,
+            updatedAt: now()
+          };
+          await db.clubs.put(club);
+          byName.set(name, club);
+          changed = true;
+        }
+        const all = [...byName.values()].sort((a, b) => {
+          const ia = DEFAULT_CLUB_NAMES.indexOf(a.name);
+          const ib = DEFAULT_CLUB_NAMES.indexOf(b.name);
+          // Anything not in the canonical list keeps its relative order, after the known clubs.
+          if (ia === -1 && ib === -1) return a.sortOrder - b.sortOrder;
+          if (ia === -1) return 1;
+          if (ib === -1) return -1;
+          return ia - ib;
+        });
+        for (let i = 0; i < all.length; i++) {
+          if (all[i].sortOrder !== i) {
+            await db.clubs.put({ ...all[i], sortOrder: i, updatedAt: now() });
+            changed = true;
+          }
+        }
+        if (typeof localStorage !== "undefined") localStorage.setItem(CLUB_ORDER_KEY, "1");
+      }
+
+      return changed ? (await db.clubs.toArray()).sort((a, b) => a.sortOrder - b.sortOrder) : existing;
     }
     if (hasLegacy) await db.clubs.clear();
 
@@ -245,8 +309,58 @@ export async function ensureDefaultClubs(): Promise<Club[]> {
       updatedAt: now()
     }));
     await db.clubs.bulkPut(clubs);
+    if (typeof localStorage !== "undefined") localStorage.setItem(CLUB_ORDER_KEY, "1");
     return clubs;
   });
+}
+
+/** Adds a club to the bottom of the bag. */
+export async function createClub(name: string): Promise<Club> {
+  const existing = await db.clubs.toArray();
+  const club: Club = {
+    id: uuid(),
+    name: name.trim(),
+    sortOrder: existing.length ? Math.max(...existing.map((c) => c.sortOrder)) + 1 : 0,
+    fullSwingMinYards: DEFAULT_PARTIAL_THRESHOLDS[name.trim()] ?? null,
+    updatedAt: now()
+  };
+  await db.clubs.put(club);
+  await queueOutbox("clubs", "upsert", club);
+  return club;
+}
+
+export async function renameClub(clubId: string, name: string): Promise<void> {
+  const club = await db.clubs.get(clubId);
+  if (!club) return;
+  const updated: Club = { ...club, name: name.trim(), updatedAt: now() };
+  await db.clubs.put(updated);
+  await queueOutbox("clubs", "upsert", updated);
+}
+
+/** Removes a club from the bag. Shots already recorded with it keep their clubId — the club row
+ * is gone so they read as "unknown club" rather than silently changing to something else. */
+export async function deleteClub(clubId: string): Promise<void> {
+  await db.clubs.delete(clubId);
+  await queueOutbox("clubs", "delete", { id: clubId });
+}
+
+/** Moves a club one place up or down the bag, swapping sortOrder with its neighbour. */
+export async function moveClub(clubId: string, direction: -1 | 1): Promise<void> {
+  const all = (await db.clubs.toArray()).sort((a, b) => a.sortOrder - b.sortOrder);
+  const index = all.findIndex((c) => c.id === clubId);
+  const swapWith = index + direction;
+  if (index === -1 || swapWith < 0 || swapWith >= all.length) return;
+  // Rewrite the whole run's sortOrder rather than swapping two values — imported or hand-edited
+  // bags can contain duplicate or gapped orders, which a bare swap would leave unchanged.
+  const reordered = [...all];
+  [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
+  for (let i = 0; i < reordered.length; i++) {
+    if (reordered[i].sortOrder !== i) {
+      const updated: Club = { ...reordered[i], sortOrder: i, updatedAt: now() };
+      await db.clubs.put(updated);
+      await queueOutbox("clubs", "upsert", updated);
+    }
+  }
 }
 
 export async function listClubs(): Promise<Club[]> {

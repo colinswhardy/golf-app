@@ -249,6 +249,10 @@ export interface SgBaselineScratch {
 export interface WatchLap {
   id: string;
   roundId: string;
+  /** The hole being played when this was captured LIVE (simulation, or a future on-watch link).
+   * Null for laps parsed out of a FIT file, where hole assignment is reconciliation's job — but
+   * when it's present the live round can count strokes per hole without waiting for ingest. */
+  roundHoleId?: string | null;
   lapIndex: number;
   /** ISO timestamp, WATCH clock (apply Round.clockOffsetMs to compare with phone events). */
   tWatch: string;
@@ -263,6 +267,9 @@ export interface WatchLap {
 export interface ClubTap {
   id: string;
   roundId: string;
+  /** The hole being played when the tag was tapped, so the live round can count strokes per hole
+   * before any reconciliation has run. */
+  roundHoleId?: string | null;
   /** ISO timestamp, PHONE clock. */
   tPhone: string;
   clubId: string;

@@ -39,6 +39,8 @@ export async function clubIdForSerial(serialNumber: string): Promise<string | nu
 
 export async function recordClubTap(params: {
   roundId: string;
+  /** Hole in play, so the live stroke count can attribute this tap without waiting for ingest. */
+  roundHoleId?: string | null;
   clubId: string;
   serialNumber: string;
   at: Date;
@@ -50,6 +52,7 @@ export async function recordClubTap(params: {
   const tap: ClubTap = {
     id: uuid(),
     roundId: params.roundId,
+    roundHoleId: params.roundHoleId ?? null,
     tPhone: params.at.toISOString(),
     clubId: params.clubId,
     serialNumber: params.serialNumber,
@@ -64,6 +67,31 @@ export async function recordClubTap(params: {
 
 export async function listClubTapsForRound(roundId: string): Promise<ClubTap[]> {
   return (await db.clubTaps.where("roundId").equals(roundId).toArray()).sort((a, b) => a.tPhone.localeCompare(b.tPhone));
+}
+
+/** Two taps this close together with no lap between them are the same swing — you pulled a club,
+ * changed your mind, and tagged another. Mirrors reconcile.ts STEP 2 so the live stroke count and
+ * the post-round reconciliation agree about what happened. */
+const TAP_COLLAPSE_WINDOW_MS = 20_000;
+
+/**
+ * How many SWINGS have been signalled on this hole so far, from the capture streams alone.
+ *
+ * Laps are the authoritative "I hit a shot" signal, so they win when present; taps are counted
+ * when the watch produced nothing (dead battery, forgotten press), after collapsing club changes.
+ * Taking the max means a forgotten press on either stream still leaves the count complete rather
+ * than short — the direction of error that matters, since an undercount silently loses a stroke.
+ */
+export function countCapturedSwings(laps: WatchLap[], taps: ClubTap[]): number {
+  const collapsedTaps = taps
+    .slice()
+    .sort((a, b) => a.tPhone.localeCompare(b.tPhone))
+    .filter((tap, i, all) => {
+      const next = all[i + 1];
+      if (!next) return true;
+      return Date.parse(next.tPhone) - Date.parse(tap.tPhone) > TAP_COLLAPSE_WINDOW_MS;
+    });
+  return Math.max(laps.length, collapsedTaps.length);
 }
 
 // --- Watch data ingest (2.4) ---
@@ -108,11 +136,17 @@ export async function listWatchLapsForRound(roundId: string): Promise<WatchLap[]
 
 /** Records a single lap press. Used by simulation mode to stand in for the watch's own button, so
  * the rehearsal produces exactly the rows a real FIT ingest would. */
-export async function recordWatchLap(roundId: string, point: LatLng, elevationM: number | null = null): Promise<WatchLap> {
+export async function recordWatchLap(
+  roundId: string,
+  point: LatLng,
+  elevationM: number | null = null,
+  roundHoleId: string | null = null
+): Promise<WatchLap> {
   const existing = await db.watchLaps.where("roundId").equals(roundId).count();
   const lap: WatchLap = {
     id: uuid(),
     roundId,
+    roundHoleId,
     lapIndex: existing,
     tWatch: now(),
     point,

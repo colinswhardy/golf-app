@@ -52,6 +52,8 @@ export function descentAngleDeg(club: Club): number {
   if (/driver|wood/.test(n)) return 38;
   if (/hybrid|4\s*iron|5\s*iron/.test(n)) return 43;
   if (/6\s*iron|7\s*iron|8\s*iron/.test(n)) return 47;
+  // Pitching wedge sits between the 9 iron and the 50° in descent, as it does in loft.
+  if (/pitching|(^|\W)pw(\W|$)/.test(n)) return 50;
   if (/9\s*iron|50/.test(n)) return 51;
   if (/54|56|58|60|sand|lob/.test(n)) return 54;
   return 45;

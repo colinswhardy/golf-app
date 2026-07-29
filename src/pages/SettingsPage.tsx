@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
 import { AppBar, Badge, Button, Icon, Note, Page, Section } from "../components/ui";
-import { ensureDefaultClubs, listClubs, updateClubDispersion } from "../lib/courseRepo";
+import { createClub, deleteClub, ensureDefaultClubs, listClubs, moveClub, renameClub, updateClubDispersion } from "../lib/courseRepo";
 import { isGpsEnabled, isSimulationEnabled, setGpsEnabled, setSimulationEnabled } from "../lib/settings";
 import { backupFilename, exportAll, importAll, readBackup, type BackupEnvelope, type BackupSummary } from "../lib/backup";
 import { findDanglingReferences, repairDanglingReferences, type RepairResult } from "../lib/integrity";
@@ -80,34 +80,7 @@ export function SettingsPage() {
         </div>
       </Section>
 
-      <Section
-        title="Clubs"
-        hint="Front/back and left/right are total dispersion spread in yards (20 = ±10y). Descent angle drives elevation-corrected distances — blank uses a sensible per-club default. Partial marks shots inside that pin distance as partial swings."
-      >
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Club</th>
-                <th>F/B</th>
-                <th>L/R</th>
-                <th>Actual</th>
-                <th>Descent</th>
-                <th>Partial &lt;</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clubs?.map((c) => (
-                // Keyed on the seed-backfilled fields too: ClubRow captures them into local input
-                // state once on mount, and the one-time ensureDefaultClubs backfill can land
-                // AFTER the live query's first emission. Commits happen on blur, so a remount
-                // never steals focus mid-typing.
-                <ClubRow key={`${c.id}:${c.fullSwingMinYards ?? ""}:${c.descentAngleDeg ?? ""}`} club={c} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Section>
+      <ClubsSection clubs={clubs ?? []} />
 
       <NfcPairingSection clubs={clubs ?? []} />
       <SgBaselineSection />
@@ -377,6 +350,153 @@ function IntegritySection() {
             Repaired {repairResult.repairedRounds} rounds and {repairResult.repairedRoundHoles} hole results;{" "}
             {repairResult.unrepairable} could not be matched.
           </Note>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/**
+ * The bag: what's in it, what order it's carried in, and each club's numbers. Order matters
+ * beyond tidiness — it's the order clubs appear in the shot sheet mid-round, so it should match
+ * how they sit in the bag.
+ */
+function ClubsSection({ clubs }: { clubs: Club[] }) {
+  const [editingBag, setEditingBag] = useState(false);
+  const [newClubName, setNewClubName] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  async function addClub() {
+    const name = newClubName.trim();
+    if (!name) return;
+    await createClub(name);
+    setNewClubName("");
+  }
+
+  return (
+    <Section
+      title="Clubs"
+      action={
+        <button className="tiny accent bold" onClick={() => setEditingBag((v) => !v)}>
+          {editingBag ? "Done" : "Edit bag"}
+        </button>
+      }
+      hint={
+        editingBag
+          ? "Reorder with the arrows — this is the order clubs appear when you log a shot. Rename by typing over a name."
+          : "Front/back and left/right are total dispersion spread in yards (20 = ±10y). Descent angle drives elevation-corrected distances — blank uses a sensible per-club default. Partial marks shots inside that pin distance as a partial swing rather than a full one."
+      }
+    >
+      {editingBag ? (
+        <>
+          <div className="stack" style={{ gap: 6 }}>
+            {clubs.map((club, i) => (
+              <div key={club.id} className="list-row">
+                <input
+                  className="field grow"
+                  style={{ padding: "7px 10px" }}
+                  defaultValue={club.name}
+                  onBlur={(e) => {
+                    const next = e.target.value.trim();
+                    if (next && next !== club.name) renameClub(club.id, next);
+                    else e.target.value = club.name;
+                  }}
+                  aria-label={`Rename ${club.name}`}
+                />
+                <span className="row" style={{ gap: 4 }}>
+                  <button
+                    className="map-btn"
+                    style={{ width: 32, height: 32 }}
+                    onClick={() => moveClub(club.id, -1)}
+                    disabled={i === 0}
+                    aria-label={`Move ${club.name} up`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    className="map-btn"
+                    style={{ width: 32, height: 32 }}
+                    onClick={() => moveClub(club.id, 1)}
+                    disabled={i === clubs.length - 1}
+                    aria-label={`Move ${club.name} down`}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    className="map-btn"
+                    style={{ width: 32, height: 32, color: "var(--danger)" }}
+                    onClick={() => setConfirmDelete(club.id)}
+                    aria-label={`Remove ${club.name}`}
+                  >
+                    <Icon.trash size={15} />
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {confirmDelete && (
+            <div className="card mt-2" style={{ borderColor: "rgba(255,107,107,.3)" }}>
+              <div className="small mb-2">
+                Remove {clubs.find((c) => c.id === confirmDelete)?.name}? Shots already recorded
+                with it keep their history but will show as an unknown club.
+              </div>
+              <div className="row" style={{ gap: 8 }}>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={async () => {
+                    await deleteClub(confirmDelete);
+                    setConfirmDelete(null);
+                  }}
+                >
+                  Remove
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="row mt-2" style={{ gap: 8 }}>
+            <input
+              className="field grow"
+              placeholder="Add a club (e.g. 3 Wood)"
+              value={newClubName}
+              onChange={(e) => setNewClubName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addClub();
+              }}
+            />
+            <Button size="sm" onClick={addClub} disabled={!newClubName.trim()}>
+              <Icon.plus size={15} /> Add
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Club</th>
+                <th>F/B</th>
+                <th>L/R</th>
+                <th>Actual</th>
+                <th>Descent</th>
+                <th>Partial &lt;</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clubs.map((c) => (
+                // Keyed on the seed-backfilled fields too: ClubRow captures them into local input
+                // state once on mount, and the one-time ensureDefaultClubs backfill can land
+                // AFTER the live query's first emission. Commits happen on blur, so a remount
+                // never steals focus mid-typing.
+                <ClubRow key={`${c.id}:${c.fullSwingMinYards ?? ""}:${c.descentAngleDeg ?? ""}`} club={c} />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </Section>

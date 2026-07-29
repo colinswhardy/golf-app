@@ -36,7 +36,21 @@ export const Icon = {
   target: ({ size }: IconProps = {}) => svg(<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="0.8" fill="currentColor" /></>, size),
   layers: ({ size }: IconProps = {}) => svg(<><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" /></>, size),
   note: ({ size }: IconProps = {}) => svg(<><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3h11A1.5 1.5 0 0 1 19 4.5v15a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19.5Z" /><path d="M9 8h6M9 12h6M9 16h3" /></>, size),
-  ellipse: ({ size }: IconProps = {}) => svg(<><ellipse cx="12" cy="12" rx="5" ry="8.5" /><path d="M12 3.5v17" /></>, size),
+  // Shot dispersion: the scatter pattern inside its confidence ellipse, with the aim line running
+  // through it — a bare ellipse read as an almond and said nothing about what the overlay shows.
+  ellipse: ({ size }: IconProps = {}) =>
+    svg(
+      <>
+        <ellipse cx="12" cy="10" rx="6.5" ry="8" />
+        <path d="M12 22v-4" strokeDasharray="2 2" />
+        <circle cx="12" cy="7" r="1" fill="currentColor" stroke="none" />
+        <circle cx="9.5" cy="10.5" r="1" fill="currentColor" stroke="none" />
+        <circle cx="14" cy="12" r="1" fill="currentColor" stroke="none" />
+        <circle cx="11" cy="13.5" r="1" fill="currentColor" stroke="none" />
+        <circle cx="14.5" cy="8" r="1" fill="currentColor" stroke="none" />
+      </>,
+      size
+    ),
   watch: ({ size }: IconProps = {}) => svg(<><rect x="6.5" y="6.5" width="11" height="11" rx="3" /><path d="M9 6.5 9.5 3h5l.5 3.5M9 17.5l.5 3.5h5l.5-3.5M12 9.8V12l1.6 1.2" /></>, size),
   tag: ({ size }: IconProps = {}) => svg(<><path d="M3 12V4.5A1.5 1.5 0 0 1 4.5 3H12l8.5 8.5a2 2 0 0 1 0 2.8l-6.2 6.2a2 2 0 0 1-2.8 0Z" /><circle cx="7.5" cy="7.5" r="1.4" /></>, size),
   bolt: ({ size }: IconProps = {}) => svg(<><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12Z" /></>, size),

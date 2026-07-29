@@ -56,13 +56,15 @@ const uuid = () => crypto.randomUUID();
 const CLUB_YARDS: Record<string, number> = {
   Driver: 232,
   "5 Wood": 205,
+  "4 Hybrid": 196,
   "4 Iron": 190,
   "5 Iron": 178,
   "6 Iron": 167,
   "7 Iron": 156,
   "8 Iron": 144,
   "9 Iron": 132,
-  "50°": 115,
+  "Pitching Wedge": 122,
+  "50°": 108,
   "56°": 92,
   "60°": 68
 };
@@ -81,7 +83,8 @@ function chooseClub(remainingYards: number, isTeeShot: boolean, par: number, clu
   if (isTeeShot && par >= 4) return byName("Driver") ?? clubs[0] ?? null;
 
   if (remainingYards < 85) return byName("56°") ?? byName("60°");
-  if (remainingYards < 112) return byName("50°") ?? byName("56°");
+  if (remainingYards < 105) return byName("50°") ?? byName("56°");
+  if (remainingYards < 122) return byName("Pitching Wedge") ?? byName("50°");
 
   const ordered = Object.entries(CLUB_YARDS)
     .filter(([name]) => name !== "Driver")
