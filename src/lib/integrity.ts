@@ -125,6 +125,19 @@ export async function repairDanglingReferences(): Promise<RepairResult> {
 
   // 2. RoundHoles: re-point holeId to the geometrically nearest hole within the round's
   // (possibly just-repaired) course version.
+  //
+  // Holes already taken within a round are excluded from the candidates. Repairing each row
+  // independently could otherwise map two of a round's holes onto the SAME hole, which reads as
+  // one hole scored twice and another missing — corrupting the scorecard while appearing to fix
+  // it. Rows already resolving correctly count as taken too, so a repair can't collide with them.
+  const takenByRound = new Map<string, Set<string>>();
+  for (const rh of await db.roundHoles.toArray()) {
+    if (report.roundHoles.some((bad) => bad.id === rh.id)) continue; // this one is being moved
+    const set = takenByRound.get(rh.roundId) ?? new Set<string>();
+    set.add(rh.holeId);
+    takenByRound.set(rh.roundId, set);
+  }
+
   for (const rh of report.roundHoles) {
     const round = await db.rounds.get(rh.roundId);
     if (!round) {
@@ -136,12 +149,16 @@ export async function repairDanglingReferences(): Promise<RepairResult> {
       unrepairable++;
       continue;
     }
-    const versionCandidates = candidates.filter((c) => c.courseVersionId === round.courseVersionId);
-    const match = nearest(versionCandidates.length ? versionCandidates : candidates, anchor);
+    const taken = takenByRound.get(rh.roundId) ?? new Set<string>();
+    const free = candidates.filter((c) => !taken.has(c.holeId));
+    const versionCandidates = free.filter((c) => c.courseVersionId === round.courseVersionId);
+    const match = nearest(versionCandidates.length ? versionCandidates : free, anchor);
     if (!match) {
       unrepairable++;
       continue;
     }
+    taken.add(match.holeId);
+    takenByRound.set(rh.roundId, taken);
     const updated: RoundHole = { ...rh, holeId: match.holeId, updatedAt: now() };
     await db.roundHoles.put(updated);
     await queueOutbox("roundHoles", "upsert", updated);

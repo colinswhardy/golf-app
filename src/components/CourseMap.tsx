@@ -41,7 +41,7 @@ const LONG_PRESS_MS = 550;
 const LONG_PRESS_MOVE_PX = 12;
 const SAVED_DOT_CLASS = "map-touch-dot--saved";
 export const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
-export const OUTDOORS_STYLE = "mapbox://styles/mapbox/outdoors-v12";
+
 
 export interface BunkerYardages {
   front: number;
@@ -83,8 +83,6 @@ interface CourseMapProps {
    * (e.g. demo mode, which renders its own trigger button). */
   settingTarget?: boolean;
   onSettingTargetChange?: (v: boolean) => void;
-  /** Mapbox style URL; defaults to satellite. Switching this preserves the line/markers. */
-  mapStyle?: string;
   /** Hides CourseMap's own built-in distance/set-target HUD box, for parents (e.g. the Grint-style
    * round page) that render their own controls and drive settingTarget externally instead. */
   hideInternalHud?: boolean;
@@ -140,7 +138,6 @@ export function CourseMap({
   onTargetChange,
   settingTarget: settingTargetProp,
   onSettingTargetChange,
-  mapStyle,
   hideInternalHud,
   dispersionEllipse,
   autoLayupPoint,
@@ -286,7 +283,7 @@ export function CourseMap({
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: mapStyle ?? SATELLITE_STYLE,
+      style: SATELLITE_STYLE,
       center: [initialCenter.lng, initialCenter.lat],
       zoom: 17,
       pitch: initialPitch,
@@ -407,17 +404,6 @@ export function CourseMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Map style switching (satellite <-> outdoors), triggered externally via the mapStyle prop ---
-  const isFirstStyleRender = useRef(true);
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || isFirstStyleRender.current) {
-      isFirstStyleRender.current = false;
-      return; // the constructor already set the initial style; nothing to do on first mount
-    }
-    map.setStyle(mapStyle ?? SATELLITE_STYLE);
-    map.once("style.load", () => ensureSources(map));
-  }, [mapStyle]);
 
   // Adds the target-line, bunker (invisible, hit-test only), and dispersion-ellipse sources/layers
   // if missing. Called on initial "load" and again after every style change ("style.load") —
@@ -696,6 +682,9 @@ export function CourseMap({
       holdStart = { x: evt.clientX, y: evt.clientY };
       holdTimer = setTimeout(() => {
         holdTimer = null;
+        // Bail if the map went away while the press was in flight (navigating a hole mid-hold) —
+        // otherwise this writes waypoints and toasts against an unmounted screen.
+        if (!mapRef.current) return;
         const points = Array.from(measureMarkersRef.current.values()).map(({ marker: m }) => {
           const pos = m.getLngLat();
           return { lat: pos.lat, lng: pos.lng } as LatLng;

@@ -555,7 +555,10 @@ function ClubRow({ club }: { club: Club }) {
           className="field field--num"
           type="number"
           inputMode="decimal"
-          min={0}
+          // 0 would divide by tan(0) in the elevation correction. The engine clamps to 10-80
+          // regardless, but the field shouldn't invite a value it's going to ignore.
+          min={10}
+          max={80}
           value={descent}
           onChange={(e) => setDescent(e.target.value)}
           onBlur={() => commit(descent, "descentAngleDeg")}

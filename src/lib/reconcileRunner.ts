@@ -4,8 +4,9 @@ import { listClubTapsForRound, listWatchLapsForRound } from "./captureRepo";
 import { getOrCreateRoundHole } from "./roundRepo";
 import { getHolesForVersion, getFeaturesForHole, getTeeBoxesForHole, listClubs } from "./courseRepo";
 import { centerlineOf, defaultTargetForShot, greenCentroidOf } from "./targets";
+import { classifyFairwayResult } from "./fairway";
 import { clubTypicalYardsSync } from "./stats";
-import type { ReviewFlag, ReviewFlagType, Round, Shot } from "../types/domain";
+import type { ReviewFlag, ReviewFlagType, Round, RoundHole, Shot } from "../types/domain";
 
 /**
  * Dexie-facing wrapper around the pure reconciliation engine (Phase 3): loads a round's capture
@@ -48,10 +49,19 @@ export async function reconcileRound(roundId: string): Promise<ReconcileRunSumma
     getHolesForVersion(round.courseVersionId)
   ]);
 
+  // Only the holes this round actually covers. A back-nine round must not be reconciled against
+  // holes 1-9: hole segmentation walks the list in order from the first entry, so including them
+  // lets a lap land on a hole that was never played, and it would also create nine empty
+  // RoundHole rows. Rounds recorded before nines existed carry no range and get the full course,
+  // which is what they were.
+  const playedHoles = holes.filter(
+    (h) => h.number >= (round.startHole ?? -Infinity) && h.number <= (round.endHole ?? Infinity)
+  );
+
   // Every hole needs a RoundHole row before segmentation can target it — the UI creates them
   // lazily, but laps exist for holes never opened on the phone.
   const holeInputs: ReconcileHoleInput[] = [];
-  for (const hole of holes) {
+  for (const hole of playedHoles) {
     const rh = await getOrCreateRoundHole(roundId, hole.id);
     const features = await getFeaturesForHole(hole.id);
     const tees = await getTeeBoxesForHole(hole.id);
@@ -69,6 +79,10 @@ export async function reconcileRound(roundId: string): Promise<ReconcileRunSumma
 
   const roundHoleIds = holeInputs.map((h) => h.roundHoleId);
   const existingShots = await db.shots.where("roundHoleId").anyOf(roundHoleIds).toArray();
+  // Club medians for the default tee-shot target come from the WHOLE history, not just this
+  // round — four shots with a club is the threshold, which a single round rarely reaches, so
+  // scoping it to the round meant the default almost always fell back to a fixed 230 yards.
+  const allShotsEver = await db.shots.toArray();
 
   const result = reconcile({
     laps,
@@ -93,13 +107,38 @@ export async function reconcileRound(roundId: string): Promise<ReconcileRunSumma
       greenCentroid: greenCentroidOf(hole.features),
       teeLocation: hole.teeLocation,
       centerline: centerlineOf(hole.features),
-      clubMedianYards: (clubId) => clubTypicalYardsSync(clubId, existingShots)
+      clubMedianYards: (clubId) => clubTypicalYardsSync(clubId, allShotsEver)
     });
     return resolved ? { ...shot, targetPoint: resolved.point, targetSource: resolved.source } : shot;
   });
 
+  // ----- Fairway result per hole -----
+  // Auto-detection previously only ran when a shot was entered by hand, so a round captured the
+  // intended way — watch laps and club tags — never got one. Derived here from the reconciled
+  // tee shot's landing point, and only where it's absent: a value chosen in the hole-out sheet is
+  // the player's own call and outranks the geometry.
+  const fairwayUpdates: RoundHole[] = [];
+  for (const hole of holeInputs) {
+    if (hole.par < 4) continue;
+    const rh = await db.roundHoles.get(hole.roundHoleId);
+    if (!rh || rh.fairwayResult != null) continue;
+    const fairway = hole.features.find((f) => f.featureType === "fairway" && f.geometry.type === "Polygon");
+    const green = greenCentroidOf(hole.features);
+    if (!fairway || !green || !hole.teeLocation) continue;
+    const holeShots = shotsWithTargets
+      .filter((s) => s.roundHoleId === hole.roundHoleId && s.swingType !== "putt" && s.penaltyType === null)
+      .sort((a, b) => a.shotNumber - b.shotNumber);
+    const landing = holeShots[0]?.endPoint;
+    if (!landing) continue;
+    fairwayUpdates.push({
+      ...rh,
+      fairwayResult: classifyFairwayResult(fairway.geometry as GeoJSON.Polygon, hole.teeLocation, green, landing),
+      updatedAt: now()
+    });
+  }
+
   // ----- Persist everything in one transaction -----
-  await db.transaction("rw", [db.shots, db.watchLaps, db.clubTaps, db.reviewFlags, db.rounds, db.outbox], async () => {
+  await db.transaction("rw", [db.shots, db.watchLaps, db.clubTaps, db.reviewFlags, db.rounds, db.roundHoles, db.outbox], async () => {
     for (const id of result.deleteShotIds) {
       await db.shots.delete(id);
       await queueOutbox("shots", "delete", { id });
@@ -150,6 +189,11 @@ export async function reconcileRound(roundId: string): Promise<ReconcileRunSumma
       };
       await db.reviewFlags.put(flag);
       await queueOutbox("reviewFlags", "upsert", flag);
+    }
+
+    for (const rh of fairwayUpdates) {
+      await db.roundHoles.put(rh);
+      await queueOutbox("roundHoles", "upsert", rh);
     }
 
     const updatedRound: Round = {

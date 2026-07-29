@@ -85,12 +85,24 @@ export function ReviewRoundsPage() {
 
   // A round always renders against the geometry it was played on: holes come from the round's
   // own courseVersionId, never "latest".
-  const holes = useLiveQuery(
-    () => (selectedRound ? getHolesForVersion(selectedRound.courseVersionId) : []),
-    [selectedRound?.courseVersionId]
-  );
+  // Only the holes the round covers: a nine shouldn't make you step through nine empty holes, and
+  // its scorecard shouldn't list them. Rounds recorded before nines existed carry no range and
+  // get the whole course, which is what they were.
+  const holes = useLiveQuery(async () => {
+    if (!selectedRound) return [];
+    const all = await getHolesForVersion(selectedRound.courseVersionId);
+    return all.filter(
+      (h) => h.number >= (selectedRound.startHole ?? -Infinity) && h.number <= (selectedRound.endHole ?? Infinity)
+    );
+  }, [selectedRound?.courseVersionId, selectedRound?.startHole, selectedRound?.endHole]);
   const currentHole = useMemo(() => holes?.find((h) => h.number === holeNumber), [holes, holeNumber]);
+  const firstHoleNumber = holes?.length ? Math.min(...holes.map((h) => h.number)) : 1;
   const maxHoleNumber = holes?.length ? Math.max(...holes.map((h) => h.number)) : 18;
+
+  // Land on the round's first hole rather than hole 1, which a nine may not include.
+  useEffect(() => {
+    setHoleNumber((n) => Math.min(Math.max(n, firstHoleNumber), maxHoleNumber));
+  }, [firstHoleNumber, maxHoleNumber]);
 
   const allRoundHoles = useLiveQuery(
     () => (selectedRound ? db.roundHoles.where("roundId").equals(selectedRound.id).toArray() : []),
@@ -327,7 +339,11 @@ export function ReviewRoundsPage() {
         </button>
         {currentHole && (
           <div className="hole-bar glass">
-            <button className="hole-bar__nav" onClick={() => setHoleNumber((n) => Math.max(1, n - 1))} disabled={holeNumber <= 1}>
+            <button
+              className="hole-bar__nav"
+              onClick={() => setHoleNumber((n) => Math.max(firstHoleNumber, n - 1))}
+              disabled={holeNumber <= firstHoleNumber}
+            >
               ‹
             </button>
             <span className="hole-bar__label">

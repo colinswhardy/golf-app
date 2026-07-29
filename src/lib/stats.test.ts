@@ -6,7 +6,9 @@ import {
   countTier,
   descentAngleDeg,
   flatEquivalentYards,
+  findPutter,
   isEligibleForClubStats,
+  isPutter,
   madOutlierIndices,
   median,
   percentile,
@@ -76,6 +78,16 @@ describe("elevation normalisation (5.2)", () => {
     expect(flatEquivalentYards(150, -10, 47)).toBeGreaterThan(150);
   });
 
+  it("a zero descent angle cannot produce a non-finite distance", () => {
+    // 0 was typeable in the Settings field and divides by tan(0) — it returned -Infinity, which
+    // NaN'd out the club's whole row. Clamped, so the correction stays finite and sane.
+    expect(Number.isFinite(flatEquivalentYards(160, 10, 0))).toBe(true);
+    expect(Number.isFinite(flatEquivalentYards(160, 0, 0))).toBe(true);
+    expect(flatEquivalentYards(160, 10, 0)).toBeLessThan(160);
+    expect(descentAngleDeg(mkClub({ descentAngleDeg: 0 }))).toBeGreaterThanOrEqual(10);
+    expect(descentAngleDeg(mkClub({ descentAngleDeg: 500 }))).toBeLessThanOrEqual(80);
+  });
+
   it("descent angle defaults follow the club-type table, overridable per club", () => {
     expect(descentAngleDeg(mkClub({ name: "Driver" }))).toBe(38);
     expect(descentAngleDeg(mkClub({ name: "5 Iron" }))).toBe(43);
@@ -83,6 +95,31 @@ describe("elevation normalisation (5.2)", () => {
     expect(descentAngleDeg(mkClub({ name: "50°" }))).toBe(51);
     expect(descentAngleDeg(mkClub({ name: "60°" }))).toBe(54);
     expect(descentAngleDeg(mkClub({ name: "7 Iron", descentAngleDeg: 49.5 }))).toBe(49.5);
+  });
+});
+
+describe("identifying the putter (the bag is user-editable)", () => {
+  it("recognises a renamed putter, not just the exact default name", () => {
+    expect(isPutter({ name: "Putter" })).toBe(true);
+    expect(isPutter({ name: "putter" })).toBe(true);
+    expect(isPutter({ name: "Odyssey Putter" })).toBe(true);
+    expect(isPutter({ name: "Scotty Cameron putter" })).toBe(true);
+    expect(isPutter({ name: "7 Iron" })).toBe(false);
+    expect(isPutter({ name: "Pitching Wedge" })).toBe(false);
+  });
+
+  it("finds it in a bag, and reports null when there isn't one", () => {
+    expect(findPutter([{ name: "Driver" }, { name: "Odyssey Putter" }])?.name).toBe("Odyssey Putter");
+    expect(findPutter([{ name: "Driver" }, { name: "7 Iron" }])).toBeNull();
+  });
+
+  it("keeps a renamed putter out of full-swing club distances", () => {
+    const putter = mkClub({ id: "p", name: "Odyssey #7 Putter" });
+    // Even given full-swing rows, a club identified as the putter is never distance-summarised.
+    const shots = [1, 2, 3, 4, 5].map(() =>
+      mkShot({ clubId: "p", swingType: "full", endPoint: fromLocalMeters(O, 0, 9) })
+    );
+    expect(computeClubDistances(shots, [putter])).toHaveLength(0);
   });
 });
 

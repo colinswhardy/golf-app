@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Button, Icon, relativeToParLabel, scoreToneClass } from "./ui";
+import { findPutter } from "../lib/stats";
 import type { Club, FairwayResult, Lie } from "../types/domain";
 
 const FAIRWAY_TILES: { label: string; value: FairwayResult }[] = [
@@ -38,7 +39,7 @@ export function ShotSheet(props: {
   const isFirstShot = props.shotNumber === 1;
   const isOnGreen = props.detectedLie === "green";
   const [lie, setLie] = useState<Lie | null>(isFirstShot ? "tee" : isOnGreen ? "green" : null);
-  const putter = props.clubs.find((c) => c.name === "Putter");
+  const putter = findPutter(props.clubs);
 
   // Fires for both the auto-detected initial state and a manual tap of the Green
   // tile — either way, landing on "green" saves immediately rather than

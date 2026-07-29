@@ -8,6 +8,7 @@ import {
   getFeaturesForHole,
   getHolesForVersion,
   getLatestCourseVersion,
+  listClubs,
   updateHoleNotes,
   updateHoleWaypoints
 } from "../lib/courseRepo";
@@ -396,9 +397,25 @@ export function RoundMapPage() {
 
   useEffect(() => {
     if (isDemo || !courseId) return;
-    getActiveRoundForCourse(courseId).then((r) => setRound(r ?? null));
-    ensureDefaultClubs().then(setClubs);
+    let cancelled = false;
+    getActiveRoundForCourse(courseId).then((r) => {
+      if (!cancelled) setRound(r ?? null);
+    });
+    // Seeding is a write, so it can't live in a live query — but the bag can be edited in
+    // Settings while this page is mounted, so the seed runs once and the live query below keeps
+    // the list current.
+    ensureDefaultClubs();
+    return () => {
+      cancelled = true;
+    };
   }, [isDemo, courseId]);
+
+  // Live so renames, reordering and additions in Settings show up in the shot sheet immediately
+  // rather than only after the round screen is remounted.
+  const liveClubs = useLiveQuery(() => listClubs(), []);
+  useEffect(() => {
+    if (liveClubs) setClubs(liveClubs);
+  }, [liveClubs]);
 
   // A RoundHole row is created lazily the first time you interact with a hole during a round.
   // resolvedRoundHole seeds pinDataReady/currentRoundHole with the SAME row getOrCreateRoundHole
@@ -410,10 +427,19 @@ export function RoundMapPage() {
     setRoundHoleId(null);
     setResolvedRoundHole(null);
     if (!round || !currentHole) return;
+    // Cancellation matters here: stepping through holes quickly leaves several of these in
+    // flight, and without the guard a slower earlier promise can resolve last and point
+    // roundHoleId at the PREVIOUS hole — after which shots, pins and green marks are written
+    // against the wrong hole.
+    let cancelled = false;
     getOrCreateRoundHole(round.id, currentHole.id).then((rh) => {
+      if (cancelled) return;
       setResolvedRoundHole(rh);
       setRoundHoleId(rh.id);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [round, currentHole?.id]);
 
   // Live mirror for imperative callbacks (the NFC reader is armed once per round, so reading
@@ -499,10 +525,13 @@ export function RoundMapPage() {
       }
       if (best && best.dist <= FAR_FROM_HOLE_METERS) {
         const hole = holes?.find((h) => h.id === best!.holeId);
-        if (hole) setHoleNumber(hole.number);
+        // Clamped to the range being played, here rather than by the separate clamp effect: that
+        // effect only re-runs when the RANGE changes, so an auto-select landing after it had
+        // already run could leave you sitting on hole 3 in a back-nine round.
+        if (hole) setHoleNumber(Math.min(Math.max(hole.number, firstHole), maxHoleNumber));
       }
     });
-  }, [isDemo, allTeeBoxes, holes]);
+  }, [isDemo, allTeeBoxes, holes, firstHole, maxHoleNumber]);
 
   const greenCentroid = useMemo(() => {
     if (!currentHole) return null;
@@ -980,9 +1009,12 @@ export function RoundMapPage() {
             currentShotNumber={shotCount + 1}
             gpsEnabled={gpsEnabled}
             initialWaypoints={currentHole.waypoints}
-            onSaveWaypoints={async (points) => {
-              await updateHoleWaypoints(currentHole.id, points);
-              showToast(points.length ? "Line saved to this hole" : "Line cleared");
+            onSaveWaypoints={(points) => {
+              // Called from imperative map code, which can't await — so this owns its own error
+              // handling rather than leaving an unhandled rejection if the write fails.
+              updateHoleWaypoints(currentHole.id, points)
+                .then(() => showToast(points.length ? "Line saved to this hole" : "Line cleared"))
+                .catch(() => showToast("Couldn't save the line"));
             }}
             simulationMode={simulationMode}
             simulatedPosition={simPosition}

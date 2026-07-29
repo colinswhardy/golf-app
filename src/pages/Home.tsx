@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../lib/db";
 import { getHolesForVersion } from "../lib/courseRepo";
+import { discardRound } from "../lib/roundRepo";
 import { Badge, Icon, Page, Section, Stat, relativeToParLabel } from "../components/ui";
 
 /**
@@ -12,6 +13,7 @@ import { Badge, Icon, Page, Section, Stat, relativeToParLabel } from "../compone
  */
 export function Home() {
   const navigate = useNavigate();
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const courses = useLiveQuery(async () => (await db.courses.toArray()).filter((c) => !c.deletedAt), []);
 
@@ -87,18 +89,48 @@ export function Home() {
 
       {/* Resume banner takes priority over everything else on the screen. */}
       {activeRound && activeRound.round && (
-        <button className="card card--accent card--interactive" onClick={() => navigate(`/round/${activeRound.course?.id ?? ""}`)}>
-          <div className="row row--between">
-            <div className="grow">
+        <div className="card card--accent">
+          <button
+            className="row row--between"
+            style={{ width: "100%", textAlign: "left" }}
+            onClick={() => navigate(`/round/${activeRound.course?.id ?? ""}`)}
+          >
+            <span className="grow">
               <Badge tone="accent">Round in progress</Badge>
-              <div className="card__title mt-1">{activeRound.course?.name ?? "Round"}</div>
-              <div className="card__meta">
+              <span className="card__title mt-1" style={{ display: "block" }}>
+                {activeRound.course?.name ?? "Round"}
+              </span>
+              <span className="card__meta" style={{ display: "block" }}>
                 {activeRound.played} {activeRound.played === 1 ? "hole" : "holes"} scored · tap to continue
+              </span>
+            </span>
+            <Icon.chevron size={20} />
+          </button>
+          {/* Without a way out, a round started by mistake is permanent and this banner nags forever. */}
+          {confirmDiscard ? (
+            <div className="mt-2">
+              <div className="small mb-2">Discard this round and everything recorded in it?</div>
+              <div className="row" style={{ gap: 8 }}>
+                <button
+                  className="btn btn--sm btn--danger"
+                  onClick={async () => {
+                    await discardRound(activeRound.round.id);
+                    setConfirmDiscard(false);
+                  }}
+                >
+                  Discard
+                </button>
+                <button className="btn btn--sm btn--ghost" onClick={() => setConfirmDiscard(false)}>
+                  Keep
+                </button>
               </div>
             </div>
-            <Icon.chevron size={20} />
-          </div>
-        </button>
+          ) : (
+            <button className="tiny faint mt-2" onClick={() => setConfirmDiscard(true)}>
+              Discard round
+            </button>
+          )}
+        </div>
       )}
 
       <Section title="Start a round">

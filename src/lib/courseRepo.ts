@@ -314,6 +314,18 @@ export async function ensureDefaultClubs(): Promise<Club[]> {
   });
 }
 
+/**
+ * Lets the canonical-bag migration run again on the next ensureDefaultClubs.
+ *
+ * Restoring a backup replaces the clubs table wholesale, so a backup taken before the bag gained
+ * the pitching wedge and hybrid would leave you short of them — and because the migration is
+ * once-per-install, it would never top them back up. Called after an import so the restored bag
+ * is brought up to the current default additively.
+ */
+export function resetClubBagMigration(): void {
+  if (typeof localStorage !== "undefined") localStorage.removeItem(CLUB_ORDER_KEY);
+}
+
 /** Adds a club to the bottom of the bag. */
 export async function createClub(name: string): Promise<Club> {
   const existing = await db.clubs.toArray();

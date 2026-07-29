@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { findPutter } from "./stats";
 import type { FairwayResult, LatLng, Lie, PenaltyType, PositionSource, Round, RoundHole, Shot } from "../types/domain";
 
 const now = () => new Date().toISOString();
@@ -8,11 +9,45 @@ async function queueOutbox(table: string, op: "upsert" | "delete", payload: unkn
   await db.outbox.put({ id: uuid(), table, op, payload, createdAt: now() });
 }
 
-/** The in-progress round for this course, if one exists (any course version). */
+/** The in-progress round for this course, if one exists (any course version). Most recently
+ * touched wins — nothing stops two in-progress rounds existing on one course (start one, walk
+ * away, start another), and picking whichever the array happened to yield first meant you could
+ * be dropped back into the older one. */
 export async function getActiveRoundForCourse(courseId: string): Promise<Round | undefined> {
   const versionIds = (await db.courseVersions.where("courseId").equals(courseId).toArray()).map((v) => v.id);
   const inProgress = await db.rounds.where("status").equals("in_progress").toArray();
-  return inProgress.find((r) => versionIds.includes(r.courseVersionId));
+  return inProgress
+    .filter((r) => versionIds.includes(r.courseVersionId))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+}
+
+/**
+ * Deletes a round and everything recorded against it. For abandoning a round started by mistake:
+ * without this an accidental start is permanent, the dashboard offers to resume it forever, and
+ * its empty holes sit in the data.
+ */
+export async function discardRound(roundId: string): Promise<void> {
+  await db.transaction(
+    "rw",
+    [db.rounds, db.roundHoles, db.shots, db.watchLaps, db.clubTaps, db.reviewFlags, db.roundTracks, db.outbox],
+    async () => {
+      const roundHoles = await db.roundHoles.where("roundId").equals(roundId).toArray();
+      for (const rh of roundHoles) {
+        for (const s of await db.shots.where("roundHoleId").equals(rh.id).toArray()) {
+          await db.shots.delete(s.id);
+          await queueOutbox("shots", "delete", { id: s.id });
+        }
+        await db.roundHoles.delete(rh.id);
+        await queueOutbox("roundHoles", "delete", { id: rh.id });
+      }
+      await db.watchLaps.where("roundId").equals(roundId).delete();
+      await db.clubTaps.where("roundId").equals(roundId).delete();
+      await db.reviewFlags.where("roundId").equals(roundId).delete();
+      await db.roundTracks.delete(roundId);
+      await db.rounds.delete(roundId);
+      await queueOutbox("rounds", "delete", { id: roundId });
+    }
+  );
 }
 
 export async function startRound(courseVersionId: string, holeRange?: { startHole: number; endHole: number }): Promise<Round> {
@@ -201,7 +236,7 @@ export async function saveGreenMarks(params: {
       await queueOutbox("shots", "upsert", closed);
     }
 
-    const putter = (await db.clubs.toArray()).find((c) => c.name === "Putter") ?? null;
+    const putter = findPutter(await db.clubs.toArray());
     for (let i = 0; i < params.puttStarts.length; i++) {
       const start = params.puttStarts[i];
       const end = params.puttStarts[i + 1] ?? params.pin;

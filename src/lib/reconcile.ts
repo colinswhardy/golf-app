@@ -1,5 +1,6 @@
 import * as turf from "@turf/turf";
 import { distanceMeters, distanceYards } from "./geo";
+import { findPutter } from "./stats";
 import { trackLookup } from "./track";
 import type {
   Club,
@@ -165,17 +166,33 @@ function isOnTee(hole: ReconcileHoleInput, point: LatLng): boolean {
  * nearest-geometry matching (a lap on hole 3's fairway can be metres from hole 4's), so this
  * guard is required, not defensive (spec STEP 1 / Appendix A case 7). Skipped holes are handled
  * by scanning every later hole's tee, not just number+1.
+ *
+ * `holedOutAt` supplies a second, much stronger constraint where it's known: a hole's own putts
+ * are timestamped, and you cannot be teeing off the next hole before you've holed out on this
+ * one. Greens sit right beside the next tee on most courses, so an approach shot landing within
+ * the tee-proximity radius was advancing the sequence a hole early and handing that stroke to the
+ * wrong hole. When a hole has no green marks the entry is absent and behaviour is unchanged.
  */
-function segmentLaps(laps: WatchLap[], holes: ReconcileHoleInput[]): Map<string, ReconcileHoleInput> {
+function segmentLaps(
+  laps: WatchLap[],
+  holes: ReconcileHoleInput[],
+  holedOutAt: Map<string, number>
+): Map<string, ReconcileHoleInput> {
   const byLap = new Map<string, ReconcileHoleInput>();
   if (!holes.length) return byLap;
   const ordered = [...laps].sort((a, b) => a.tWatch.localeCompare(b.tWatch));
   let currentIdx = 0;
   for (const lap of ordered) {
-    for (let j = currentIdx + 1; j < holes.length; j++) {
-      if (isOnTee(holes[j], lap.point)) {
-        currentIdx = j;
-        break;
+    const lapMs = Date.parse(lap.tWatch);
+    const currentHoledOut = holedOutAt.get(holes[currentIdx].roundHoleId);
+    // Still putting on this hole? Then no tee sighting can move us off it.
+    const mayAdvance = currentHoledOut === undefined || lapMs > currentHoledOut;
+    if (mayAdvance) {
+      for (let j = currentIdx + 1; j < holes.length; j++) {
+        if (isOnTee(holes[j], lap.point)) {
+          currentIdx = j;
+          break;
+        }
       }
     }
     byLap.set(lap.id, holes[currentIdx]);
@@ -248,20 +265,26 @@ export function reconcile(input: ReconcileInput): ReconcileResult {
   let clockOffsetMethod: ReconcileResult["clockOffsetMethod"];
   let laps = [...input.laps].sort((a, b) => a.tWatch.localeCompare(b.tWatch));
 
-  if (input.calibrationPhoneTime && laps.length) {
-    const calibT = Date.parse(input.calibrationPhoneTime);
-    let nearest = laps[0];
-    for (const lap of laps) {
-      if (Math.abs(Date.parse(lap.tWatch) - calibT) < Math.abs(Date.parse(nearest.tWatch) - calibT)) nearest = lap;
-    }
-    clockOffsetMs = Date.parse(nearest.tWatch) - calibT;
+  const calibT = input.calibrationPhoneTime ? Date.parse(input.calibrationPhoneTime) : null;
+  // A lap this close to the calibration press IS that press. The window is generous relative to
+  // real clock drift (seconds) but far tighter than the gap to a genuine shot, which is the whole
+  // point: it has to be able to say "no lap here".
+  const calibrationLap =
+    calibT === null
+      ? null
+      : laps.find((l) => Math.abs(Date.parse(l.tWatch) - calibT) <= CALIBRATION_LAP_WINDOW_MS) ?? null;
+
+  if (calibrationLap) {
+    clockOffsetMs = Date.parse(calibrationLap.tWatch) - calibT!;
     clockOffsetMethod = "calibrated";
-    // The calibration press produced a lap that is not a shot — drop it. Only when it's actually
-    // near the calibration moment; a wildly-off "nearest" lap means calibration never got its
-    // press, and eating a real shot lap would be worse than a slightly-off offset.
-    if (Math.abs(Date.parse(nearest.tWatch) - calibT - clockOffsetMs) <= CALIBRATION_LAP_WINDOW_MS) {
-      laps = laps.filter((l) => l.id !== nearest.id);
-    }
+    // The calibration press produced a lap that is not a shot, so it's dropped.
+    //
+    // This used to take the lap NEAREST the calibration time and guard it with a check that
+    // compared the lap against an offset derived from that same lap — always zero, so the guard
+    // always passed. The effect was that any calibrated round lost a lap: if the watch never
+    // registered the calibration press, the nearest lap was a real stroke and reconciliation ate
+    // it. Now a lap has to genuinely sit at the calibration moment to be treated as one.
+    laps = laps.filter((l) => l.id !== calibrationLap.id);
   } else if (input.clockOffsetMs !== null) {
     clockOffsetMs = input.clockOffsetMs;
     clockOffsetMethod = "calibrated";
@@ -291,7 +314,17 @@ export function reconcile(input: ReconcileInput): ReconcileResult {
     .sort((a, b) => tapWatchTime(a) - tapWatchTime(b));
 
   // ----- STEP 1: hole segmentation (all laps, so frozen-consumed ones still anchor taps) -----
-  const holeByLapId = segmentLaps(laps, holes);
+  // When a hole was holed out is known from its green-marked putts, and it bounds the sequence far
+  // more reliably than tee proximity alone can.
+  const holedOutAt = new Map<string, number>();
+  for (const s of input.existingShots) {
+    if (s.reconciliation !== "green_mark") continue;
+    const t = Date.parse(s.recordedAt);
+    if (!Number.isFinite(t)) continue;
+    const prev = holedOutAt.get(s.roundHoleId);
+    if (prev === undefined || t > prev) holedOutAt.set(s.roundHoleId, t);
+  }
+  const holeByLapId = segmentLaps(laps, holes, holedOutAt);
 
   // ----- STEP 2: club-change collapse -----
   const lapTimes = laps.map(lapTime).sort((a, b) => a - b);
@@ -420,6 +453,7 @@ export function reconcile(input: ReconcileInput): ReconcileResult {
 
   // ----- STEP 5/6: assemble per hole, derive, chain -----
   const clubById = new Map(input.clubs.map((c) => [c.id, c]));
+  const putterId = findPutter(input.clubs)?.id ?? null;
   // Reuse ids from previous non-frozen rows with the same capture identity, so unchanged re-runs
   // are byte-identical (Appendix C: "re-running reconciliation changes nothing").
   const previousByIdentity = new Map<string, Shot>();
@@ -457,6 +491,11 @@ export function reconcile(input: ReconcileInput): ReconcileResult {
       const g = e.gen!;
       const { lie, ambiguous } = deriveLie(g.startPoint, hole.features);
       const club = g.tap ? clubById.get(g.tap.clubId) ?? null : null;
+      // A tagged putter, or a stroke played from the green surface, is a putt — not a full swing.
+      // Reconciliation used to label every lap-and-tag stroke "full", so a putt captured the
+      // intended way was counted as a full swing with the putter. Both signals are honoured so a
+      // putt from the fringe (putter tagged, lie not green) classifies correctly too.
+      const isPuttSwing = (putterId !== null && club?.id === putterId) || lie === "green";
       const pinDistance = hole.pin ? distanceYards(g.startPoint, hole.pin) : null;
       const isPartial =
         club?.fullSwingMinYards != null && pinDistance !== null && pinDistance < club.fullSwingMinYards;
@@ -482,8 +521,8 @@ export function reconcile(input: ReconcileInput): ReconcileResult {
         elevationM: g.elevationM,
         targetPoint: previous?.targetPoint ?? null,
         targetSource: previous?.targetSource ?? "default_green",
-        swingType: isPartial ? "partial" : "full",
-        intendedYards: isPartial && pinDistance !== null ? Math.round(pinDistance) : null,
+        swingType: isPuttSwing ? "putt" : isPartial ? "partial" : "full",
+        intendedYards: !isPuttSwing && isPartial && pinDistance !== null ? Math.round(pinDistance) : null,
         penaltyType: null,
         excluded: previous?.excluded ?? null,
         exclusionNote: previous?.exclusionNote ?? null,
@@ -508,25 +547,33 @@ export function reconcile(input: ReconcileInput): ReconcileResult {
       }
     }
 
-    // Putts (green_mark rows) go after the last swing; penalties after everything (their order
-    // within the hole doesn't affect chaining — they carry no meaningful movement).
-    const assembled = [...holeShots, ...frozenPutts, ...frozenPenalties];
-
-    // Chain endpoints across the swing sequence: each swing ends where the next begins; the last
+    // Chain endpoints across the SWING sequence: each swing ends where the next begins; the last
     // swing ends at the first putt (or the pin, or stays open on an unscored hole). endPoint /
     // lieEnd are DERIVED chain fields, so they're recomputed even on frozen rows — clubs, lies,
-    // positions and targets the user set are never touched here.
+    // positions and targets the user set are never touched here. Penalties are deliberately
+    // excluded: they carry no movement, so chaining through them would break the geometry.
     for (let i = 0; i < holeShots.length; i++) {
       const next = holeShots[i + 1] ?? null;
       const nextStart: LatLng | null = next ? next.startPoint : frozenPutts[0]?.startPoint ?? hole.pin ?? null;
       if (!nextStart) continue;
-      const lieEnd: Lie = next ? deriveLie(nextStart, hole.features).lie : "green";
+      // Derived from where the ball actually finished, including for the last swing. That used to
+      // be hardcoded "green", which is wrong whenever you hole out or start putting from a
+      // greenside bunker or the fringe — and the lie is what decides the strokes-gained category.
+      const lieEnd: Lie = deriveLie(nextStart, hole.features).lie;
       const cur = holeShots[i];
       if (cur.endPoint?.lat !== nextStart.lat || cur.endPoint?.lng !== nextStart.lng || cur.lieEnd !== lieEnd) {
         holeShots[i] = { ...cur, endPoint: nextStart, lieEnd };
       }
-      assembled[i] = holeShots[i];
     }
+
+    // Assembled AFTER chaining, so the chain operates on a clean swing sequence and ordering is a
+    // presentation concern only. Putts go after the last swing; penalties are interleaved among
+    // the swings by when they were incurred rather than dumped at the end of the hole — a penalty
+    // off the tee belongs at stroke two when you read the hole back, not after the putts.
+    const assembled = [
+      ...[...holeShots, ...frozenPenalties].sort((a, b) => Date.parse(a.recordedAt) - Date.parse(b.recordedAt)),
+      ...frozenPutts
+    ];
 
     // Renumber the whole hole.
     for (let i = 0; i < assembled.length; i++) {

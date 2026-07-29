@@ -9,6 +9,21 @@ import type { Club, LatLng, Shot } from "../types/domain";
 export const MAX_ACCURACY_M = 15;
 const METERS_PER_YARD = 0.9144;
 
+/**
+ * Is this the putter? Matched on the name CONTAINING "putt", not equalling "Putter" — the bag is
+ * user-editable now, so "Odyssey Putter" or a lowercase rename must still be recognised. Several
+ * paths depend on finding it (instant-save on the green, green-marked putts, excluding it from
+ * full-swing distances), and an exact-match miss silently dropped the club from every putt.
+ */
+export function isPutter(club: Pick<Club, "name">): boolean {
+  return /putt/i.test(club.name);
+}
+
+/** The putter in a bag, or null if there isn't one. */
+export function findPutter<T extends Pick<Club, "name">>(clubs: T[]): T | null {
+  return clubs.find(isPutter) ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // 5.1 Eligibility
 // ---------------------------------------------------------------------------
@@ -45,9 +60,17 @@ function isComputationInput(s: Shot): boolean {
 // 5.2 Elevation normalisation
 // ---------------------------------------------------------------------------
 
+/** Descent angles outside this range are physically meaningless, and the maths divides by their
+ * tangent — tan(0) is zero, so a 0 typed into the Settings field turned every distance for that
+ * club into ±Infinity and NaN'd out its whole row. Clamped at the single choke point. */
+const MIN_DESCENT_DEG = 10;
+const MAX_DESCENT_DEG = 80;
+
 /** Spec default descent angles (degrees) by club type; Club.descentAngleDeg overrides. */
 export function descentAngleDeg(club: Club): number {
-  if (club.descentAngleDeg != null) return club.descentAngleDeg;
+  if (club.descentAngleDeg != null) {
+    return Math.min(MAX_DESCENT_DEG, Math.max(MIN_DESCENT_DEG, club.descentAngleDeg));
+  }
   const n = club.name.toLowerCase();
   if (/driver|wood/.test(n)) return 38;
   if (/hybrid|4\s*iron|5\s*iron/.test(n)) return 43;
@@ -65,8 +88,11 @@ export function descentAngleDeg(club: Club): number {
  * back off. Never overwrites the measurement — both numbers are reported.
  */
 export function flatEquivalentYards(measuredYards: number, deltaHMeters: number, angleDeg: number): number {
-  const extraYds = deltaHMeters / METERS_PER_YARD / Math.tan((angleDeg * Math.PI) / 180);
-  return measuredYards - extraYds;
+  const tan = Math.tan((Math.min(MAX_DESCENT_DEG, Math.max(MIN_DESCENT_DEG, angleDeg)) * Math.PI) / 180);
+  const extraYds = deltaHMeters / METERS_PER_YARD / tan;
+  // Belt and braces: a non-finite correction must never propagate into the medians, or one bad
+  // value NaNs out an entire club's statistics.
+  return Number.isFinite(extraYds) ? measuredYards - extraYds : measuredYards;
 }
 
 // ---------------------------------------------------------------------------
@@ -191,7 +217,7 @@ export function computeClubDistances(
 
   const summaries: ClubDistanceSummary[] = [];
   for (const club of clubs) {
-    if (club.name === "Putter") continue;
+    if (isPutter(club)) continue;
     const input = allShots.filter((s) => s.clubId === club.id && s.swingType === "full" && isComputationInput(s));
     const measured = input.map((s) => measure(s, club, endElevation(s)));
     const outlierIdx = madOutlierIndices(measured.map((m) => m.flatYards));

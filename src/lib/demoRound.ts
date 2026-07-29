@@ -359,6 +359,11 @@ async function buildOneRound(
   }
   if (!planned.length) throw new Error("No hole on this course has both a tee box and a green to play from.");
 
+  // Calibration happens on the 1st tee: the phone records the moment and the watch's lap button is
+  // pressed at the same instant, so a lap exists AT that moment carrying no shot. Emitting both
+  // keeps the sample round self-consistent — setting a calibration time with no matching lap made
+  // reconciliation infer a bogus 60-second clock offset from it and consume the real tee shot.
+  const calibrationAt = clock - 90_000;
   const round: Round = {
     id: uuid(),
     courseVersionId,
@@ -367,7 +372,7 @@ async function buildOneRound(
     fitActivityId: "demo-activity",
     fitIngestedAt: new Date(clock).toISOString(),
     clockOffsetMs: 0,
-    watchCalibrationAt: new Date(clock - 60_000).toISOString(),
+    watchCalibrationAt: new Date(calibrationAt).toISOString(),
     reconciledAt: new Date(clock).toISOString(),
     isDemo: true,
     updatedAt: new Date().toISOString()
@@ -379,6 +384,18 @@ async function buildOneRound(
   const taps: ClubTap[] = [];
   const flags: ReviewFlag[] = [];
   let lapIndex = 0;
+
+  // The calibration press itself: a lap with no shot behind it, exactly as the watch would record.
+  laps.push({
+    id: uuid(),
+    roundId: round.id,
+    roundHoleId: null,
+    lapIndex: lapIndex++,
+    tWatch: new Date(calibrationAt).toISOString(),
+    point: planned[0].tee,
+    elevationM: null,
+    matchedShotId: null
+  });
   let strokes = 0;
   let par = 0;
 

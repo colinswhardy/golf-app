@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { ensureDefaultClubs, resetClubBagMigration } from "./courseRepo";
 
 /**
  * Full-database export/import (REVISION-SPEC Phase 0.1). All golf data lives in one phone's
@@ -116,4 +117,8 @@ export async function importAll(envelope: BackupEnvelope, mode: "replace" | "mer
       if (rows?.length) await table.bulkPut(rows);
     }
   });
+  // The restored bag may predate clubs the app now ships with, so allow the additive
+  // canonical-bag migration to run once more and top it back up.
+  resetClubBagMigration();
+  await ensureDefaultClubs();
 }

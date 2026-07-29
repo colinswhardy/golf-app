@@ -142,6 +142,9 @@ describe("reconcile — Appendix A", () => {
     expect(r.shots).toHaveLength(4);
     expect(r.shots.every((s) => s.reconciliation === "matched")).toBe(true);
     expect(r.shots.map((s) => s.clubId)).toEqual(["driver", "5i", "56", "putter"]);
+    // Driver and 5i are full swings; the 56° is inside its 80-yard partial threshold; the putter
+    // tag on the green is a putt rather than a full swing with the putter.
+    expect(r.shots.map((s) => s.swingType)).toEqual(["full", "full", "partial", "putt"]);
     expect(r.flags.filter((f) => f.type === "missing_club" || f.type === "unmatched_tap")).toHaveLength(0);
 
     // Chaining: each shot ends where the next begins; last ends at the pin.
@@ -206,7 +209,11 @@ describe("reconcile — Appendix A", () => {
     const track = encodeTrack("r1", samples);
     const r = run({ laps, taps, track });
 
-    expect(swings(r)).toHaveLength(4);
+    // Four strokes captured. The last is a putter tag with its lap press inside the green, so it
+    // classifies as a putt rather than a full swing with the putter — three swings + one putt.
+    expect(r.shots).toHaveLength(4);
+    expect(swings(r)).toHaveLength(3);
+    expect(r.shots.filter((s) => s.swingType === "putt")).toHaveLength(1);
     const tapOnly = r.shots.filter((s) => s.reconciliation === "tap_only");
     expect(tapOnly).toHaveLength(1);
     expect(tapOnly[0].clubId).toBe("5i");
@@ -226,6 +233,37 @@ describe("reconcile — Appendix A", () => {
     expect(Math.abs(r.clockOffsetMs - 7000)).toBeLessThanOrEqual(1500);
     expect(r.shots).toHaveLength(3);
     expect(r.shots.every((s) => s.reconciliation === "matched")).toBe(true);
+  });
+
+  describe("clock calibration", () => {
+    it("consumes the calibration lap, not a real shot", () => {
+      // Calibration pressed 90s before the tee shot, and the watch DID record it.
+      const calibrationAt = new Date(T0 - 90_000).toISOString();
+      const laps = [lap(-90, pt(0, 0), 0), lap(0, pt(0, 0), 1), lap(300, pt(0, 240), 2)];
+      const taps = [tap(-5, "driver"), tap(295, "5i")];
+      const r = run({ laps, taps, calibrationPhoneTime: calibrationAt });
+
+      expect(r.clockOffsetMethod).toBe("calibrated");
+      expect(r.clockOffsetMs).toBe(0);
+      // Three laps, one of which was the calibration press → two strokes.
+      expect(swings(r)).toHaveLength(2);
+      expect(r.shots.map((s) => s.clubId)).toEqual(["driver", "5i"]);
+    });
+
+    it("does NOT eat a stroke when the watch never recorded the calibration press", () => {
+      // The player calibrated but the watch missed it, so every lap is a genuine shot. The old
+      // guard compared a lap against an offset derived from that same lap — always zero, so it
+      // always passed and always deleted the nearest lap, silently losing a stroke.
+      const calibrationAt = new Date(T0 - 600_000).toISOString(); // ten minutes before play
+      const laps = [lap(0, pt(0, 0), 0), lap(300, pt(0, 240), 1), lap(600, pt(0, 330), 2)];
+      const taps = [tap(-5, "driver"), tap(295, "5i"), tap(595, "56")];
+      const r = run({ laps, taps, calibrationPhoneTime: calibrationAt });
+
+      expect(swings(r)).toHaveLength(3);
+      expect(r.shots.map((s) => s.clubId)).toEqual(["driver", "5i", "56"]);
+      // No lap sat at the calibration moment, so the offset falls back to estimation.
+      expect(r.clockOffsetMethod).toBe("estimated");
+    });
   });
 
   // Case 7
