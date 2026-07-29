@@ -3,7 +3,14 @@ import { Link, useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import * as turf from "@turf/turf";
 import { db } from "../lib/db";
-import { ensureDefaultClubs, getFeaturesForHole, getHolesForVersion, getLatestCourseVersion, updateHoleNotes } from "../lib/courseRepo";
+import {
+  ensureDefaultClubs,
+  getFeaturesForHole,
+  getHolesForVersion,
+  getLatestCourseVersion,
+  updateHoleNotes,
+  updateHoleWaypoints
+} from "../lib/courseRepo";
 import {
   completeRound,
   correctShot,
@@ -16,7 +23,14 @@ import {
   setRoundHolePinLocation,
   startRound
 } from "../lib/roundRepo";
-import { addReviewFlag, clubIdForSerial, recordClubTap, recordWatchCalibration, setReviewFlagStatus } from "../lib/captureRepo";
+import {
+  addReviewFlag,
+  clubIdForSerial,
+  recordClubTap,
+  recordWatchCalibration,
+  recordWatchLap,
+  setReviewFlagStatus
+} from "../lib/captureRepo";
 import { armScanning, isNfcSupported } from "../lib/nfc";
 import { ALL_LIES, LIE_LABELS, detectLie } from "../lib/lie";
 import { classifyFairwayResult } from "../lib/fairway";
@@ -26,7 +40,7 @@ import { HoleScoreSheet, ScorecardSheet, ShotSheet } from "../components/RoundSh
 import { Icon, relativeToParLabel } from "../components/ui";
 import { bearingDegrees, distanceMeters, distanceYards, fromDownrangeOffline } from "../lib/geo";
 import { getClubDispersion } from "../lib/dispersion";
-import { isGpsEnabled } from "../lib/settings";
+import { isGpsEnabled, isSimulationEnabled } from "../lib/settings";
 import type { Club, FairwayResult, LatLng, Lie, Round, RoundHole } from "../types/domain";
 
 const GREENSIDE_BUNKER_MAX_YARDS = 40;
@@ -105,14 +119,42 @@ export function RoundMapPage() {
   const [holeNumber, setHoleNumber] = useState(1);
   const currentHole = useMemo(() => holes?.find((h) => h.number === holeNumber), [holes, holeNumber]);
 
+  // --- Hole range: a round can be the full course, the front nine or the back nine. Rounds
+  // recorded before nines existed carry no range and fall back to the whole course, which is
+  // what they were. Navigation, the scorecard, the running score and "when is the round over"
+  // all read from here rather than assuming 1..18. Declared early because most of the derived
+  // round state below depends on it. ---
+  const courseFirstHole = holes?.length ? Math.min(...holes.map((h) => h.number)) : 1;
+  const courseLastHole = holes?.length ? Math.max(...holes.map((h) => h.number)) : 18;
+  const courseHasBackNine = courseLastHole >= 18;
+  const [pendingRange, setPendingRange] = useState<"full" | "front" | "back">("full");
+  const [round, setRound] = useState<Round | null>(null);
+
+  const activeRange = useMemo(() => {
+    if (round) {
+      return { start: round.startHole ?? courseFirstHole, end: round.endHole ?? courseLastHole };
+    }
+    if (pendingRange === "front") return { start: courseFirstHole, end: Math.min(9, courseLastHole) };
+    if (pendingRange === "back") return { start: 10, end: courseLastHole };
+    return { start: courseFirstHole, end: courseLastHole };
+  }, [round, pendingRange, courseFirstHole, courseLastHole]);
+
+  const firstHole = activeRange.start;
+  const maxHoleNumber = activeRange.end;
+
+  // Keep the viewed hole inside the active range — picking "back nine" pre-round should jump
+  // straight to 10, and resuming a nine shouldn't strand you on a hole it doesn't include.
+  useEffect(() => {
+    setHoleNumber((n) => Math.min(Math.max(n, firstHole), maxHoleNumber));
+  }, [firstHole, maxHoleNumber]);
+
   const holeFeatures = useLiveQuery(() => (currentHole ? getFeaturesForHole(currentHole.id) : []), [currentHole?.id]);
   const teeBoxes = useLiveQuery(
     () => (currentHole ? db.teeBoxes.where("holeId").equals(currentHole.id).toArray() : []),
     [currentHole?.id]
   );
 
-  // --- Round state ---
-  const [round, setRound] = useState<Round | null>(null);
+  // --- Round state (the round itself is declared with the hole range above) ---
   const [clubs, setClubs] = useState<Club[]>([]);
   // Live mirror of `clubs` for imperative callbacks (NFC reads) that would
   // otherwise capture a stale array from the render they were armed in.
@@ -264,12 +306,9 @@ export function RoundMapPage() {
   const [selectedTeeName, setSelectedTeeName] = useState<string>(() =>
     typeof localStorage === "undefined" ? "" : (localStorage.getItem(TEE_PREFERENCE_KEY) ?? "")
   );
-  // Hides the tee selector immediately once a choice is made — the choice is already saved, so
-  // there's nothing left for the control to do. Resets on hole change so it's available again.
+  // The tee set is a once-per-round decision, so the selector disappears for good once it's made
+  // and never comes back hole to hole. (It also stays hidden once the round is under way.)
   const [teeSelectorClosed, setTeeSelectorClosed] = useState(false);
-  useEffect(() => {
-    setTeeSelectorClosed(false);
-  }, [currentHole?.id]);
   function handleTeeChange(name: string) {
     setSelectedTeeName(name);
     setTeeSelectorClosed(true);
@@ -322,12 +361,14 @@ export function RoundMapPage() {
   );
   const scorecardEntries = useMemo(() => {
     if (!holes) return [];
-    return holes.map((h) => ({
-      holeNumber: h.number,
-      par: h.par,
-      score: allRoundHoles?.find((rh) => rh.holeId === h.id)?.score ?? null
-    }));
-  }, [holes, allRoundHoles]);
+    return holes
+      .filter((h) => h.number >= activeRange.start && h.number <= activeRange.end)
+      .map((h) => ({
+        holeNumber: h.number,
+        par: h.par,
+        score: allRoundHoles?.find((rh) => rh.holeId === h.id)?.score ?? null
+      }));
+  }, [holes, allRoundHoles, activeRange.start, activeRange.end]);
   const relativeScore = useMemo(
     () => scorecardEntries.reduce((s, e) => (e.score !== null ? s + (e.score - e.par) : s), 0),
     [scorecardEntries]
@@ -432,7 +473,6 @@ export function RoundMapPage() {
     return { lat, lng };
   }, [holeFeatures, currentHole, fallbackOrigin, greenCentroid]);
 
-  const maxHoleNumber = holes?.length ? Math.max(...holes.map((h) => h.number)) : 18;
 
   // --- Green marking ---
   const [greenMapOpen, setGreenMapOpen] = useState(false);
@@ -463,6 +503,43 @@ export function RoundMapPage() {
     await recordWatchCalibration(round.id);
     setRound({ ...round, watchCalibrationAt: new Date().toISOString() });
     showToast("Now press the watch lap button");
+  }
+
+  // --- Simulation ("couch") mode: rehearse a round indoors. The position is placed by tapping
+  // the map, and the two capture streams get on-screen stand-ins for the watch lap button and an
+  // NFC club tap. Both write the SAME rows the real hardware would, so what's rehearsed here is
+  // genuinely the flow that runs on the course — including reconciliation afterwards. ---
+  const [simulationMode] = useState(isSimulationEnabled);
+  const [simPosition, setSimPosition] = useState<LatLng | null>(null);
+  const [placingSimPosition, setPlacingSimPosition] = useState(false);
+  const [simClubPickerOpen, setSimClubPickerOpen] = useState(false);
+  const [simCounts, setSimCounts] = useState({ laps: 0, taps: 0 });
+
+  // Start each hole standing on its tee, the way you would in reality.
+  useEffect(() => {
+    if (simulationMode) setSimPosition(fallbackOrigin ?? null);
+  }, [simulationMode, currentHole?.id, fallbackOrigin?.lat, fallbackOrigin?.lng]);
+
+  async function handleSimLap() {
+    if (!round || !simPosition) return;
+    await recordWatchLap(round.id, simPosition);
+    setSimCounts((c) => ({ ...c, laps: c.laps + 1 }));
+    showToast("Lap recorded");
+  }
+
+  async function handleSimTap(club: Club) {
+    if (!round || !simPosition) return;
+    await recordClubTap({
+      roundId: round.id,
+      clubId: club.id,
+      serialNumber: `sim-${club.name}`,
+      at: new Date(),
+      point: simPosition,
+      accuracyM: 3
+    });
+    setSimCounts((c) => ({ ...c, taps: c.taps + 1 }));
+    setSimClubPickerOpen(false);
+    showToast(`Tagged ${club.name}`);
   }
 
   // --- Next-tee prompt: open flags on the just-completed hole surface as a compact card. Never
@@ -501,8 +578,9 @@ export function RoundMapPage() {
 
   async function handleStartRound() {
     if (!courseVersion) return;
-    const r = await startRound(courseVersion.id);
+    const r = await startRound(courseVersion.id, { startHole: activeRange.start, endHole: activeRange.end });
     setRound(r);
+    setHoleNumber(activeRange.start);
     // This click IS the user gesture Web NFC's permission prompt needs — arm here, not in an effect.
     armNfc(r.id);
   }
@@ -574,6 +652,7 @@ export function RoundMapPage() {
     setJustMarkedPutts(null);
 
     setOpenSheet(null);
+    // The round ends at the last hole of the range being played — hole 9 for a front nine, not 18.
     if (holeNumber < maxHoleNumber) {
       setHoleNumber(holeNumber + 1);
     } else if (round) {
@@ -601,7 +680,12 @@ export function RoundMapPage() {
 
       {!isDemo && currentHole && (
         <div className="hole-bar glass">
-          <button className="hole-bar__nav" onClick={() => setHoleNumber((n) => Math.max(1, n - 1))} disabled={holeNumber <= 1} aria-label="Previous hole">
+          <button
+            className="hole-bar__nav"
+            onClick={() => setHoleNumber((n) => Math.max(firstHole, n - 1))}
+            disabled={holeNumber <= firstHole}
+            aria-label="Previous hole"
+          >
             ‹
           </button>
           <span className="hole-bar__label">
@@ -779,6 +863,17 @@ export function RoundMapPage() {
             currentShotNumber={shotCount + 1}
             gpsEnabled={gpsEnabled}
             initialWaypoints={currentHole.waypoints}
+            onSaveWaypoints={async (points) => {
+              await updateHoleWaypoints(currentHole.id, points);
+              showToast(points.length ? "Line saved to this hole" : "Line cleared");
+            }}
+            simulationMode={simulationMode}
+            simulatedPosition={simPosition}
+            placingSimPosition={placingSimPosition}
+            onSimPositionPlaced={(p) => {
+              setSimPosition(p);
+              setPlacingSimPosition(false);
+            }}
           />
         ) : (
           <div className="row" style={{ height: "100%", justifyContent: "center" }}>
@@ -845,16 +940,132 @@ export function RoundMapPage() {
         </div>
       )}
 
-      {!isDemo && currentHole && !round && uniqueTeeNames.length > 0 && !teeSelectorClosed && (
-        <div className="glass" style={{ position: "absolute", right: 12, bottom: "calc(var(--round-bar-h, 76px) + 10px)", zIndex: 4, borderRadius: 999, padding: "6px 8px" }}>
-          <select className="field" style={{ padding: "6px 10px", borderRadius: 999, background: "transparent", border: "none" }} value={selectedTeeName} onChange={(e) => handleTeeChange(e.target.value)} aria-label="Tee set">
-            <option value="">Backmost tee</option>
-            {uniqueTeeNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
+      {/* Pre-round setup: tee set (asked once, then gone for good) and how many holes. */}
+      {!isDemo && currentHole && !round && (
+        <div
+          className="glass"
+          style={{
+            position: "absolute",
+            right: 12,
+            bottom: "calc(var(--round-bar-h, 76px) + 10px)",
+            zIndex: 4,
+            borderRadius: 16,
+            padding: 10,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            alignItems: "flex-end"
+          }}
+        >
+          {uniqueTeeNames.length > 0 && !teeSelectorClosed && (
+            <select
+              className="field"
+              style={{ padding: "7px 12px", borderRadius: 999 }}
+              value={selectedTeeName}
+              onChange={(e) => handleTeeChange(e.target.value)}
+              aria-label="Tee set"
+            >
+              <option value="">Backmost tee</option>
+              {uniqueTeeNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          )}
+          {courseHasBackNine && (
+            <div className="chip-row" style={{ justifyContent: "flex-end" }}>
+              {([
+                { key: "full", label: "18", start: courseFirstHole },
+                { key: "front", label: "Front 9", start: courseFirstHole },
+                { key: "back", label: "Back 9", start: 10 }
+              ] as const).map((opt) => (
+                <button
+                  key={opt.key}
+                  className={`chip chip--sm${pendingRange === opt.key ? " chip--active" : ""}`}
+                  onClick={() => {
+                    setPendingRange(opt.key);
+                    // Jump to the range's first hole. The clamp effect alone would only nudge you
+                    // to the nearest in-range hole, so choosing "Front 9" from the 10th tee left
+                    // you on 9 rather than back at the 1st.
+                    setHoleNumber(opt.start);
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Simulation panel — only ever present when the Settings toggle is on. */}
+      {!isDemo && currentHole && simulationMode && (
+        <div
+          className="glass"
+          style={{
+            position: "absolute",
+            left: 12,
+            top: "calc(66px + var(--safe-t))",
+            zIndex: 4,
+            borderRadius: 14,
+            padding: 9,
+            display: "flex",
+            flexDirection: "column",
+            gap: 7,
+            width: 132
+          }}
+        >
+          <div className="row row--between">
+            <span className="section__title" style={{ color: "var(--warn)" }}>
+              Simulate
+            </span>
+            {(simCounts.laps > 0 || simCounts.taps > 0) && (
+              <span className="tiny faint num">
+                {simCounts.laps}/{simCounts.taps}
+              </span>
+            )}
+          </div>
+          <button
+            className={`btn btn--sm${placingSimPosition ? " btn--primary" : ""}`}
+            style={{ width: "100%" }}
+            onClick={() => setPlacingSimPosition((v) => !v)}
+          >
+            {placingSimPosition ? "Tap map…" : "Move me"}
+          </button>
+          {round ? (
+            <>
+              <button className="btn btn--sm" style={{ width: "100%" }} onClick={handleSimLap} disabled={!simPosition}>
+                <Icon.watch size={14} /> Lap
+              </button>
+              <button
+                className={`btn btn--sm${simClubPickerOpen ? " btn--primary" : ""}`}
+                style={{ width: "100%" }}
+                onClick={() => setSimClubPickerOpen((v) => !v)}
+                disabled={!simPosition}
+              >
+                <Icon.tag size={14} /> Tag club
+              </button>
+            </>
+          ) : (
+            <div className="tiny faint">Start the round to log laps and tags.</div>
+          )}
+        </div>
+      )}
+
+      {!isDemo && simClubPickerOpen && (
+        <div
+          className="popover glass"
+          style={{ top: "calc(210px + var(--safe-t))", left: 12, width: 150, maxHeight: "min(300px, 44vh)", overflowY: "auto", zIndex: 6 }}
+        >
+          <div className="section__title mb-2">Which club?</div>
+          <div className="stack" style={{ gap: 5 }}>
+            {clubs.map((c) => (
+              <button key={c.id} className="chip chip--sm" onClick={() => handleSimTap(c)}>
+                {c.name}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
       )}
 

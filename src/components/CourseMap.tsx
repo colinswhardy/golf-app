@@ -27,6 +27,19 @@ const CLEAR_DOTS_WITHIN_YARDS = 200;
 // as the same point — the later one is auto-removed so dragging dots on top of each other (or
 // tapping to add one right where another sits) collapses to a single dot rather than a pile.
 const DEDUPE_PX = 26;
+// Camera framing for the tee->target fit. ONE set of paddings for both the initial mount and
+// every later re-centre: they used to differ (the re-fit was tighter), so the hole visibly
+// zoomed in the first time the target moved. Asymmetric top/bottom biases the fit so the tee
+// sits low and the green high, and the generous bottom clears the HUD and action bar.
+const FIT_PADDING = { top: 120, bottom: 180, left: 60, right: 60 };
+const FIT_PITCH = 55;
+// Hold a measure dot this long to pin the line to the hole. Long enough not to fire on a tap,
+// short enough not to feel stuck.
+const LONG_PRESS_MS = 550;
+// Any pointer travel past this cancels the hold — that's what makes "drag into place, then hold"
+// work as one continuous gesture.
+const LONG_PRESS_MOVE_PX = 12;
+const SAVED_DOT_CLASS = "map-touch-dot--saved";
 export const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
 export const OUTDOORS_STYLE = "mapbox://styles/mapbox/outdoors-v12";
 
@@ -97,6 +110,17 @@ interface CourseMapProps {
    * the place of the automatic layup suggestion (autoLayupPoint) — these are the user's own
    * considered layup line for the hole. Still fully draggable/deletable afterward. */
   initialWaypoints?: LatLng[] | null;
+  /** Fires when a measure dot is long-pressed: the parent persists these points as the hole's
+   * waypoints so they reload every time this hole is played. Receives ALL current dots, since
+   * waypoints are stored as a set per hole. */
+  onSaveWaypoints?: (points: LatLng[]) => void;
+  /** Simulation ("couch") mode: real GPS is ignored and the blue dot is driven by
+   * simulatedPosition instead, so a round can be rehearsed indoors. */
+  simulationMode?: boolean;
+  simulatedPosition?: LatLng | null;
+  /** While true, the next map tap sets the simulated position rather than a target/measure dot. */
+  placingSimPosition?: boolean;
+  onSimPositionPlaced?: (p: LatLng) => void;
 }
 
 /**
@@ -122,7 +146,12 @@ export function CourseMap({
   autoLayupPoint,
   currentShotNumber,
   gpsEnabled = true,
-  initialWaypoints
+  initialWaypoints,
+  onSaveWaypoints,
+  simulationMode = false,
+  simulatedPosition,
+  placingSimPosition = false,
+  onSimPositionPlaced
 }: CourseMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -138,7 +167,10 @@ export function CourseMap({
   const measureMarkersRef = useRef<Map<string, { marker: mapboxgl.Marker; label: HTMLDivElement }>>(new Map());
   const [bunkerCard, setBunkerCard] = useState<BunkerYardages | null>(null);
 
-  const [me, setMe] = useState<LatLng | null>(null);
+  const [gpsMe, setGpsMe] = useState<LatLng | null>(null);
+  // In simulation mode the "device position" is whatever the player dropped on the map, so the
+  // whole round can be rehearsed from the couch with real distances and lie detection.
+  const me = simulationMode ? (simulatedPosition ?? null) : gpsMe;
   const [target, setTarget] = useState<LatLng | null>(initialTarget ?? null);
   // Dragging the tee marker (§ below) updates this local-only override — never written to
   // IndexedDB, and reset whenever fallbackOrigin itself changes (new hole, or a different tee set
@@ -161,8 +193,11 @@ export function CourseMap({
   // check itself stays against the REAL fallbackOrigin (not a dragged one) since it's about
   // real-world position validity; teeOverride only substitutes for the line/camera origin once
   // we've already decided live GPS isn't in play.
-  const usingLiveGps =
-    gpsEnabled && !!me && (!fallbackOrigin || distanceMeters(me, fallbackOrigin) <= GPS_ACTIVE_MAX_METERS);
+  // A simulated position is always "live" — it was placed deliberately, so the proximity sanity
+  // check that guards against a stray faraway real GPS fix doesn't apply.
+  const usingLiveGps = simulationMode
+    ? !!me
+    : gpsEnabled && !!me && (!fallbackOrigin || distanceMeters(me, fallbackOrigin) <= GPS_ACTIVE_MAX_METERS);
   const origin = usingLiveGps ? me : (teeOverride ?? fallbackOrigin ?? me);
 
   const stateRef = useRef({
@@ -175,7 +210,10 @@ export function CourseMap({
     holeFeatures,
     onWaterWarning,
     dispersionEllipse,
-    currentShotNumber
+    currentShotNumber,
+    onSaveWaypoints,
+    placingSimPosition,
+    onSimPositionPlaced
   });
   stateRef.current = {
     origin,
@@ -187,7 +225,10 @@ export function CourseMap({
     holeFeatures,
     onWaterWarning,
     dispersionEllipse,
-    currentShotNumber
+    currentShotNumber,
+    onSaveWaypoints,
+    placingSimPosition,
+    onSimPositionPlaced
   };
 
   // --- Geolocation: watch position for the blue dot ---
@@ -195,8 +236,14 @@ export function CourseMap({
   // stays null so `origin` falls back to the saved tee. Clearing `me` on disable also makes the
   // change take effect live if the toggle flips while a hole is open.
   useEffect(() => {
+    // Simulation mode never touches the real receiver — the position comes from the map tap.
+    if (simulationMode) {
+      setGpsMe(null);
+      setGeoError(null);
+      return;
+    }
     if (!gpsEnabled) {
-      setMe(null);
+      setGpsMe(null);
       return;
     }
     if (!navigator.geolocation) {
@@ -206,7 +253,7 @@ export function CourseMap({
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setMe(p);
+        setGpsMe(p);
         setGeoError(null);
         stateRef.current.onPositionChange?.(p, pos.coords.accuracy ?? null);
       },
@@ -214,7 +261,15 @@ export function CourseMap({
       { enableHighAccuracy: true, maximumAge: 1000 }
     );
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [gpsEnabled]);
+  }, [gpsEnabled, simulationMode]);
+
+  // A dropped simulated position feeds the same callback a real fix would, so shot recording,
+  // lie detection and distances all behave exactly as they do on the course.
+  useEffect(() => {
+    if (simulationMode && simulatedPosition) {
+      stateRef.current.onPositionChange?.(simulatedPosition, 3);
+    }
+  }, [simulationMode, simulatedPosition?.lat, simulatedPosition?.lng]);
 
   // --- Map init ---
   useEffect(() => {
@@ -227,7 +282,7 @@ export function CourseMap({
     // Demo mode (no real tee box yet) degrades to a flat, unrotated default view.
     const initialCenter = fallbackOrigin ?? initialTarget ?? { lat: 43.55, lng: -80.2 };
     const initialBearing = fallbackOrigin && initialTarget ? bearingDegrees(fallbackOrigin, initialTarget) : 0;
-    const initialPitch = fallbackOrigin && initialTarget ? 55 : 0;
+    const initialPitch = fallbackOrigin && initialTarget ? FIT_PITCH : 0;
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
@@ -251,7 +306,7 @@ export function CourseMap({
       map.fitBounds(bounds, {
         bearing: initialBearing,
         pitch: initialPitch,
-        padding: { top: 120, bottom: 180, left: 60, right: 60 },
+        padding: FIT_PADDING,
         duration: 0
       });
     }
@@ -265,8 +320,16 @@ export function CourseMap({
         target: curTarget,
         settingTarget: curSetting,
         setSettingTarget: curSetSettingTarget,
-        onTargetChange: curOnTargetChange
+        onTargetChange: curOnTargetChange,
+        placingSimPosition: curPlacingSim,
+        onSimPositionPlaced: curOnSimPlaced
       } = stateRef.current;
+
+      // Simulation: dropping your position wins over every other tap meaning while armed.
+      if (curPlacingSim) {
+        curOnSimPlaced?.(clicked);
+        return;
+      }
 
       if (curSetting) {
         setTarget(clicked);
@@ -580,6 +643,14 @@ export function CourseMap({
     });
   }
 
+  /** Flags every measure dot as saved-to-this-hole (mint), the visual counterpart of the
+   * long-press gesture. Re-applied when saved waypoints are seeded on mount. */
+  function markDotsSaved(saved = true) {
+    measureMarkersRef.current.forEach(({ marker }) => {
+      marker.getElement().querySelector(".map-touch-dot")?.classList.toggle(SAVED_DOT_CLASS, saved);
+    });
+  }
+
   // dedupe defaults on for user taps/drags; seeding (saved waypoints, auto-layup) passes false —
   // those points are already known-distinct, and running the pixel-based dedupe during early mount
   // (before the map canvas has its final size, so map.project is unreliable) can falsely collapse
@@ -609,7 +680,44 @@ export function CourseMap({
       .setLngLat([point.lng, point.lat])
       .addTo(map);
 
+    // --- Long-press to pin this line to the hole ---
+    // Holding a dot saves every current dot as the hole's waypoints, so the layup line reloads
+    // the next time this hole is played. Discriminated from a drag by movement: any meaningful
+    // pointer travel cancels the timer, so dragging a dot into place and THEN holding it is the
+    // natural gesture. The saved state is shown by turning the dots mint.
+    let holdTimer: ReturnType<typeof setTimeout> | null = null;
+    let holdStart: { x: number; y: number } | null = null;
+    const cancelHold = () => {
+      if (holdTimer) clearTimeout(holdTimer);
+      holdTimer = null;
+      holdStart = null;
+    };
+    el.addEventListener("pointerdown", (evt) => {
+      holdStart = { x: evt.clientX, y: evt.clientY };
+      holdTimer = setTimeout(() => {
+        holdTimer = null;
+        const points = Array.from(measureMarkersRef.current.values()).map(({ marker: m }) => {
+          const pos = m.getLngLat();
+          return { lat: pos.lat, lng: pos.lng } as LatLng;
+        });
+        stateRef.current.onSaveWaypoints?.(points);
+        markDotsSaved();
+      }, LONG_PRESS_MS);
+    });
+    el.addEventListener("pointermove", (evt) => {
+      if (!holdStart) return;
+      if (Math.hypot(evt.clientX - holdStart.x, evt.clientY - holdStart.y) > LONG_PRESS_MOVE_PX) cancelHold();
+    });
+    el.addEventListener("pointerup", cancelHold);
+    el.addEventListener("pointercancel", cancelHold);
+    // Touch long-press otherwise raises the OS context menu over the gesture.
+    el.addEventListener("contextmenu", (evt) => evt.preventDefault());
+
     marker.on("dragstart", () => {
+      cancelHold();
+      // Moving a dot means it no longer matches what's stored, so it drops out of the saved
+      // state until it's long-pressed again.
+      dot.classList.remove(SAVED_DOT_CLASS);
       label.style.top = "10px";
       label.style.left = "44px";
       label.style.transform = "translateY(-50%)";
@@ -682,8 +790,10 @@ export function CourseMap({
 
     if (!meMarkerRef.current) {
       const el = document.createElement("div");
-      el.style.cssText =
-        "width:18px;height:18px;border-radius:50%;background:#3d8bff;border:3px solid #fff;box-shadow:0 0 0 6px rgba(61,139,255,.22),0 2px 8px rgba(0,0,0,.6);";
+      // Simulated positions get a distinct amber dot so a rehearsal is never mistaken for a real fix.
+      const fill = simulationMode ? "#ffc043" : "#3d8bff";
+      const halo = simulationMode ? "rgba(255,192,67,.22)" : "rgba(61,139,255,.22)";
+      el.style.cssText = `width:18px;height:18px;border-radius:50%;background:${fill};border:3px solid #fff;box-shadow:0 0 0 6px ${halo},0 2px 8px rgba(0,0,0,.6);`;
       meMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat([me.lng, me.lat]).addTo(map);
     } else {
       meMarkerRef.current.setLngLat([me.lng, me.lat]);
@@ -795,8 +905,8 @@ export function CourseMap({
       bounds.extend([target.lng, target.lat]);
       map.fitBounds(bounds, {
         bearing: bearingDegrees(origin, target),
-        pitch: 55,
-        padding: { top: 104, bottom: 122, left: 60, right: 60 },
+        pitch: FIT_PITCH,
+        padding: FIT_PADDING,
         duration: 600
       });
     }
@@ -838,6 +948,8 @@ export function CourseMap({
     autoLayupPlacedRef.current = true;
     if (measureMarkersRef.current.size === 0) {
       for (const wp of initialWaypoints) addMeasureMarker(wp, false);
+      // These came from storage, so show them in the saved state straight away.
+      markDotsSaved();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialWaypoints]);

@@ -117,6 +117,11 @@ export interface Round {
   /** Marks the generated sample round (lib/demoRound.ts) so it can be removed cleanly and never
    * mistaken for real play. Absent on every genuine round. */
   isDemo?: boolean;
+  /** The stretch of holes being played — 1..18 for a full round, 1..9 or 10..18 for a nine.
+   * Absent on rounds recorded before nines were supported; consumers fall back to the course's
+   * full hole range, which is what those rounds were. */
+  startHole?: number;
+  endHole?: number;
   /** Phone timestamp of the "Calibrate watch" press (user hits the watch lap button at the same
    * moment); used at ingest to compute clockOffsetMs. */
   watchCalibrationAt: string | null;

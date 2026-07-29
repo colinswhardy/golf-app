@@ -106,6 +106,24 @@ export async function listWatchLapsForRound(roundId: string): Promise<WatchLap[]
   return (await db.watchLaps.where("roundId").equals(roundId).toArray()).sort((a, b) => a.lapIndex - b.lapIndex);
 }
 
+/** Records a single lap press. Used by simulation mode to stand in for the watch's own button, so
+ * the rehearsal produces exactly the rows a real FIT ingest would. */
+export async function recordWatchLap(roundId: string, point: LatLng, elevationM: number | null = null): Promise<WatchLap> {
+  const existing = await db.watchLaps.where("roundId").equals(roundId).count();
+  const lap: WatchLap = {
+    id: uuid(),
+    roundId,
+    lapIndex: existing,
+    tWatch: now(),
+    point,
+    elevationM,
+    matchedShotId: null
+  };
+  await db.watchLaps.put(lap);
+  await queueOutbox("watchLaps", "upsert", lap);
+  return lap;
+}
+
 // --- Clock calibration (2.5) ---
 
 /** Records the phone timestamp of the "Calibrate watch" press (the user presses the watch lap

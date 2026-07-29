@@ -15,3 +15,18 @@ export function setGpsEnabled(enabled: boolean): void {
   if (typeof localStorage === "undefined") return;
   localStorage.setItem(GPS_ENABLED_KEY, enabled ? "true" : "false");
 }
+
+export const SIMULATION_KEY = "caddyshot_simulation_mode";
+
+/** Simulation ("couch") mode: real GPS is ignored and the player's position is placed by tapping
+ * the map, with on-screen buttons standing in for the watch lap press and an NFC club tap — so a
+ * round can be rehearsed indoors before trusting the workflow on the course. Off by default. */
+export function isSimulationEnabled(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  return localStorage.getItem(SIMULATION_KEY) === "true";
+}
+
+export function setSimulationEnabled(enabled: boolean): void {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(SIMULATION_KEY, enabled ? "true" : "false");
+}

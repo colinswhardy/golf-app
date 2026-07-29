@@ -3,7 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
 import { AppBar, Badge, Button, Icon, Note, Page, Section } from "../components/ui";
 import { ensureDefaultClubs, listClubs, updateClubDispersion } from "../lib/courseRepo";
-import { isGpsEnabled, setGpsEnabled } from "../lib/settings";
+import { isGpsEnabled, isSimulationEnabled, setGpsEnabled, setSimulationEnabled } from "../lib/settings";
 import { backupFilename, exportAll, importAll, readBackup, type BackupEnvelope, type BackupSummary } from "../lib/backup";
 import { findDanglingReferences, repairDanglingReferences, type RepairResult } from "../lib/integrity";
 import { listClubTags, pairClubTag, unpairClubTag } from "../lib/captureRepo";
@@ -26,6 +26,12 @@ export function SettingsPage() {
     setGpsEnabled(enabled);
   }
 
+  const [simulation, setSimulationState] = useState(isSimulationEnabled);
+  function toggleSimulation(enabled: boolean) {
+    setSimulationState(enabled);
+    setSimulationEnabled(enabled);
+  }
+
   return (
     <Page>
       <AppBar title="Settings" />
@@ -46,6 +52,31 @@ export function SettingsPage() {
             </span>
             <input className="switch" type="checkbox" checked={gpsEnabled} onChange={(e) => toggleGps(e.target.checked)} />
           </label>
+        </div>
+      </Section>
+
+      <Section title="Practice">
+        <div className="card">
+          <label className="switch-row" style={{ padding: 0 }}>
+            <span>
+              <div>Simulation mode</div>
+              <div className="tiny faint mt-1" style={{ maxWidth: 380 }}>
+                Play a course from the couch. Your position is placed by tapping the map instead of
+                read from GPS, and on-screen buttons stand in for the watch lap press and an NFC
+                club tap — writing the same rows the real hardware would, so the whole flow can be
+                rehearsed before you trust it on the course.
+              </div>
+            </span>
+            <input className="switch" type="checkbox" checked={simulation} onChange={(e) => toggleSimulation(e.target.checked)} />
+          </label>
+          {simulation && (
+            <div className="mt-2">
+              <Note tone="warn">
+                Simulated rounds are saved like any other round. Remove them afterwards if you
+                don't want them counting toward your stats.
+              </Note>
+            </div>
+          )}
         </div>
       </Section>
 

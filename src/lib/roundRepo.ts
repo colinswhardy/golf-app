@@ -15,12 +15,14 @@ export async function getActiveRoundForCourse(courseId: string): Promise<Round |
   return inProgress.find((r) => versionIds.includes(r.courseVersionId));
 }
 
-export async function startRound(courseVersionId: string): Promise<Round> {
+export async function startRound(courseVersionId: string, holeRange?: { startHole: number; endHole: number }): Promise<Round> {
   const round: Round = {
     id: uuid(),
     courseVersionId,
     playedOn: new Date().toISOString().slice(0, 10),
     status: "in_progress",
+    startHole: holeRange?.startHole,
+    endHole: holeRange?.endHole,
     fitActivityId: null,
     fitIngestedAt: null,
     clockOffsetMs: null,

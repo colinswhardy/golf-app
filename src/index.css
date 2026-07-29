@@ -107,8 +107,15 @@ textarea {
   color: inherit;
 }
 
+/* Buttons must opt IN to a background. Without this reset a control that doesn't declare one
+   falls back to the UA's `buttonface` (light grey) — which rendered the whole map tool rail as
+   blank white circles with near-white icons on top, i.e. invisible. */
 button {
   cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
 }
 
 button:disabled {
@@ -817,9 +824,16 @@ textarea.field {
   align-items: center;
   justify-content: center;
   border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   color: var(--text);
   font-size: 17px;
-  transition: transform var(--fast) var(--ease), background var(--fast) var(--ease);
+  transition: transform var(--fast) var(--ease), background var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+
+.map-btn:disabled {
+  opacity: 0.35;
 }
 
 .map-btn:active {
@@ -1298,6 +1312,15 @@ textarea.field {
 .map-touch-target:active .map-touch-dot {
   background: var(--accent) !important;
   border-color: #fff !important;
+}
+
+/* A measure dot whose line has been long-pressed and saved to the hole. Mint = "this reloads
+   next time you play here". A class rather than an inline style so the state is inspectable and
+   themable like everything else. */
+.map-touch-dot--saved {
+  background: var(--accent) !important;
+  border-color: #fff !important;
+  box-shadow: 0 0 0 4px rgba(61, 220, 151, 0.22), 0 2px 6px rgba(0, 0, 0, 0.5) !important;
 }
 
 .measure-label {
