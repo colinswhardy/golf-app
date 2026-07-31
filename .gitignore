@@ -9,3 +9,7 @@ dist-ssr
 
 # Claude Code local permission overrides — machine-specific, never shared
 .claude/settings.local.json
+
+# coursetrace: local Mapbox token + tile cache
+tools/coursetrace/token.txt
+tools/coursetrace/tilecache/
