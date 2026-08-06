@@ -5,6 +5,7 @@ import { getHolesForVersion } from "../lib/courseRepo";
 import {
   addPenaltyStroke,
   correctShot,
+  discardRound,
   listCompletedRounds,
   listShotsForRoundHole,
   removePenaltyStroke,
@@ -51,6 +52,10 @@ export function ReviewRoundsPage() {
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
   const [fitBusy, setFitBusy] = useState(false);
   const [fitMessage, setFitMessage] = useState<string | null>(null);
+  // Abandoning a COMPLETED round. Home already offers this for a round still in progress
+  // (Home.tsx), but a finished one had no way out — so every test round stayed in the history and
+  // in the stats averages forever. Same `discardRound` cascade behind it.
+  const [confirmDiscardId, setConfirmDiscardId] = useState<string | null>(null);
   const fitInputRef = useRef<HTMLInputElement>(null);
 
   const completedRounds = useLiveQuery(async () => {
@@ -265,9 +270,10 @@ export function ReviewRoundsPage() {
         ) : (
           <div className="stack">
             {completedRounds.map(({ round, courseName, toPar, strokes, scoredHoles, openFlags }) => (
+              <div key={round.id} className="row" style={{ gap: 8, alignItems: "stretch" }}>
               <button
-                key={round.id}
-                className="card card--interactive"
+                className="card card--interactive grow"
+                style={{ minWidth: 0 }}
                 onClick={() => {
                   setSelectedRoundId(round.id);
                   setHoleNumber(1);
@@ -298,7 +304,39 @@ export function ReviewRoundsPage() {
                   {openFlags > 0 && <Badge tone="warn">{openFlags} to review</Badge>}
                 </div>
               </button>
+              <button
+                className="map-btn"
+                style={{ width: 32, alignSelf: "center", color: "var(--danger)" }}
+                onClick={() => setConfirmDiscardId(round.id)}
+                aria-label={`Abandon ${courseName} round`}
+              >
+                <Icon.trash size={15} />
+              </button>
+              </div>
             ))}
+
+            {confirmDiscardId && (
+              <div className="card" style={{ borderColor: "rgba(255,107,107,.3)" }}>
+                <div className="small mb-2">
+                  Abandon this round? Its scores, shots, watch laps and any review flags are deleted
+                  outright — this one is not recoverable, unlike removing a course.
+                </div>
+                <div className="row" style={{ gap: 8 }}>
+                  <button
+                    className="btn btn--sm btn--danger"
+                    onClick={async () => {
+                      await discardRound(confirmDiscardId);
+                      setConfirmDiscardId(null);
+                    }}
+                  >
+                    Abandon
+                  </button>
+                  <button className="btn btn--sm btn--ghost" onClick={() => setConfirmDiscardId(null)}>
+                    Keep
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Page>
