@@ -4,8 +4,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import * as turf from "@turf/turf";
-import { createTeeBox, deleteHoleFeature, getFeaturesForHole, getHolesForVersion, getLatestCourseVersion, getTeeBoxesForHole, listCourses, saveCustomHazard, updateHoleGreenPoint, updateHoleWaypoints, updateTeeBoxLocation } from "../lib/courseRepo";
-import { AppBar, EmptyState, Icon, Page } from "../components/ui";
+import { createTeeBox, deleteCourse, deleteHoleFeature, getFeaturesForHole, getHolesForVersion, getLatestCourseVersion, getTeeBoxesForHole, listCourses, saveCustomHazard, updateHoleGreenPoint, updateHoleWaypoints, updateTeeBoxLocation } from "../lib/courseRepo";
+import { AppBar, Button, EmptyState, Icon, Page } from "../components/ui";
 import { SATELLITE_STYLE } from "../components/CourseMap";
 import { applyTouchDragOffset } from "../lib/mapTouch";
 import { distanceYards } from "../lib/geo";
@@ -33,6 +33,9 @@ export function CourseEditorPage() {
 
 function CourseEditorCourseList() {
   const courses = useLiveQuery(() => listCourses(), []);
+  // Course deletion lives here rather than on CoursesPage on purpose: that page is the pre-round
+  // play path, where a stray tap on a delete control is worst. This is the admin surface already.
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   return (
     <Page>
@@ -44,11 +47,46 @@ function CourseEditorCourseList() {
       ) : (
         <div className="stack">
           {courses.map((c) => (
-            <Link key={c.id} to={`/course-editor/${c.id}`} className="list-row">
-              <span className="truncate">{c.name}</span>
-              <Icon.chevron size={16} />
-            </Link>
+            <div key={c.id} className="row" style={{ gap: 8, alignItems: "stretch" }}>
+              <Link to={`/course-editor/${c.id}`} className="list-row grow" style={{ minWidth: 0 }}>
+                <span className="truncate">{c.name}</span>
+                <Icon.chevron size={16} />
+              </Link>
+              <button
+                className="map-btn"
+                style={{ width: 32, alignSelf: "center", color: "var(--danger)" }}
+                onClick={() => setConfirmDelete(c.id)}
+                aria-label={`Remove ${c.name}`}
+              >
+                <Icon.trash size={15} />
+              </button>
+            </div>
           ))}
+
+          {confirmDelete && (
+            <div className="card mt-2" style={{ borderColor: "rgba(255,107,107,.3)" }}>
+              <div className="small mb-2">
+                Remove {courses.find((c) => c.id === confirmDelete)?.name}? It disappears from the
+                course list, but rounds already played there keep their history and still open.
+                Re-importing the same course brings it back.
+              </div>
+              <div className="row" style={{ gap: 8 }}>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={async () => {
+                    await deleteCourse(confirmDelete);
+                    setConfirmDelete(null);
+                  }}
+                >
+                  Remove
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </Page>

@@ -1,7 +1,15 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "./db";
-import { createTeeBox, getTeeBoxesForHole, getHolesForVersion, getLatestCourseVersion, saveImportedCourse } from "./courseRepo";
+import {
+  createTeeBox,
+  deleteCourse,
+  getTeeBoxesForHole,
+  getHolesForVersion,
+  getLatestCourseVersion,
+  listCourses,
+  saveImportedCourse
+} from "./courseRepo";
 import type { ParsedCourse } from "./importOverpass";
 
 /** Minimal two-hole parse result — enough to exercise versioning without a real Overpass file. */
@@ -81,5 +89,51 @@ describe("saveImportedCourse", () => {
     // ...and the superseded rows are still on the OLD version, so historical rounds played against
     // v1 keep resolving the geometry they were actually played on.
     expect((await getTeeBoxesForHole(v1Hole1.id)).map((t) => t.name).sort()).toEqual(["Blue", "White (manual)"]);
+  });
+});
+
+describe("deleteCourse", () => {
+  it("hides the course from the list without destroying its version chain", async () => {
+    const { courseId, courseVersionId } = await saveImportedCourse(parsed(), {
+      slug: "legends-of-the-niagara"
+    });
+    expect((await listCourses()).map((c) => c.slug)).toContain("legends-of-the-niagara");
+
+    await deleteCourse(courseId);
+
+    expect((await listCourses()).map((c) => c.slug)).not.toContain("legends-of-the-niagara");
+    expect((await db.courses.get(courseId))?.deletedAt).toBeTruthy();
+    // The version/hole rows survive, so rounds played against them still resolve.
+    expect(await db.courseVersions.get(courseVersionId)).toBeTruthy();
+    expect((await getHolesForVersion(courseVersionId)).length).toBe(2);
+  });
+
+  it("leaves other courses alone", async () => {
+    const a = await saveImportedCourse(parsed(), { slug: "course-a", name: "A" });
+    await saveImportedCourse(parsed(), { slug: "course-b", name: "B" });
+    await deleteCourse(a.courseId);
+    expect((await listCourses()).map((c) => c.slug)).toEqual(["course-b"]);
+  });
+
+  it("is idempotent", async () => {
+    const { courseId } = await saveImportedCourse(parsed(), { slug: "usshers-creek" });
+    await deleteCourse(courseId);
+    const firstStamp = (await db.courses.get(courseId))?.deletedAt;
+    await deleteCourse(courseId);
+    expect((await db.courses.get(courseId))?.deletedAt).toBe(firstStamp);
+  });
+
+  // The only undo — without it a soft-deleted course is unreachable forever, since nothing else
+  // clears deletedAt and there's no "show deleted" UI.
+  it("re-importing the same slug brings a deleted course back", async () => {
+    const { courseId } = await saveImportedCourse(parsed(), { slug: "usshers-creek", name: "Ussher's Creek" });
+    await deleteCourse(courseId);
+    expect(await listCourses()).toHaveLength(0);
+
+    const again = await saveImportedCourse(parsed(), { slug: "usshers-creek", name: "Ussher's Creek" });
+
+    expect(again.courseId).toBe(courseId);
+    expect((await db.courses.get(courseId))?.deletedAt).toBeNull();
+    expect((await listCourses()).map((c) => c.name)).toEqual(["Ussher's Creek"]);
   });
 });

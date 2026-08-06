@@ -62,7 +62,10 @@ export async function saveImportedCourse(
     } else {
       // Re-import: record which importer produced the new latest version. Name/location refresh
       // too (OSM data may have been corrected), but nothing under old versions is modified.
-      course = { ...course, importerVersion: IMPORTER_VERSION, name, location: parsed.location ?? course.location, updatedAt: now() };
+      // `deletedAt` is cleared: re-importing a course you'd deleted is an explicit "I want this
+      // back", and it's the only undo for deleteCourse — without it a soft-deleted course would be
+      // unreachable forever.
+      course = { ...course, importerVersion: IMPORTER_VERSION, name, location: parsed.location ?? course.location, deletedAt: null, updatedAt: now() };
       await db.courses.put(course);
       await queueOutbox("courses", "upsert", course);
     }
@@ -126,6 +129,28 @@ export async function saveImportedCourse(
 export async function listCourses(): Promise<Course[]> {
   const all = await db.courses.toArray();
   return all.filter((c) => !c.deletedAt);
+}
+
+/**
+ * Removes a course from the lists by stamping `deletedAt` — a SOFT delete, deliberately.
+ *
+ * Rounds reference a `courseVersionId`, not a course, so hard-deleting the course row (and with it
+ * any reason to keep its versions/holes/features) would strand every round ever played there on
+ * dangling UUIDs — exactly the orphaning class that lib/integrity.ts exists to repair. Soft delete
+ * leaves the whole version chain intact, so history keeps resolving while the course stops
+ * cluttering the pickers. Both list paths (`listCourses`, CoursesPage's own query) already filter
+ * on `deletedAt`, so nothing else needs to change.
+ *
+ * Undo is via re-import: `saveImportedCourse` clears `deletedAt` when a course with that slug comes
+ * back, so uploading the same GeoJSON (or a bundled re-seed) resurrects it rather than leaving it
+ * permanently invisible with no way back.
+ */
+export async function deleteCourse(courseId: string): Promise<void> {
+  const course = await db.courses.get(courseId);
+  if (!course || course.deletedAt) return;
+  const updated: Course = { ...course, deletedAt: now(), updatedAt: now() };
+  await db.courses.put(updated);
+  await queueOutbox("courses", "upsert", updated);
 }
 
 export async function getLatestCourseVersion(courseId: string): Promise<CourseVersion | undefined> {

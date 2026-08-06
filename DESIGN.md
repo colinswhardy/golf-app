@@ -703,6 +703,16 @@ Turbo + a re-import for a one-tee-box fix.
   boxes"), since a future change to key tee boxes on something version-stable would silently break
   it.
 - Home's 4th tile (previously blank) now links here.
+- **Course deletion** (`courseRepo.deleteCourse`) lives on the editor's course list, not on
+  `CoursesPage` — that page is the pre-round play path, where a stray tap on a destructive control
+  is worst; this is already the admin surface. Two-step confirm, matching the club-removal pattern
+  in Settings. It's a **soft** delete (stamps `Course.deletedAt`, which both course-list queries
+  already filtered on): rounds reference a `courseVersionId`, so hard-deleting the course and its
+  version chain would strand every round played there on dangling UUIDs — the orphaning class
+  `lib/integrity.ts` exists to repair. The version/hole/feature rows therefore survive and history
+  keeps resolving. Undo is re-import: `saveImportedCourse` clears `deletedAt`, so re-uploading the
+  GeoJSON (or a bundled re-seed) resurrects the course — without that a soft-deleted course would
+  be unreachable forever, since there's no "show deleted" UI.
 - **Editing green location, waypoints, and creating tees** (all persisted on the `Hole`, so they
   reload whenever the course is next played — see `courseRepo.updateHoleGreenPoint` /
   `updateHoleWaypoints` / `createTeeBox`):
