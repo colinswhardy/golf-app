@@ -1,0 +1,1980 @@
+{
+  "course": "Flamborough Hills Golf & Country Club",
+  "location": "71 Highway 52 North, Copetown (Flamborough / Hamilton), Ontario, L0R 1J0, Canada",
+  "units": "yards",
+  "facilityType": "27 holes - three nines (Hills, Woods, Lakes) played as three 18-hole combinations",
+  "defaultRouting": "Hills/Woods",
+  "teeSets": [
+    {
+      "name": "Blue",
+      "totalYards": 6486,
+      "par": 73,
+      "parLadies": 75,
+      "rating": 71.1,
+      "slope": 131
+    },
+    {
+      "name": "Blue/White",
+      "totalYards": 6307,
+      "par": 73,
+      "parLadies": 75,
+      "rating": 70.6,
+      "slope": 126
+    },
+    {
+      "name": "White",
+      "totalYards": 6232,
+      "par": 73,
+      "parLadies": 75,
+      "rating": 69.7,
+      "slope": 122
+    },
+    {
+      "name": "White/Gold",
+      "totalYards": 5904,
+      "par": 73,
+      "parLadies": 75,
+      "rating": 68.7,
+      "slope": 118
+    },
+    {
+      "name": "Gold",
+      "totalYards": 5608,
+      "par": 73,
+      "parLadies": 75,
+      "rating": 67.7,
+      "slope": 115
+    },
+    {
+      "name": "Red",
+      "totalYards": 5513,
+      "par": 73,
+      "parLadies": 75,
+      "rating": 72.1,
+      "slope": 122
+    }
+  ],
+  "holes": [
+    {
+      "number": 1,
+      "nine": "Hills",
+      "holeOnNine": 1,
+      "par": 4,
+      "handicap": 7,
+      "parLadies": 4,
+      "handicapLadies": 8,
+      "yards": {
+        "Blue": 315,
+        "Blue/White": 315,
+        "White": 295,
+        "White/Gold": 295,
+        "Gold": 291,
+        "Red": 260
+      }
+    },
+    {
+      "number": 2,
+      "nine": "Hills",
+      "holeOnNine": 2,
+      "par": 5,
+      "handicap": 6,
+      "parLadies": 5,
+      "handicapLadies": 1,
+      "yards": {
+        "Blue": 470,
+        "Blue/White": 470,
+        "White": 466,
+        "White/Gold": 386,
+        "Gold": 386,
+        "Red": 382
+      }
+    },
+    {
+      "number": 3,
+      "nine": "Hills",
+      "holeOnNine": 3,
+      "par": 3,
+      "handicap": 9,
+      "parLadies": 3,
+      "handicapLadies": 6,
+      "yards": {
+        "Blue": 154,
+        "Blue/White": 154,
+        "White": 151,
+        "White/Gold": 151,
+        "Gold": 145,
+        "Red": 145
+      }
+    },
+    {
+      "number": 4,
+      "nine": "Hills",
+      "holeOnNine": 4,
+      "par": 4,
+      "handicap": 2,
+      "parLadies": 4,
+      "handicapLadies": 4,
+      "yards": {
+        "Blue": 380,
+        "Blue/White": 367,
+        "White": 367,
+        "White/Gold": 301,
+        "Gold": 301,
+        "Red": 297
+      }
+    },
+    {
+      "number": 5,
+      "nine": "Hills",
+      "holeOnNine": 5,
+      "par": 4,
+      "handicap": 4,
+      "parLadies": 4,
+      "handicapLadies": 2,
+      "yards": {
+        "Blue": 415,
+        "Blue/White": 395,
+        "White": 395,
+        "White/Gold": 395,
+        "Gold": 391,
+        "Red": 387
+      }
+    },
+    {
+      "number": 6,
+      "nine": "Hills",
+      "holeOnNine": 6,
+      "par": 4,
+      "handicap": 8,
+      "parLadies": 4,
+      "handicapLadies": 9,
+      "yards": {
+        "Blue": 360,
+        "Blue/White": 360,
+        "White": 351,
+        "White/Gold": 351,
+        "Gold": 253,
+        "Red": 249
+      }
+    },
+    {
+      "number": 7,
+      "nine": "Hills",
+      "holeOnNine": 7,
+      "par": 5,
+      "handicap": 1,
+      "parLadies": 5,
+      "handicapLadies": 5,
+      "yards": {
+        "Blue": 496,
+        "Blue/White": 496,
+        "White": 492,
+        "White/Gold": 421,
+        "Gold": 421,
+        "Red": 417
+      }
+    },
+    {
+      "number": 8,
+      "nine": "Hills",
+      "holeOnNine": 8,
+      "par": 3,
+      "handicap": 5,
+      "parLadies": 3,
+      "handicapLadies": 7,
+      "yards": {
+        "Blue": 243,
+        "Blue/White": 197,
+        "White": 197,
+        "White/Gold": 153,
+        "Gold": 153,
+        "Red": 149
+      }
+    },
+    {
+      "number": 9,
+      "nine": "Hills",
+      "holeOnNine": 9,
+      "par": 5,
+      "handicap": 3,
+      "parLadies": 5,
+      "handicapLadies": 3,
+      "yards": {
+        "Blue": 493,
+        "Blue/White": 476,
+        "White": 476,
+        "White/Gold": 476,
+        "Gold": 441,
+        "Red": 437
+      }
+    },
+    {
+      "number": 10,
+      "nine": "Woods",
+      "holeOnNine": 1,
+      "par": 5,
+      "handicap": 5,
+      "parLadies": 5,
+      "handicapLadies": 4,
+      "yards": {
+        "Blue": 487,
+        "Blue/White": 487,
+        "White": 479,
+        "White/Gold": 479,
+        "Gold": 408,
+        "Red": 404
+      }
+    },
+    {
+      "number": 11,
+      "nine": "Woods",
+      "holeOnNine": 2,
+      "par": 3,
+      "handicap": 9,
+      "parLadies": 3,
+      "handicapLadies": 9,
+      "yards": {
+        "Blue": 127,
+        "Blue/White": 111,
+        "White": 111,
+        "White/Gold": 111,
+        "Gold": 89,
+        "Red": 85
+      }
+    },
+    {
+      "number": 12,
+      "nine": "Woods",
+      "holeOnNine": 3,
+      "par": 4,
+      "handicap": 8,
+      "parLadies": 4,
+      "handicapLadies": 7,
+      "yards": {
+        "Blue": 295,
+        "Blue/White": 295,
+        "White": 276,
+        "White/Gold": 276,
+        "Gold": 265,
+        "Red": 261
+      }
+    },
+    {
+      "number": 13,
+      "nine": "Woods",
+      "holeOnNine": 4,
+      "par": 4,
+      "handicap": 1,
+      "parLadies": 5,
+      "handicapLadies": 1,
+      "yards": {
+        "Blue": 445,
+        "Blue/White": 439,
+        "White": 439,
+        "White/Gold": 416,
+        "Gold": 416,
+        "Red": 412
+      }
+    },
+    {
+      "number": 14,
+      "nine": "Woods",
+      "holeOnNine": 5,
+      "par": 3,
+      "handicap": 6,
+      "parLadies": 3,
+      "handicapLadies": 8,
+      "yards": {
+        "Blue": 186,
+        "Blue/White": 168,
+        "White": 168,
+        "White/Gold": 168,
+        "Gold": 161,
+        "Red": 157
+      }
+    },
+    {
+      "number": 15,
+      "nine": "Woods",
+      "holeOnNine": 6,
+      "par": 4,
+      "handicap": 3,
+      "parLadies": 4,
+      "handicapLadies": 3,
+      "yards": {
+        "Blue": 415,
+        "Blue/White": 389,
+        "White": 389,
+        "White/Gold": 389,
+        "Gold": 357,
+        "Red": 353
+      }
+    },
+    {
+      "number": 16,
+      "nine": "Woods",
+      "holeOnNine": 7,
+      "par": 4,
+      "handicap": 2,
+      "parLadies": 5,
+      "handicapLadies": 2,
+      "yards": {
+        "Blue": 453,
+        "Blue/White": 442,
+        "White": 442,
+        "White/Gold": 424,
+        "Gold": 424,
+        "Red": 420
+      }
+    },
+    {
+      "number": 17,
+      "nine": "Woods",
+      "holeOnNine": 8,
+      "par": 5,
+      "handicap": 4,
+      "parLadies": 5,
+      "handicapLadies": 5,
+      "yards": {
+        "Blue": 446,
+        "Blue/White": 440,
+        "White": 440,
+        "White/Gold": 414,
+        "Gold": 414,
+        "Red": 410
+      }
+    },
+    {
+      "number": 18,
+      "nine": "Woods",
+      "holeOnNine": 9,
+      "par": 4,
+      "handicap": 7,
+      "parLadies": 4,
+      "handicapLadies": 6,
+      "yards": {
+        "Blue": 306,
+        "Blue/White": 306,
+        "White": 298,
+        "White/Gold": 298,
+        "Gold": 292,
+        "Red": 288
+      }
+    }
+  ],
+  "nines": [
+    {
+      "name": "Hills",
+      "teeSets": [
+        {
+          "name": "Blue",
+          "totalYards": 3326,
+          "par": 37
+        },
+        {
+          "name": "Blue/White",
+          "totalYards": 3230,
+          "par": 37
+        },
+        {
+          "name": "White",
+          "totalYards": 3190,
+          "par": 37
+        },
+        {
+          "name": "White/Gold",
+          "totalYards": 2929,
+          "par": 37
+        },
+        {
+          "name": "Gold",
+          "totalYards": 2782,
+          "par": 37
+        },
+        {
+          "name": "Red",
+          "totalYards": 2723,
+          "par": 37
+        }
+      ],
+      "holes": [
+        {
+          "number": 1,
+          "par": 4,
+          "handicap": 7,
+          "parLadies": 4,
+          "handicapLadies": 8,
+          "yards": {
+            "Blue": 315,
+            "Blue/White": 315,
+            "White": 295,
+            "White/Gold": 295,
+            "Gold": 291,
+            "Red": 260
+          }
+        },
+        {
+          "number": 2,
+          "par": 5,
+          "handicap": 6,
+          "parLadies": 5,
+          "handicapLadies": 1,
+          "yards": {
+            "Blue": 470,
+            "Blue/White": 470,
+            "White": 466,
+            "White/Gold": 386,
+            "Gold": 386,
+            "Red": 382
+          }
+        },
+        {
+          "number": 3,
+          "par": 3,
+          "handicap": 9,
+          "parLadies": 3,
+          "handicapLadies": 6,
+          "yards": {
+            "Blue": 154,
+            "Blue/White": 154,
+            "White": 151,
+            "White/Gold": 151,
+            "Gold": 145,
+            "Red": 145
+          }
+        },
+        {
+          "number": 4,
+          "par": 4,
+          "handicap": 2,
+          "parLadies": 4,
+          "handicapLadies": 4,
+          "yards": {
+            "Blue": 380,
+            "Blue/White": 367,
+            "White": 367,
+            "White/Gold": 301,
+            "Gold": 301,
+            "Red": 297
+          }
+        },
+        {
+          "number": 5,
+          "par": 4,
+          "handicap": 4,
+          "parLadies": 4,
+          "handicapLadies": 2,
+          "yards": {
+            "Blue": 415,
+            "Blue/White": 395,
+            "White": 395,
+            "White/Gold": 395,
+            "Gold": 391,
+            "Red": 387
+          }
+        },
+        {
+          "number": 6,
+          "par": 4,
+          "handicap": 8,
+          "parLadies": 4,
+          "handicapLadies": 9,
+          "yards": {
+            "Blue": 360,
+            "Blue/White": 360,
+            "White": 351,
+            "White/Gold": 351,
+            "Gold": 253,
+            "Red": 249
+          }
+        },
+        {
+          "number": 7,
+          "par": 5,
+          "handicap": 1,
+          "parLadies": 5,
+          "handicapLadies": 5,
+          "yards": {
+            "Blue": 496,
+            "Blue/White": 496,
+            "White": 492,
+            "White/Gold": 421,
+            "Gold": 421,
+            "Red": 417
+          }
+        },
+        {
+          "number": 8,
+          "par": 3,
+          "handicap": 5,
+          "parLadies": 3,
+          "handicapLadies": 7,
+          "yards": {
+            "Blue": 243,
+            "Blue/White": 197,
+            "White": 197,
+            "White/Gold": 153,
+            "Gold": 153,
+            "Red": 149
+          }
+        },
+        {
+          "number": 9,
+          "par": 5,
+          "handicap": 3,
+          "parLadies": 5,
+          "handicapLadies": 3,
+          "yards": {
+            "Blue": 493,
+            "Blue/White": 476,
+            "White": 476,
+            "White/Gold": 476,
+            "Gold": 441,
+            "Red": 437
+          }
+        }
+      ]
+    },
+    {
+      "name": "Woods",
+      "teeSets": [
+        {
+          "name": "Blue",
+          "totalYards": 3160,
+          "par": 36
+        },
+        {
+          "name": "Blue/White",
+          "totalYards": 3077,
+          "par": 36
+        },
+        {
+          "name": "White",
+          "totalYards": 3042,
+          "par": 36
+        },
+        {
+          "name": "White/Gold",
+          "totalYards": 2975,
+          "par": 36
+        },
+        {
+          "name": "Gold",
+          "totalYards": 2826,
+          "par": 36
+        },
+        {
+          "name": "Red",
+          "totalYards": 2790,
+          "par": 36
+        }
+      ],
+      "holes": [
+        {
+          "number": 1,
+          "par": 5,
+          "handicap": 5,
+          "parLadies": 5,
+          "handicapLadies": 4,
+          "yards": {
+            "Blue": 487,
+            "Blue/White": 487,
+            "White": 479,
+            "White/Gold": 479,
+            "Gold": 408,
+            "Red": 404
+          }
+        },
+        {
+          "number": 2,
+          "par": 3,
+          "handicap": 9,
+          "parLadies": 3,
+          "handicapLadies": 9,
+          "yards": {
+            "Blue": 127,
+            "Blue/White": 111,
+            "White": 111,
+            "White/Gold": 111,
+            "Gold": 89,
+            "Red": 85
+          }
+        },
+        {
+          "number": 3,
+          "par": 4,
+          "handicap": 8,
+          "parLadies": 4,
+          "handicapLadies": 7,
+          "yards": {
+            "Blue": 295,
+            "Blue/White": 295,
+            "White": 276,
+            "White/Gold": 276,
+            "Gold": 265,
+            "Red": 261
+          }
+        },
+        {
+          "number": 4,
+          "par": 4,
+          "handicap": 1,
+          "parLadies": 5,
+          "handicapLadies": 1,
+          "yards": {
+            "Blue": 445,
+            "Blue/White": 439,
+            "White": 439,
+            "White/Gold": 416,
+            "Gold": 416,
+            "Red": 412
+          }
+        },
+        {
+          "number": 5,
+          "par": 3,
+          "handicap": 6,
+          "parLadies": 3,
+          "handicapLadies": 8,
+          "yards": {
+            "Blue": 186,
+            "Blue/White": 168,
+            "White": 168,
+            "White/Gold": 168,
+            "Gold": 161,
+            "Red": 157
+          }
+        },
+        {
+          "number": 6,
+          "par": 4,
+          "handicap": 3,
+          "parLadies": 4,
+          "handicapLadies": 3,
+          "yards": {
+            "Blue": 415,
+            "Blue/White": 389,
+            "White": 389,
+            "White/Gold": 389,
+            "Gold": 357,
+            "Red": 353
+          }
+        },
+        {
+          "number": 7,
+          "par": 4,
+          "handicap": 2,
+          "parLadies": 5,
+          "handicapLadies": 2,
+          "yards": {
+            "Blue": 453,
+            "Blue/White": 442,
+            "White": 442,
+            "White/Gold": 424,
+            "Gold": 424,
+            "Red": 420
+          }
+        },
+        {
+          "number": 8,
+          "par": 5,
+          "handicap": 4,
+          "parLadies": 5,
+          "handicapLadies": 5,
+          "yards": {
+            "Blue": 446,
+            "Blue/White": 440,
+            "White": 440,
+            "White/Gold": 414,
+            "Gold": 414,
+            "Red": 410
+          }
+        },
+        {
+          "number": 9,
+          "par": 4,
+          "handicap": 7,
+          "parLadies": 4,
+          "handicapLadies": 6,
+          "yards": {
+            "Blue": 306,
+            "Blue/White": 306,
+            "White": 298,
+            "White/Gold": 298,
+            "Gold": 292,
+            "Red": 288
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lakes",
+      "teeSets": [
+        {
+          "name": "Blue",
+          "totalYards": 3242,
+          "par": 36
+        },
+        {
+          "name": "Blue/White",
+          "totalYards": 3143,
+          "par": 36
+        },
+        {
+          "name": "White",
+          "totalYards": 3060,
+          "par": 36
+        },
+        {
+          "name": "White/Gold",
+          "totalYards": 2727,
+          "par": 36
+        },
+        {
+          "name": "Gold",
+          "totalYards": 2592,
+          "par": 36
+        },
+        {
+          "name": "Red",
+          "totalYards": 2556,
+          "par": 36
+        }
+      ],
+      "holes": [
+        {
+          "number": 1,
+          "par": 5,
+          "handicap": 6,
+          "parLadies": 5,
+          "handicapLadies": 6,
+          "yards": {
+            "Blue": 458,
+            "Blue/White": 458,
+            "White": 434,
+            "White/Gold": 434,
+            "Gold": 408,
+            "Red": 404
+          }
+        },
+        {
+          "number": 2,
+          "par": 3,
+          "handicap": 9,
+          "parLadies": 3,
+          "handicapLadies": 9,
+          "yards": {
+            "Blue": 141,
+            "Blue/White": 141,
+            "White": 127,
+            "White/Gold": 127,
+            "Gold": 102,
+            "Red": 98
+          }
+        },
+        {
+          "number": 3,
+          "par": 4,
+          "handicap": 7,
+          "parLadies": 4,
+          "handicapLadies": 8,
+          "yards": {
+            "Blue": 367,
+            "Blue/White": 367,
+            "White": 343,
+            "White/Gold": 343,
+            "Gold": 293,
+            "Red": 289
+          }
+        },
+        {
+          "number": 4,
+          "par": 4,
+          "handicap": 1,
+          "parLadies": 4,
+          "handicapLadies": 1,
+          "yards": {
+            "Blue": 361,
+            "Blue/White": 348,
+            "White": 348,
+            "White/Gold": 270,
+            "Gold": 270,
+            "Red": 266
+          }
+        },
+        {
+          "number": 5,
+          "par": 3,
+          "handicap": 5,
+          "parLadies": 3,
+          "handicapLadies": 7,
+          "yards": {
+            "Blue": 217,
+            "Blue/White": 194,
+            "White": 194,
+            "White/Gold": 143,
+            "Gold": 143,
+            "Red": 139
+          }
+        },
+        {
+          "number": 6,
+          "par": 4,
+          "handicap": 4,
+          "parLadies": 4,
+          "handicapLadies": 4,
+          "yards": {
+            "Blue": 394,
+            "Blue/White": 374,
+            "White": 374,
+            "White/Gold": 312,
+            "Gold": 312,
+            "Red": 308
+          }
+        },
+        {
+          "number": 7,
+          "par": 4,
+          "handicap": 2,
+          "parLadies": 4,
+          "handicapLadies": 3,
+          "yards": {
+            "Blue": 418,
+            "Blue/White": 405,
+            "White": 405,
+            "White/Gold": 321,
+            "Gold": 321,
+            "Red": 317
+          }
+        },
+        {
+          "number": 8,
+          "par": 5,
+          "handicap": 8,
+          "parLadies": 5,
+          "handicapLadies": 5,
+          "yards": {
+            "Blue": 440,
+            "Blue/White": 440,
+            "White": 419,
+            "White/Gold": 419,
+            "Gold": 385,
+            "Red": 381
+          }
+        },
+        {
+          "number": 9,
+          "par": 4,
+          "handicap": 3,
+          "parLadies": 4,
+          "handicapLadies": 2,
+          "yards": {
+            "Blue": 446,
+            "Blue/White": 416,
+            "White": 416,
+            "White/Gold": 358,
+            "Gold": 358,
+            "Red": 354
+          }
+        }
+      ]
+    }
+  ],
+  "combinations": [
+    {
+      "name": "Hills/Woods",
+      "teeSets": [
+        {
+          "name": "Blue",
+          "totalYards": 6486,
+          "par": 73,
+          "parLadies": 75,
+          "rating": 71.1,
+          "slope": 131
+        },
+        {
+          "name": "Blue/White",
+          "totalYards": 6307,
+          "par": 73,
+          "parLadies": 75,
+          "rating": 70.6,
+          "slope": 126
+        },
+        {
+          "name": "White",
+          "totalYards": 6232,
+          "par": 73,
+          "parLadies": 75,
+          "rating": 69.7,
+          "slope": 122
+        },
+        {
+          "name": "White/Gold",
+          "totalYards": 5904,
+          "par": 73,
+          "parLadies": 75,
+          "rating": 68.7,
+          "slope": 118
+        },
+        {
+          "name": "Gold",
+          "totalYards": 5608,
+          "par": 73,
+          "parLadies": 75,
+          "rating": 67.7,
+          "slope": 115
+        },
+        {
+          "name": "Red",
+          "totalYards": 5513,
+          "par": 73,
+          "parLadies": 75,
+          "rating": 72.1,
+          "slope": 122
+        }
+      ],
+      "holes": [
+        {
+          "number": 1,
+          "nine": "Hills",
+          "holeOnNine": 1,
+          "par": 4,
+          "handicap": 7,
+          "parLadies": 4,
+          "handicapLadies": 8,
+          "yards": {
+            "Blue": 315,
+            "Blue/White": 315,
+            "White": 295,
+            "White/Gold": 295,
+            "Gold": 291,
+            "Red": 260
+          }
+        },
+        {
+          "number": 2,
+          "nine": "Hills",
+          "holeOnNine": 2,
+          "par": 5,
+          "handicap": 6,
+          "parLadies": 5,
+          "handicapLadies": 1,
+          "yards": {
+            "Blue": 470,
+            "Blue/White": 470,
+            "White": 466,
+            "White/Gold": 386,
+            "Gold": 386,
+            "Red": 382
+          }
+        },
+        {
+          "number": 3,
+          "nine": "Hills",
+          "holeOnNine": 3,
+          "par": 3,
+          "handicap": 9,
+          "parLadies": 3,
+          "handicapLadies": 6,
+          "yards": {
+            "Blue": 154,
+            "Blue/White": 154,
+            "White": 151,
+            "White/Gold": 151,
+            "Gold": 145,
+            "Red": 145
+          }
+        },
+        {
+          "number": 4,
+          "nine": "Hills",
+          "holeOnNine": 4,
+          "par": 4,
+          "handicap": 2,
+          "parLadies": 4,
+          "handicapLadies": 4,
+          "yards": {
+            "Blue": 380,
+            "Blue/White": 367,
+            "White": 367,
+            "White/Gold": 301,
+            "Gold": 301,
+            "Red": 297
+          }
+        },
+        {
+          "number": 5,
+          "nine": "Hills",
+          "holeOnNine": 5,
+          "par": 4,
+          "handicap": 4,
+          "parLadies": 4,
+          "handicapLadies": 2,
+          "yards": {
+            "Blue": 415,
+            "Blue/White": 395,
+            "White": 395,
+            "White/Gold": 395,
+            "Gold": 391,
+            "Red": 387
+          }
+        },
+        {
+          "number": 6,
+          "nine": "Hills",
+          "holeOnNine": 6,
+          "par": 4,
+          "handicap": 8,
+          "parLadies": 4,
+          "handicapLadies": 9,
+          "yards": {
+            "Blue": 360,
+            "Blue/White": 360,
+            "White": 351,
+            "White/Gold": 351,
+            "Gold": 253,
+            "Red": 249
+          }
+        },
+        {
+          "number": 7,
+          "nine": "Hills",
+          "holeOnNine": 7,
+          "par": 5,
+          "handicap": 1,
+          "parLadies": 5,
+          "handicapLadies": 5,
+          "yards": {
+            "Blue": 496,
+            "Blue/White": 496,
+            "White": 492,
+            "White/Gold": 421,
+            "Gold": 421,
+            "Red": 417
+          }
+        },
+        {
+          "number": 8,
+          "nine": "Hills",
+          "holeOnNine": 8,
+          "par": 3,
+          "handicap": 5,
+          "parLadies": 3,
+          "handicapLadies": 7,
+          "yards": {
+            "Blue": 243,
+            "Blue/White": 197,
+            "White": 197,
+            "White/Gold": 153,
+            "Gold": 153,
+            "Red": 149
+          }
+        },
+        {
+          "number": 9,
+          "nine": "Hills",
+          "holeOnNine": 9,
+          "par": 5,
+          "handicap": 3,
+          "parLadies": 5,
+          "handicapLadies": 3,
+          "yards": {
+            "Blue": 493,
+            "Blue/White": 476,
+            "White": 476,
+            "White/Gold": 476,
+            "Gold": 441,
+            "Red": 437
+          }
+        },
+        {
+          "number": 10,
+          "nine": "Woods",
+          "holeOnNine": 1,
+          "par": 5,
+          "handicap": 5,
+          "parLadies": 5,
+          "handicapLadies": 4,
+          "yards": {
+            "Blue": 487,
+            "Blue/White": 487,
+            "White": 479,
+            "White/Gold": 479,
+            "Gold": 408,
+            "Red": 404
+          }
+        },
+        {
+          "number": 11,
+          "nine": "Woods",
+          "holeOnNine": 2,
+          "par": 3,
+          "handicap": 9,
+          "parLadies": 3,
+          "handicapLadies": 9,
+          "yards": {
+            "Blue": 127,
+            "Blue/White": 111,
+            "White": 111,
+            "White/Gold": 111,
+            "Gold": 89,
+            "Red": 85
+          }
+        },
+        {
+          "number": 12,
+          "nine": "Woods",
+          "holeOnNine": 3,
+          "par": 4,
+          "handicap": 8,
+          "parLadies": 4,
+          "handicapLadies": 7,
+          "yards": {
+            "Blue": 295,
+            "Blue/White": 295,
+            "White": 276,
+            "White/Gold": 276,
+            "Gold": 265,
+            "Red": 261
+          }
+        },
+        {
+          "number": 13,
+          "nine": "Woods",
+          "holeOnNine": 4,
+          "par": 4,
+          "handicap": 1,
+          "parLadies": 5,
+          "handicapLadies": 1,
+          "yards": {
+            "Blue": 445,
+            "Blue/White": 439,
+            "White": 439,
+            "White/Gold": 416,
+            "Gold": 416,
+            "Red": 412
+          }
+        },
+        {
+          "number": 14,
+          "nine": "Woods",
+          "holeOnNine": 5,
+          "par": 3,
+          "handicap": 6,
+          "parLadies": 3,
+          "handicapLadies": 8,
+          "yards": {
+            "Blue": 186,
+            "Blue/White": 168,
+            "White": 168,
+            "White/Gold": 168,
+            "Gold": 161,
+            "Red": 157
+          }
+        },
+        {
+          "number": 15,
+          "nine": "Woods",
+          "holeOnNine": 6,
+          "par": 4,
+          "handicap": 3,
+          "parLadies": 4,
+          "handicapLadies": 3,
+          "yards": {
+            "Blue": 415,
+            "Blue/White": 389,
+            "White": 389,
+            "White/Gold": 389,
+            "Gold": 357,
+            "Red": 353
+          }
+        },
+        {
+          "number": 16,
+          "nine": "Woods",
+          "holeOnNine": 7,
+          "par": 4,
+          "handicap": 2,
+          "parLadies": 5,
+          "handicapLadies": 2,
+          "yards": {
+            "Blue": 453,
+            "Blue/White": 442,
+            "White": 442,
+            "White/Gold": 424,
+            "Gold": 424,
+            "Red": 420
+          }
+        },
+        {
+          "number": 17,
+          "nine": "Woods",
+          "holeOnNine": 8,
+          "par": 5,
+          "handicap": 4,
+          "parLadies": 5,
+          "handicapLadies": 5,
+          "yards": {
+            "Blue": 446,
+            "Blue/White": 440,
+            "White": 440,
+            "White/Gold": 414,
+            "Gold": 414,
+            "Red": 410
+          }
+        },
+        {
+          "number": 18,
+          "nine": "Woods",
+          "holeOnNine": 9,
+          "par": 4,
+          "handicap": 7,
+          "parLadies": 4,
+          "handicapLadies": 6,
+          "yards": {
+            "Blue": 306,
+            "Blue/White": 306,
+            "White": 298,
+            "White/Gold": 298,
+            "Gold": 292,
+            "Red": 288
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lakes/Hills",
+      "teeSets": [
+        {
+          "name": "Blue",
+          "totalYards": 6568,
+          "par": 73,
+          "parLadies": 73,
+          "rating": 71.4,
+          "slope": 132
+        },
+        {
+          "name": "Blue/White",
+          "totalYards": 6373,
+          "par": 73,
+          "parLadies": 73,
+          "rating": 70.6,
+          "slope": 127
+        },
+        {
+          "name": "White",
+          "totalYards": 6250,
+          "par": 73,
+          "parLadies": 73,
+          "rating": 69.0,
+          "slope": 122
+        },
+        {
+          "name": "White/Gold",
+          "totalYards": 5656,
+          "par": 73,
+          "parLadies": 73,
+          "rating": 66.9,
+          "slope": 115
+        },
+        {
+          "name": "Gold",
+          "totalYards": 5374,
+          "par": 73,
+          "parLadies": 73,
+          "rating": 66.4,
+          "slope": 113
+        },
+        {
+          "name": "Red",
+          "totalYards": 5279,
+          "par": 73,
+          "parLadies": 73,
+          "rating": 70.4,
+          "slope": 120
+        }
+      ],
+      "holes": [
+        {
+          "number": 1,
+          "nine": "Lakes",
+          "holeOnNine": 1,
+          "par": 5,
+          "handicap": 6,
+          "parLadies": 5,
+          "handicapLadies": 6,
+          "yards": {
+            "Blue": 458,
+            "Blue/White": 458,
+            "White": 434,
+            "White/Gold": 434,
+            "Gold": 408,
+            "Red": 404
+          }
+        },
+        {
+          "number": 2,
+          "nine": "Lakes",
+          "holeOnNine": 2,
+          "par": 3,
+          "handicap": 9,
+          "parLadies": 3,
+          "handicapLadies": 9,
+          "yards": {
+            "Blue": 141,
+            "Blue/White": 141,
+            "White": 127,
+            "White/Gold": 127,
+            "Gold": 102,
+            "Red": 98
+          }
+        },
+        {
+          "number": 3,
+          "nine": "Lakes",
+          "holeOnNine": 3,
+          "par": 4,
+          "handicap": 7,
+          "parLadies": 4,
+          "handicapLadies": 8,
+          "yards": {
+            "Blue": 367,
+            "Blue/White": 367,
+            "White": 343,
+            "White/Gold": 343,
+            "Gold": 293,
+            "Red": 289
+          }
+        },
+        {
+          "number": 4,
+          "nine": "Lakes",
+          "holeOnNine": 4,
+          "par": 4,
+          "handicap": 1,
+          "parLadies": 4,
+          "handicapLadies": 1,
+          "yards": {
+            "Blue": 361,
+            "Blue/White": 348,
+            "White": 348,
+            "White/Gold": 270,
+            "Gold": 270,
+            "Red": 266
+          }
+        },
+        {
+          "number": 5,
+          "nine": "Lakes",
+          "holeOnNine": 5,
+          "par": 3,
+          "handicap": 5,
+          "parLadies": 3,
+          "handicapLadies": 7,
+          "yards": {
+            "Blue": 217,
+            "Blue/White": 194,
+            "White": 194,
+            "White/Gold": 143,
+            "Gold": 143,
+            "Red": 139
+          }
+        },
+        {
+          "number": 6,
+          "nine": "Lakes",
+          "holeOnNine": 6,
+          "par": 4,
+          "handicap": 4,
+          "parLadies": 4,
+          "handicapLadies": 4,
+          "yards": {
+            "Blue": 394,
+            "Blue/White": 374,
+            "White": 374,
+            "White/Gold": 312,
+            "Gold": 312,
+            "Red": 308
+          }
+        },
+        {
+          "number": 7,
+          "nine": "Lakes",
+          "holeOnNine": 7,
+          "par": 4,
+          "handicap": 2,
+          "parLadies": 4,
+          "handicapLadies": 3,
+          "yards": {
+            "Blue": 418,
+            "Blue/White": 405,
+            "White": 405,
+            "White/Gold": 321,
+            "Gold": 321,
+            "Red": 317
+          }
+        },
+        {
+          "number": 8,
+          "nine": "Lakes",
+          "holeOnNine": 8,
+          "par": 5,
+          "handicap": 8,
+          "parLadies": 5,
+          "handicapLadies": 5,
+          "yards": {
+            "Blue": 440,
+            "Blue/White": 440,
+            "White": 419,
+            "White/Gold": 419,
+            "Gold": 385,
+            "Red": 381
+          }
+        },
+        {
+          "number": 9,
+          "nine": "Lakes",
+          "holeOnNine": 9,
+          "par": 4,
+          "handicap": 3,
+          "parLadies": 4,
+          "handicapLadies": 2,
+          "yards": {
+            "Blue": 446,
+            "Blue/White": 416,
+            "White": 416,
+            "White/Gold": 358,
+            "Gold": 358,
+            "Red": 354
+          }
+        },
+        {
+          "number": 10,
+          "nine": "Hills",
+          "holeOnNine": 1,
+          "par": 4,
+          "handicap": 7,
+          "parLadies": 4,
+          "handicapLadies": 8,
+          "yards": {
+            "Blue": 315,
+            "Blue/White": 315,
+            "White": 295,
+            "White/Gold": 295,
+            "Gold": 291,
+            "Red": 260
+          }
+        },
+        {
+          "number": 11,
+          "nine": "Hills",
+          "holeOnNine": 2,
+          "par": 5,
+          "handicap": 6,
+          "parLadies": 5,
+          "handicapLadies": 1,
+          "yards": {
+            "Blue": 470,
+            "Blue/White": 470,
+            "White": 466,
+            "White/Gold": 386,
+            "Gold": 386,
+            "Red": 382
+          }
+        },
+        {
+          "number": 12,
+          "nine": "Hills",
+          "holeOnNine": 3,
+          "par": 3,
+          "handicap": 9,
+          "parLadies": 3,
+          "handicapLadies": 6,
+          "yards": {
+            "Blue": 154,
+            "Blue/White": 154,
+            "White": 151,
+            "White/Gold": 151,
+            "Gold": 145,
+            "Red": 145
+          }
+        },
+        {
+          "number": 13,
+          "nine": "Hills",
+          "holeOnNine": 4,
+          "par": 4,
+          "handicap": 2,
+          "parLadies": 4,
+          "handicapLadies": 4,
+          "yards": {
+            "Blue": 380,
+            "Blue/White": 367,
+            "White": 367,
+            "White/Gold": 301,
+            "Gold": 301,
+            "Red": 297
+          }
+        },
+        {
+          "number": 14,
+          "nine": "Hills",
+          "holeOnNine": 5,
+          "par": 4,
+          "handicap": 4,
+          "parLadies": 4,
+          "handicapLadies": 2,
+          "yards": {
+            "Blue": 415,
+            "Blue/White": 395,
+            "White": 395,
+            "White/Gold": 395,
+            "Gold": 391,
+            "Red": 387
+          }
+        },
+        {
+          "number": 15,
+          "nine": "Hills",
+          "holeOnNine": 6,
+          "par": 4,
+          "handicap": 8,
+          "parLadies": 4,
+          "handicapLadies": 9,
+          "yards": {
+            "Blue": 360,
+            "Blue/White": 360,
+            "White": 351,
+            "White/Gold": 351,
+            "Gold": 253,
+            "Red": 249
+          }
+        },
+        {
+          "number": 16,
+          "nine": "Hills",
+          "holeOnNine": 7,
+          "par": 5,
+          "handicap": 1,
+          "parLadies": 5,
+          "handicapLadies": 5,
+          "yards": {
+            "Blue": 496,
+            "Blue/White": 496,
+            "White": 492,
+            "White/Gold": 421,
+            "Gold": 421,
+            "Red": 417
+          }
+        },
+        {
+          "number": 17,
+          "nine": "Hills",
+          "holeOnNine": 8,
+          "par": 3,
+          "handicap": 5,
+          "parLadies": 3,
+          "handicapLadies": 7,
+          "yards": {
+            "Blue": 243,
+            "Blue/White": 197,
+            "White": 197,
+            "White/Gold": 153,
+            "Gold": 153,
+            "Red": 149
+          }
+        },
+        {
+          "number": 18,
+          "nine": "Hills",
+          "holeOnNine": 9,
+          "par": 5,
+          "handicap": 3,
+          "parLadies": 5,
+          "handicapLadies": 3,
+          "yards": {
+            "Blue": 493,
+            "Blue/White": 476,
+            "White": 476,
+            "White/Gold": 476,
+            "Gold": 441,
+            "Red": 437
+          }
+        }
+      ]
+    },
+    {
+      "name": "Woods/Lakes",
+      "teeSets": [
+        {
+          "name": "Blue",
+          "totalYards": 6402,
+          "par": 72,
+          "parLadies": 74,
+          "rating": 70.5,
+          "slope": 130
+        },
+        {
+          "name": "Blue/White",
+          "totalYards": 6220,
+          "par": 72,
+          "parLadies": 74,
+          "rating": 69.8,
+          "slope": 126
+        },
+        {
+          "name": "White",
+          "totalYards": 6102,
+          "par": 72,
+          "parLadies": 74,
+          "rating": 68.7,
+          "slope": 123
+        },
+        {
+          "name": "White/Gold",
+          "totalYards": 5702,
+          "par": 72,
+          "parLadies": 74,
+          "rating": 67.2,
+          "slope": 116
+        },
+        {
+          "name": "Gold",
+          "totalYards": 5418,
+          "par": 72,
+          "parLadies": 74,
+          "rating": 66.1,
+          "slope": 113
+        },
+        {
+          "name": "Red",
+          "totalYards": 5346,
+          "par": 72,
+          "parLadies": 74,
+          "rating": 70.5,
+          "slope": 121
+        }
+      ],
+      "holes": [
+        {
+          "number": 1,
+          "nine": "Woods",
+          "holeOnNine": 1,
+          "par": 5,
+          "handicap": 5,
+          "parLadies": 5,
+          "handicapLadies": 4,
+          "yards": {
+            "Blue": 487,
+            "Blue/White": 487,
+            "White": 479,
+            "White/Gold": 479,
+            "Gold": 408,
+            "Red": 404
+          }
+        },
+        {
+          "number": 2,
+          "nine": "Woods",
+          "holeOnNine": 2,
+          "par": 3,
+          "handicap": 9,
+          "parLadies": 3,
+          "handicapLadies": 9,
+          "yards": {
+            "Blue": 127,
+            "Blue/White": 111,
+            "White": 111,
+            "White/Gold": 111,
+            "Gold": 89,
+            "Red": 85
+          }
+        },
+        {
+          "number": 3,
+          "nine": "Woods",
+          "holeOnNine": 3,
+          "par": 4,
+          "handicap": 8,
+          "parLadies": 4,
+          "handicapLadies": 7,
+          "yards": {
+            "Blue": 295,
+            "Blue/White": 295,
+            "White": 276,
+            "White/Gold": 276,
+            "Gold": 265,
+            "Red": 261
+          }
+        },
+        {
+          "number": 4,
+          "nine": "Woods",
+          "holeOnNine": 4,
+          "par": 4,
+          "handicap": 1,
+          "parLadies": 5,
+          "handicapLadies": 1,
+          "yards": {
+            "Blue": 445,
+            "Blue/White": 439,
+            "White": 439,
+            "White/Gold": 416,
+            "Gold": 416,
+            "Red": 412
+          }
+        },
+        {
+          "number": 5,
+          "nine": "Woods",
+          "holeOnNine": 5,
+          "par": 3,
+          "handicap": 6,
+          "parLadies": 3,
+          "handicapLadies": 8,
+          "yards": {
+            "Blue": 186,
+            "Blue/White": 168,
+            "White": 168,
+            "White/Gold": 168,
+            "Gold": 161,
+            "Red": 157
+          }
+        },
+        {
+          "number": 6,
+          "nine": "Woods",
+          "holeOnNine": 6,
+          "par": 4,
+          "handicap": 3,
+          "parLadies": 4,
+          "handicapLadies": 3,
+          "yards": {
+            "Blue": 415,
+            "Blue/White": 389,
+            "White": 389,
+            "White/Gold": 389,
+            "Gold": 357,
+            "Red": 353
+          }
+        },
+        {
+          "number": 7,
+          "nine": "Woods",
+          "holeOnNine": 7,
+          "par": 4,
+          "handicap": 2,
+          "parLadies": 5,
+          "handicapLadies": 2,
+          "yards": {
+            "Blue": 453,
+            "Blue/White": 442,
+            "White": 442,
+            "White/Gold": 424,
+            "Gold": 424,
+            "Red": 420
+          }
+        },
+        {
+          "number": 8,
+          "nine": "Woods",
+          "holeOnNine": 8,
+          "par": 5,
+          "handicap": 4,
+          "parLadies": 5,
+          "handicapLadies": 5,
+          "yards": {
+            "Blue": 446,
+            "Blue/White": 440,
+            "White": 440,
+            "White/Gold": 414,
+            "Gold": 414,
+            "Red": 410
+          }
+        },
+        {
+          "number": 9,
+          "nine": "Woods",
+          "holeOnNine": 9,
+          "par": 4,
+          "handicap": 7,
+          "parLadies": 4,
+          "handicapLadies": 6,
+          "yards": {
+            "Blue": 306,
+            "Blue/White": 306,
+            "White": 298,
+            "White/Gold": 298,
+            "Gold": 292,
+            "Red": 288
+          }
+        },
+        {
+          "number": 10,
+          "nine": "Lakes",
+          "holeOnNine": 1,
+          "par": 5,
+          "handicap": 6,
+          "parLadies": 5,
+          "handicapLadies": 6,
+          "yards": {
+            "Blue": 458,
+            "Blue/White": 458,
+            "White": 434,
+            "White/Gold": 434,
+            "Gold": 408,
+            "Red": 404
+          }
+        },
+        {
+          "number": 11,
+          "nine": "Lakes",
+          "holeOnNine": 2,
+          "par": 3,
+          "handicap": 9,
+          "parLadies": 3,
+          "handicapLadies": 9,
+          "yards": {
+            "Blue": 141,
+            "Blue/White": 141,
+            "White": 127,
+            "White/Gold": 127,
+            "Gold": 102,
+            "Red": 98
+          }
+        },
+        {
+          "number": 12,
+          "nine": "Lakes",
+          "holeOnNine": 3,
+          "par": 4,
+          "handicap": 7,
+          "parLadies": 4,
+          "handicapLadies": 8,
+          "yards": {
+            "Blue": 367,
+            "Blue/White": 367,
+            "White": 343,
+            "White/Gold": 343,
+            "Gold": 293,
+            "Red": 289
+          }
+        },
+        {
+          "number": 13,
+          "nine": "Lakes",
+          "holeOnNine": 4,
+          "par": 4,
+          "handicap": 1,
+          "parLadies": 4,
+          "handicapLadies": 1,
+          "yards": {
+            "Blue": 361,
+            "Blue/White": 348,
+            "White": 348,
+            "White/Gold": 270,
+            "Gold": 270,
+            "Red": 266
+          }
+        },
+        {
+          "number": 14,
+          "nine": "Lakes",
+          "holeOnNine": 5,
+          "par": 3,
+          "handicap": 5,
+          "parLadies": 3,
+          "handicapLadies": 7,
+          "yards": {
+            "Blue": 217,
+            "Blue/White": 194,
+            "White": 194,
+            "White/Gold": 143,
+            "Gold": 143,
+            "Red": 139
+          }
+        },
+        {
+          "number": 15,
+          "nine": "Lakes",
+          "holeOnNine": 6,
+          "par": 4,
+          "handicap": 4,
+          "parLadies": 4,
+          "handicapLadies": 4,
+          "yards": {
+            "Blue": 394,
+            "Blue/White": 374,
+            "White": 374,
+            "White/Gold": 312,
+            "Gold": 312,
+            "Red": 308
+          }
+        },
+        {
+          "number": 16,
+          "nine": "Lakes",
+          "holeOnNine": 7,
+          "par": 4,
+          "handicap": 2,
+          "parLadies": 4,
+          "handicapLadies": 3,
+          "yards": {
+            "Blue": 418,
+            "Blue/White": 405,
+            "White": 405,
+            "White/Gold": 321,
+            "Gold": 321,
+            "Red": 317
+          }
+        },
+        {
+          "number": 17,
+          "nine": "Lakes",
+          "holeOnNine": 8,
+          "par": 5,
+          "handicap": 8,
+          "parLadies": 5,
+          "handicapLadies": 5,
+          "yards": {
+            "Blue": 440,
+            "Blue/White": 440,
+            "White": 419,
+            "White/Gold": 419,
+            "Gold": 385,
+            "Red": 381
+          }
+        },
+        {
+          "number": 18,
+          "nine": "Lakes",
+          "holeOnNine": 9,
+          "par": 4,
+          "handicap": 3,
+          "parLadies": 4,
+          "handicapLadies": 2,
+          "yards": {
+            "Blue": 446,
+            "Blue/White": 416,
+            "White": 416,
+            "White/Gold": 358,
+            "Gold": 358,
+            "Red": 354
+          }
+        }
+      ]
+    }
+  ],
+  "handicapNote": "Stroke indexes on the official card are numbered 1-9 WITHIN EACH NINE, not 1-18. The 'handicap' field on every hole is that hole's 1-9 index on its own nine. The club does not publish a 1-18 stroke index for any of the three combinations, so none is given here - do not synthesise one.",
+  "sources": [
+    "https://flamboroughhills.com/golf/ (Rules/Scorecard tab)",
+    "https://flamboroughhills.com/wp-content/uploads/2022/01/flamboroughhills_benchcraftcompany_sc1.png",
+    "https://flamboroughhills.com/wp-content/uploads/2022/01/flamboroughhills_benchcraftcompany_sc2.png",
+    "https://www.golfify.io/courses/flamborough-hills-golf-club-hills",
+    "https://www.golfify.io/courses/flamborough-hills-golf-club-woods",
+    "https://www.golfify.io/courses/flamborough-hills-golf-club-lakes",
+    "https://mscorecard.com/mscorecard/showcourse.php?cid=1475120959487605",
+    "https://www.golfpass.com/travel-advisor/courses/27308-flamborough-hills-golf-and-country-club-hills-woods"
+  ],
+  "notes": "PRIMARY SOURCE: the club's own published scorecard images (Fairway Media / Bench Craft, (c)2022), linked from the SCORECARD tab at flamboroughhills.com/golf/. Every yardage, par and stroke index below was read directly off that card and each nine's yardages re-add exactly to the card's printed OUT totals for all six tees. SIX TEE SETS: Blue, Blue/White, White, White/Gold, Gold, Red. Blue/White and White/Gold are official combination tees (they mix forward/back tee boxes hole by hole), not separate tee decks - keep them if you want to match the printed card. Red is presented in the ladies' section of the card. RATINGS: the card publishes course rating/slope only per 18-hole COMBINATION, never per nine; those are in 'combinations'. The card does not label the ratings by gender; from the yardages the Red ratings read as women's ratings and the other five as men's, but that is inference, not printed on the card - treat gender labels as unverified. LADIES PAR: identical to men's on Hills (37) and Lakes (36), but on Woods holes 4 and 7 play as par 5 for ladies (men 4), giving ladies 38 vs men 36. Stroke index also differs by gender on all three nines. CROSS-CHECK: Golfify matches the official card hole-for-hole on ALL tees for Woods and Lakes, and on Hills matches Blue, Gold (which it labels 'Yellow'), every par and both stroke-index rows. mScorecard's 'Lakes to Hills' card independently reproduces the official Blue/White, White/Gold and Gold columns exactly for both Lakes and Hills. DISAGREEMENTS (official card used, aggregator noted): (1) Hills holes 1-3 White - card 295/466/151, Golfify 300/458/145 (card OUT 3190 vs Golfify 3181); (2) Hills holes 1-3 Red - card 260/382/145, Golfify 240/415/125 (card 2723 vs 2716); (3) mScorecard's Blue, White and Red columns are legacy data that do not match the 2022 card and were not used; (4) GolfPass lists Hills/Woods as 6356 yd, 70.3/123 - stale, superseded by the card's Blue 6486 yd, 71.1/131. BlueGolf's entry for this club is a placeholder ('Temporary', 18x100 yd) and carries no real data."
+}

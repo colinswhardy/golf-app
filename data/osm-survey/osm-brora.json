@@ -1,0 +1,738 @@
+{
+  "facility": "Brora Golf Club",
+  "location": "Brora, Sutherland, Scotland (James Braid links)",
+  "auditedAt": "2026-08-06",
+  "overpassBase": "https://overpass-api.de/api/interpreter",
+  "overpassTimestampOsmBase": "2026-08-06T18:41:37Z",
+  "queriesRun": [
+    {
+      "purpose": "locate boundary",
+      "bbox": "57.98,-3.92,58.05,-3.79",
+      "ql": "[out:json][timeout:110];(way[\"leisure\"=\"golf_course\"](57.98,-3.92,58.05,-3.79);relation[\"leisure\"=\"golf_course\"](57.98,-3.92,58.05,-3.79););out tags center;",
+      "note": "mirror returned an HTML/error body on attempts 1-3; succeeded on attempt 4 after backoff"
+    },
+    {
+      "purpose": "all golf features + geometry (closedness check)",
+      "bbox": "58.000,-3.90,58.050,-3.79",
+      "ql": "[out:json][timeout:160];(nwr[\"golf\"](58.000,-3.90,58.050,-3.79);nwr[\"leisure\"=\"golf_course\"](58.000,-3.90,58.050,-3.79););out tags geom;",
+      "note": "210 elements; this is the file golf_geom.json"
+    },
+    {
+      "purpose": "water / non-golf hazards inside course",
+      "bbox": "58.008,-3.855,58.040,-3.830",
+      "ql": "[out:json][timeout:160];(nwr[\"natural\"=\"water\"](bbox);nwr[\"waterway\"](bbox);nwr[\"leisure\"=\"pitch\"](bbox);nwr[\"golf\"](bbox););out tags center;"
+    },
+    {
+      "purpose": "context around the two anomalous feature clusters",
+      "ql": "[out:json][timeout:120];(nwr(58.0180,-3.8470,58.0200,-3.8435);nwr(58.0105,-3.8480,58.0148,-3.8430););out tags center;"
+    },
+    {
+      "purpose": "live-API cross-check of way metadata / changeset comments",
+      "urls": [
+        "https://api.openstreetmap.org/api/0.6/way/<id>.json",
+        "https://api.openstreetmap.org/api/0.6/changeset/<id>.json"
+      ]
+    }
+  ],
+  "boundary": {
+    "wayId": 264432772,
+    "tags": {
+      "leisure": "golf_course",
+      "name": "Brora Golf Club",
+      "website": "https://www.broragolfclub.co.uk/"
+    },
+    "nodes": 138,
+    "closed": true,
+    "centroid": [
+      58.0233987,
+      -3.842989
+    ],
+    "bboxSWNE": [
+      58.0106893,
+      -3.8504724,
+      58.0361082,
+      -3.8355057
+    ],
+    "parserResult": "MATCHES the primary boundary selector (leisure=golf_course + name). Course name and location import correctly. No landuse=grass fallback needed."
+  },
+  "featureCounts": {
+    "golf=hole ways": 19,
+    "golf=green ways": 22,
+    "golf=tee ways": 50,
+    "golf=fairway ways": 31,
+    "golf=bunker ways": 51,
+    "golf=rough ways": 13,
+    "golf=water_hazard": 0,
+    "golf=lateral_water_hazard": 0,
+    "golf=fringe": 0,
+    "golf=pin nodes": 21,
+    "golf=cartpath ways": 1,
+    "golf=clubhouse ways": 1,
+    "leisure=golf_course ways": 1
+  },
+  "closednessCheck": {
+    "method": "first coord == last coord on `out geom;` output",
+    "unclosedAmong green/tee/fairway/bunker/rough": 0,
+    "unclosedList": [],
+    "golf=hole ways that are OPEN LineStrings": 19,
+    "golf=hole ways that are CLOSED (would export as Polygon and be dropped)": 0,
+    "note": "golf=cartpath way 823314771 is an open highway line, as expected; not a polygon feature."
+  },
+  "duplicateRefAnalysis": {
+    "duplicateRefs": false,
+    "refsFound": "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 - each exactly once",
+    "missingRefs": "none",
+    "multiCourse": false,
+    "conclusion": "Single 18-hole course. There is exactly ONE leisure=golf_course polygon and exactly ONE set of refs 1-18, so the parser's ref-keyed Map suffers no overwrites. No nine-vs-nine disambiguation is required.",
+    "unrefdHoleWay": {
+      "wayId": 1380091929,
+      "tags": {
+        "golf": "hole"
+      },
+      "vertices": 2,
+      "lengthYards": 50,
+      "start": [
+        58.0142531,
+        -3.846062
+      ],
+      "end": [
+        58.0139636,
+        -3.8455132
+      ],
+      "createdBy": "tagishsimon",
+      "changeset": 165303131,
+      "changesetComment": "driveways, mod houses",
+      "timestamp": "2025-04-22T20:24:00Z",
+      "interpretation": "A ~50-yard practice/chipping hole beside the clubhouse. Its tee (way 1380091928, 3 m2) and green (way 1380090610, 123 m2) were added in the adjacent changeset 165302899 'clubhouse, greens'. Because it carries no ref, the parser skips the centerline entirely (Number.isFinite(ref) guard) - harmless in itself, but its tee and green then get mis-attached to holes 18 and 17."
+    }
+  },
+  "perHole": [
+    {
+      "ref": 1,
+      "wayId": 889233374,
+      "par": "4",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 297,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.011914,
+        -3.845061
+      ],
+      "end": [
+        58.013695,
+        -3.842325
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 2,
+      "wayId": 889233373,
+      "par": null,
+      "parTagged": false,
+      "handicap": null,
+      "lengthYards": 351,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.013933,
+        -3.841912
+      ],
+      "end": [
+        58.016626,
+        -3.843059
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 3,
+      "wayId": 921652610,
+      "par": "4",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 441,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.01641,
+        -3.843738
+      ],
+      "end": [
+        58.020011,
+        -3.843078
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 4,
+      "wayId": 921652616,
+      "par": "4",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 326,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.020728,
+        -3.843777
+      ],
+      "end": [
+        58.023312,
+        -3.842446
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 5,
+      "wayId": 921665755,
+      "par": "4",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 428,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.022632,
+        -3.841953
+      ],
+      "end": [
+        58.02608,
+        -3.840934
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 6,
+      "wayId": 921692374,
+      "par": "3",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 189,
+      "vertices": 2,
+      "open": true,
+      "start": [
+        58.026329,
+        -3.839975
+      ],
+      "end": [
+        58.02675,
+        -3.842797
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 7,
+      "wayId": 921665786,
+      "par": "4",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 347,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.027234,
+        -3.842557
+      ],
+      "end": [
+        58.029722,
+        -3.839949
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 8,
+      "wayId": 921665795,
+      "par": "5",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 497,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.030044,
+        -3.83965
+      ],
+      "end": [
+        58.033877,
+        -3.837469
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 9,
+      "wayId": 921679085,
+      "par": "3",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 155,
+      "vertices": 2,
+      "open": true,
+      "start": [
+        58.03443,
+        -3.837829
+      ],
+      "end": [
+        58.035378,
+        -3.836227
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 10,
+      "wayId": 921679096,
+      "par": "4",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 430,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.035387,
+        -3.837689
+      ],
+      "end": [
+        58.03216,
+        -3.84041
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 11,
+      "wayId": 921679107,
+      "par": "5",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 483,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.032554,
+        -3.84106
+      ],
+      "end": [
+        58.028624,
+        -3.842096
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 12,
+      "wayId": 921692375,
+      "par": "4",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 361,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.028957,
+        -3.843454
+      ],
+      "end": [
+        58.026009,
+        -3.843437
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 13,
+      "wayId": 921692387,
+      "par": "3",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 123,
+      "vertices": 2,
+      "open": true,
+      "start": [
+        58.025545,
+        -3.843771
+      ],
+      "end": [
+        58.025918,
+        -3.842
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 14,
+      "wayId": 921692400,
+      "par": "4",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 357,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.026235,
+        -3.842275
+      ],
+      "end": [
+        58.023413,
+        -3.843802
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 15,
+      "wayId": 921692413,
+      "par": "4",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 429,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.023473,
+        -3.844253
+      ],
+      "end": [
+        58.020355,
+        -3.847375
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 16,
+      "wayId": 921711599,
+      "par": "4",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 340,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.020211,
+        -3.847914
+      ],
+      "end": [
+        58.017671,
+        -3.846004
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 17,
+      "wayId": 921704305,
+      "par": "4",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 429,
+      "vertices": 3,
+      "open": true,
+      "start": [
+        58.017194,
+        -3.845965
+      ],
+      "end": [
+        58.013966,
+        -3.8433
+      ],
+      "otherTags": {}
+    },
+    {
+      "ref": 18,
+      "wayId": 921704310,
+      "par": "3",
+      "parTagged": true,
+      "handicap": null,
+      "lengthYards": 196,
+      "vertices": 2,
+      "open": true,
+      "start": [
+        58.013628,
+        -3.844083
+      ],
+      "end": [
+        58.012203,
+        -3.845521
+      ],
+      "otherTags": {}
+    }
+  ],
+  "perHoleTotals": {
+    "holesWithCenterline": 18,
+    "totalMappedYards": 6179,
+    "parTagged": 17,
+    "parMissing": [
+      2
+    ],
+    "parSumOfTagged": 66,
+    "parSumIfHole2DefaultsTo4": 70,
+    "handicapTagged": 0,
+    "handicapMissing": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ],
+    "allDrawnTeeToGreen": true,
+    "directionEvidence": "Each hole's own green polygon snaps to its centerline at fraction 0.98-1.00 (i.e. at the END of the line), so every way is digitized tee->green. The parser's 2b reversal pass will not need to flip any of them."
+  },
+  "teeAnalysis": {
+    "golf=tee ways": 50,
+    "withTeeboxTag": 0,
+    "teeboxValues": {},
+    "withRefTag": 0,
+    "teesPerHoleAfterGeometricAssignment": {
+      "1": 2,
+      "2": 3,
+      "3": 3,
+      "4": 3,
+      "5": 2,
+      "6": 3,
+      "7": 4,
+      "8": 2,
+      "9": 4,
+      "10": 2,
+      "11": 2,
+      "12": 2,
+      "13": 2,
+      "14": 3,
+      "15": 4,
+      "16": 2,
+      "17": 4,
+      "18": 3
+    },
+    "holesNeedingSyntheticFallbackTee": [],
+    "impact": "Every one of the 50 tee boxes imports with the literal name 'Tee'. Users cannot pick white/yellow/blue/red; multiple identically-named tees per hole are indistinguishable in the UI."
+  },
+  "strayFeatures": {
+    "note": "These carry golf=* tags but are not part of the 18 mapped holes. They have NO tag that distinguishes them (only golf=<value> + surface=*), so the parser geometrically attaches each to a real hole. Distances/fractions below are from a faithful re-implementation of nearestHoleByCenterlineHalf / nearestHoleNumber.",
+    "items": [
+      {
+        "wayId": 921692421,
+        "golf": "green",
+        "areaM2": 215,
+        "center": [
+          58.018973,
+          -3.845036
+        ],
+        "assignedTo": 16,
+        "distM": 84,
+        "fraction": 0.65,
+        "hasPin": false,
+        "comment": "Only green on the whole site with no golf=pin node. Sits with a concentric 602 m2 golf=fairway (921692423) and a 16 m2 golf=bunker (921692422) ~130 m east of the 16th centerline. Created by AvidFan cs 101645811 (2021-03-24)."
+      },
+      {
+        "wayId": 921692423,
+        "golf": "fairway",
+        "areaM2": 602,
+        "center": [
+          58.018977,
+          -3.845073
+        ],
+        "assignedTo": 16,
+        "distM": 82,
+        "fraction": 0.64
+      },
+      {
+        "wayId": 921692422,
+        "golf": "bunker",
+        "areaM2": 16,
+        "center": [
+          58.01896,
+          -3.845229
+        ],
+        "assignedTo": 16,
+        "distM": 73,
+        "fraction": 0.64
+      },
+      {
+        "wayId": 1380090610,
+        "golf": "green",
+        "areaM2": 123,
+        "center": [
+          58.013959,
+          -3.845537
+        ],
+        "assignedTo": 17,
+        "distM": 125,
+        "fraction": 0.89,
+        "comment": "Green of the unref'd 50-yard practice hole 1380091929. Triggers the parser's >100 m low-confidence warning."
+      },
+      {
+        "wayId": 1380091928,
+        "golf": "tee",
+        "areaM2": 3,
+        "center": [
+          58.014254,
+          -3.846062
+        ],
+        "assignedTo": 18,
+        "distM": 136,
+        "fraction": 0.0,
+        "comment": "Tee of the same practice hole. Also >100 m -> low-confidence."
+      },
+      {
+        "wayId": 889233379,
+        "golf": "green",
+        "areaM2": 223,
+        "center": [
+          58.011674,
+          -3.845569
+        ],
+        "assignedTo": 18,
+        "distM": 59,
+        "fraction": 1.0,
+        "comment": "Practice putting green by the clubhouse / beach car park. Has pin node 12777060821."
+      },
+      {
+        "wayId": 921704311,
+        "golf": "green",
+        "areaM2": 145,
+        "center": [
+          58.01193,
+          -3.845914
+        ],
+        "assignedTo": 18,
+        "distM": 38,
+        "fraction": 1.0,
+        "comment": "Second practice putting green by the clubhouse. Has pin node 12777060820."
+      },
+      {
+        "wayId": 1380090609,
+        "golf": "bunker",
+        "areaM2": 21,
+        "center": [
+          58.011167,
+          -3.845495
+        ],
+        "assignedTo": 1,
+        "distM": 87,
+        "fraction": 0.0,
+        "comment": "Practice bunker south of the clubhouse; lands on hole 1 at 87 m."
+      }
+    ],
+    "greensPerHoleAfterAssignment": {
+      "1-15": 1,
+      "16": 2,
+      "17": 2,
+      "18": 3
+    },
+    "downstreamImpact": "Hole 18 receives 3 green polygons and hole 16/17 receive 2 each. classifyBunker (GREENSIDE_BUNKER_THRESHOLD_YARDS = 30) measures each bunker to the NEAREST green on the same hole, so hole 18's three bunkers (889233375/76/77) and hole 16's bunkers can be mis-labelled greenside vs fairway. The extra green polygons also render as phantom greens on those holes."
+  },
+  "roughCoverage": {
+    "golf=rough ways": 13,
+    "holesWithRough": [
+      1,
+      2,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "holesWithNoRough": [
+      3,
+      4,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ]
+  },
+  "fairwayCoverage": {
+    "holesWithAtLeastOneFairway": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ],
+    "holesWithNone": []
+  },
+  "waterHazards": {
+    "golf=water_hazard": 0,
+    "golf=lateral_water_hazard": 0,
+    "waterwaysCrossingTheCourseBoundary": [
+      {
+        "wayId": 953086698,
+        "waterway": "stream",
+        "name": "Clyne Burn",
+        "center": [
+          58.02507,
+          -3.84224
+        ],
+        "insideBoundary": true
+      },
+      {
+        "wayId": 771157586,
+        "waterway": "stream",
+        "name": null,
+        "center": [
+          58.02943,
+          -3.8409
+        ],
+        "insideBoundary": true
+      }
+    ],
+    "note": "No golf=water_hazard tag exists anywhere on this course. The parser's isExpandedWaterFeature fallback WILL pick these two burns up as buffered 3-yard hazard corridors, but only if the Overpass Turbo export query includes waterway=*; a golf=*-only export will contain no hazards at all."
+  },
+  "ignoredByParser": {
+    "golf=clubhouse way 889233378": "closed polygon, golf tag not in DIRECT_TAG_MAP -> counted in ignoredCount",
+    "golf=cartpath way 823314771": "LineString, skipped",
+    "golf=pin nodes (21)": "Point geometry, skipped silently - pin positions are NOT imported"
+  },
+  "editorHistory": {
+    "101649809": {
+      "user": "AvidFan",
+      "date": "2021-03-24",
+      "comment": "Golf features"
+    },
+    "101645811": {
+      "user": "AvidFan",
+      "date": "2021-03-24",
+      "comment": "(green 921692421 v1)"
+    },
+    "113133874": {
+      "user": "Westpfeil",
+      "date": "2021-10-29",
+      "comment": "Landuse=gras and landuse=sand in golf courses removed (mass retag)"
+    },
+    "165302899": {
+      "user": "tagishsimon",
+      "date": "2025-04-22",
+      "comment": "clubhouse, greens"
+    },
+    "165303131": {
+      "user": "tagishsimon",
+      "date": "2025-04-22",
+      "comment": "driveways, mod houses"
+    }
+  },
+  "holeWayIdsForExport": "889233374,889233373,921652610,921652616,921665755,921692374,921665786,921665795,921679085,921679096,921679107,921692375,921692387,921692400,921692413,921711599,921704305,921704310",
+  "suggestedExportQuery": "[out:json][timeout:180];way(264432772);(._;>;);out geom;(nwr[\"golf\"](58.0100,-3.8520,58.0370,-3.8340);nwr[\"waterway\"](58.0100,-3.8520,58.0370,-3.8340););out geom;"
+}

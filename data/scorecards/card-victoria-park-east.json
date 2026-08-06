@@ -1,0 +1,318 @@
+{
+  "course": "Victoria Park East Golf Club",
+  "location": "1096 Victoria Road South, Guelph, Ontario, Canada",
+  "holeCount": 18,
+  "par": 71,
+  "architect": "Rene Muylaert (1974); renovations by Ian Andrew",
+  "teeSets": [
+    {
+      "name": "Championship",
+      "cardShading": "blue",
+      "totalYards": 6452,
+      "outYards": 3390,
+      "inYards": 3062,
+      "par": 71,
+      "rating": 69.8,
+      "slope": 122,
+      "ratingGender": "men",
+      "altRatingsGolfPass": {
+        "men": {
+          "rating": 70.0,
+          "slope": 120
+        },
+        "women": {
+          "rating": 76.2,
+          "slope": 132
+        }
+      }
+    },
+    {
+      "name": "Tournament",
+      "cardShading": "white",
+      "totalYards": 6079,
+      "outYards": 3184,
+      "inYards": 2895,
+      "par": 71,
+      "rating": 68.2,
+      "slope": 117,
+      "ratingGender": "men",
+      "altRatingsGolfPass": {
+        "men": {
+          "rating": 68.4,
+          "slope": 116
+        },
+        "women": {
+          "rating": 74.3,
+          "slope": 128
+        }
+      }
+    },
+    {
+      "name": "Intermediate",
+      "cardShading": "silver/grey",
+      "totalYards": 5606,
+      "outYards": 2954,
+      "inYards": 2652,
+      "par": 71,
+      "rating": 72.0,
+      "slope": 124,
+      "ratingGender": "women",
+      "altRatingsGolfPass": {
+        "men": {
+          "rating": 66.4,
+          "slope": 108
+        },
+        "women": {
+          "rating": 71.6,
+          "slope": 120
+        }
+      }
+    },
+    {
+      "name": "Forward",
+      "cardShading": "gold/yellow",
+      "totalYards": 5208,
+      "outYards": 2714,
+      "inYards": 2494,
+      "par": 71,
+      "rating": 68.9,
+      "slope": 116,
+      "ratingGender": "women",
+      "altRatingsGolfPass": {
+        "men": {
+          "rating": 64.6,
+          "slope": 103
+        },
+        "women": {
+          "rating": 69.0,
+          "slope": 114
+        }
+      }
+    }
+  ],
+  "holes": [
+    {
+      "number": 1,
+      "par": 5,
+      "handicap": 17,
+      "handicapWomen": 17,
+      "yards": {
+        "Championship": 484,
+        "Tournament": 457,
+        "Intermediate": 449,
+        "Forward": 449
+      }
+    },
+    {
+      "number": 2,
+      "par": 4,
+      "handicap": 5,
+      "handicapWomen": 9,
+      "yards": {
+        "Championship": 396,
+        "Tournament": 382,
+        "Intermediate": 341,
+        "Forward": 341
+      }
+    },
+    {
+      "number": 3,
+      "par": 4,
+      "handicap": 1,
+      "handicapWomen": 1,
+      "yards": {
+        "Championship": 424,
+        "Tournament": 400,
+        "Intermediate": 365,
+        "Forward": 325
+      }
+    },
+    {
+      "number": 4,
+      "par": 3,
+      "handicap": 13,
+      "handicapWomen": 13,
+      "yards": {
+        "Championship": 176,
+        "Tournament": 158,
+        "Intermediate": 139,
+        "Forward": 126
+      }
+    },
+    {
+      "number": 5,
+      "par": 4,
+      "handicap": 9,
+      "handicapWomen": 5,
+      "yards": {
+        "Championship": 392,
+        "Tournament": 358,
+        "Intermediate": 331,
+        "Forward": 301
+      }
+    },
+    {
+      "number": 6,
+      "par": 3,
+      "handicap": 15,
+      "handicapWomen": 15,
+      "yards": {
+        "Championship": 153,
+        "Tournament": 136,
+        "Intermediate": 124,
+        "Forward": 112
+      }
+    },
+    {
+      "number": 7,
+      "par": 4,
+      "handicap": 11,
+      "handicapWomen": 11,
+      "yards": {
+        "Championship": 402,
+        "Tournament": 384,
+        "Intermediate": 349,
+        "Forward": 275
+      }
+    },
+    {
+      "number": 8,
+      "par": 5,
+      "handicap": 3,
+      "handicapWomen": 3,
+      "yards": {
+        "Championship": 545,
+        "Tournament": 520,
+        "Intermediate": 491,
+        "Forward": 460
+      }
+    },
+    {
+      "number": 9,
+      "par": 4,
+      "handicap": 7,
+      "handicapWomen": 7,
+      "yards": {
+        "Championship": 418,
+        "Tournament": 389,
+        "Intermediate": 365,
+        "Forward": 325
+      }
+    },
+    {
+      "number": 10,
+      "par": 5,
+      "handicap": 8,
+      "handicapWomen": 2,
+      "yards": {
+        "Championship": 523,
+        "Tournament": 504,
+        "Intermediate": 482,
+        "Forward": 442
+      }
+    },
+    {
+      "number": 11,
+      "par": 3,
+      "handicap": 10,
+      "handicapWomen": 10,
+      "yards": {
+        "Championship": 190,
+        "Tournament": 177,
+        "Intermediate": 171,
+        "Forward": 142
+      }
+    },
+    {
+      "number": 12,
+      "par": 4,
+      "handicap": 2,
+      "handicapWomen": 8,
+      "yards": {
+        "Championship": 387,
+        "Tournament": 361,
+        "Intermediate": 329,
+        "Forward": 329
+      }
+    },
+    {
+      "number": 13,
+      "par": 3,
+      "handicap": 12,
+      "handicapWomen": 12,
+      "yards": {
+        "Championship": 161,
+        "Tournament": 146,
+        "Intermediate": 138,
+        "Forward": 112
+      }
+    },
+    {
+      "number": 14,
+      "par": 4,
+      "handicap": 18,
+      "handicapWomen": 18,
+      "yards": {
+        "Championship": 340,
+        "Tournament": 326,
+        "Intermediate": 307,
+        "Forward": 307
+      }
+    },
+    {
+      "number": 15,
+      "par": 3,
+      "handicap": 16,
+      "handicapWomen": 16,
+      "yards": {
+        "Championship": 177,
+        "Tournament": 161,
+        "Intermediate": 155,
+        "Forward": 126
+      }
+    },
+    {
+      "number": 16,
+      "par": 5,
+      "handicap": 4,
+      "handicapWomen": 4,
+      "yards": {
+        "Championship": 528,
+        "Tournament": 506,
+        "Intermediate": 433,
+        "Forward": 433
+      }
+    },
+    {
+      "number": 17,
+      "par": 4,
+      "handicap": 14,
+      "handicapWomen": 14,
+      "yards": {
+        "Championship": 356,
+        "Tournament": 333,
+        "Intermediate": 291,
+        "Forward": 277
+      }
+    },
+    {
+      "number": 18,
+      "par": 4,
+      "handicap": 6,
+      "handicapWomen": 6,
+      "yards": {
+        "Championship": 400,
+        "Tournament": 381,
+        "Intermediate": 346,
+        "Forward": 326
+      }
+    }
+  ],
+  "sources": [
+    "https://victoriaparkgolf.com/about-guelph-golf-course/victoria-park-east-guelph/victoria-park-east-scorecard/",
+    "https://victoriaparkgolf.com/wp-content/uploads/2018/02/Victoria-Park-East-Scorecard.jpg",
+    "https://www.golfpass.com/travel-advisor/courses/27425-victoria-park-east-golf-club",
+    "https://www.golfify.io/courses/victoria-park-east-golf-club"
+  ],
+  "notes": "PRIMARY SOURCE: the operator's own printed scorecard, published as a scan on victoriaparkgolf.com. All four tee rows and both handicap rows were read off that image; every nine-hole and 18-hole yardage subtotal reproduces the printed OUT/IN/TOT figures exactly, and both stroke-index rows are complete 1-18 permutations. GolfPass independently reproduces the identical card - all 72 hole yardages, all 18 pars and both handicap rows match with zero differences. COURSE IDENTITY: this is the EAST course at 1096 Victoria Rd South, Guelph - NOT the sister course Victoria Park Valley ('The Valley') at 7660 Maltby Road East, Puslinch, which the same card cross-promotes as a separate club. No conflation risk. TEE NAMES: the operator prints names, not colours - Championship / Tournament / Intermediate / Forward. The 'cardShading' field records each row's background colour on the printed card and is inferred from the scan, not a published tee colour; Golfify labels the same four tees Blue / White / Red / Yellow. STROKE INDEX: the card prints one 'H.C. STRKS M/L' row shared by all tees. Where a single number is printed men and women share it; four holes print a split - 2 (M5/L9), 5 (M9/L5), 10 (M8/L2), 12 (M2/L8). 'handicap' is the men's index, 'handicapWomen' the women's. RATINGS - READ THIS: the printed RTG/SLP columns mix genders, which is normal on Canadian cards. Championship 69.8/122 and Tournament 68.2/117 are MEN'S ratings; Intermediate 72.0/124 and Forward 68.9/116 are WOMEN'S ratings (a 5,606-yard course rated 72.0 can only be a women's rating). 'ratingGender' flags which is which. GolfPass lists both genders for every tee and its numbers differ slightly from the printed card (e.g. Championship men 70.0/120 vs 69.8/122 printed), likely a different rating vintage - carried in 'altRatingsGolfPass'. Do not mix the two sets. DISAGREEMENT: Golfify's Blue and White columns match the official card exactly, but its Red and Yellow columns differ on six holes - Red h7 304 (card 349), h9 360 (card 365), h13 112 (card 138), h18 337 (card 346); Yellow h7 304 (card 275), h18 337 (card 326). Golfify totals its Red at 5521 and Yellow at 5248 against the card's 5606 and 5208. Golfify is internally consistent but is the lone outlier - the operator's card and GolfPass agree with each other, so the values stored here are the card's. GolfPass titles its table 'Scorecard for East Old', so all three sources may reflect one shared vintage; if the club has since moved forward tees, the Intermediate/Forward rows are the ones most likely to have drifted."
+}

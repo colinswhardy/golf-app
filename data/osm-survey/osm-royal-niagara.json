@@ -1,0 +1,765 @@
+{
+  "facility": "Royal Niagara Golf Club",
+  "location": "1 Niagara-on-the-Green Blvd, Niagara-on-the-Lake, ON (immediately south of Outlet Collection at Niagara / Glendale Ave, between the Welland Canal and the Niagara Escarpment)",
+  "auditDate": "2026-08-06",
+  "overpassMirror": "https://overpass-api.de/api/interpreter",
+  "overpassTimestamp": "2026-08-06T18:57:05Z",
+  "crossCheckedAgainstLiveApi": true,
+  "liveApiCall": "https://api.openstreetmap.org/api/0.6/map.json?bbox=-79.1840,43.1370,-79.1660,43.1510  (8672 elements; golf tag counts identical to Overpass -> mirror is NOT stale)",
+  "queriesRun": [
+    "[out:json][timeout:110];(way[\"leisure\"=\"golf_course\"](43.05,-79.45,43.30,-78.95);relation[\"leisure\"=\"golf_course\"](43.05,-79.45,43.30,-78.95);way[\"golf\"=\"course\"](43.05,-79.45,43.30,-78.95););out tags center;",
+    "[out:json][timeout:110];(nwr[\"name\"~\"Royal Niagara\",i](42.7,-80.0,43.6,-78.5););out tags center;   -> 0 ELEMENTS",
+    "[out:json][timeout:170];(way[\"golf\"=\"hole\"](43.05,-79.45,43.30,-78.95););out tags center;   -> 217 hole ways region-wide, NONE at Royal Niagara",
+    "[out:json][timeout:170];(nwr[\"golf\"](43.128,-79.200,43.162,-79.150);nwr[\"leisure\"=\"golf_course\"](43.128,-79.200,43.162,-79.150);nwr[\"landuse\"=\"grass\"](43.128,-79.200,43.162,-79.150););out tags center;   -> 99 elements",
+    "[out:json][timeout:170];(same bbox);out geom;   -> geometry/closure pass",
+    "[out:json][timeout:170];(nwr[\"golf\"=\"hole\"](43.120,-79.210,43.170,-79.145);nwr[\"ref\"][\"golf\"](...);nwr[\"par\"](...);nwr[\"golf\"=\"pin\"](...);nwr[\"golf\"=\"driving_range\"](...);nwr[\"golf\"=\"clubhouse\"](...););out tags center;   -> 0 ELEMENTS",
+    "[out:json][timeout:170];(nwr[\"teebox\"](43.128,-79.200,43.162,-79.150);nwr[\"golf\"=\"hole\"](...);nwr[\"handicap\"](...);nwr[\"golf\"=\"water_hazard\"](...);nwr[\"golf\"=\"lateral_water_hazard\"](...);nwr[\"golf\"=\"fringe\"](...);nwr[\"golf\"=\"driving_range\"](...);nwr[\"golf\"=\"clubhouse\"](...);nwr[\"golf\"=\"practice\"](...);relation[\"leisure\"=\"golf_course\"](...););out tags center;   -> 0 ELEMENTS",
+    "[out:json][timeout:170];(way[\"natural\"=\"water\"](43.135,-79.190,43.152,-79.163);way[\"water\"](...););out tags geom;   -> 30 ponds, used to validate the georeference"
+  ],
+  "identification": {
+    "howFound": "No OSM object anywhere in the Niagara region is named 'Royal Niagara' (name regex query returned 0; Nominatim returns 0). Located by geography (1 Niagara-on-the-Green Blvd) then CONFIRMED by changeset 167798600 (schuhk, 2025-06-18, 2365 changes), comment 'Adding new course (Royal Niagara)'. Every 1396403xxx way below comes from that changeset.",
+    "changesets": {
+      "167798600": {
+        "user": "schuhk",
+        "date": "2025-06-18T20:12:04Z",
+        "changes": 2365,
+        "comment": "Adding new course (Royal Niagara)",
+        "editor": "iD 2.34.1"
+      },
+      "168227478": {
+        "user": "gtalbot",
+        "date": "2025-06-28T13:31:30Z",
+        "changes": 3,
+        "comment": "Self intersecting way",
+        "editor": "JOSM/1.5 OSM Inspector",
+        "note": "touched boundary way 178899710 -> v5"
+      },
+      "106390767": {
+        "user": "TheAhmed",
+        "date": "2021-06-15",
+        "comment": "#maproulette",
+        "note": "cartpaths"
+      },
+      "107314730": {
+        "user": "nitram1234",
+        "date": "2021-07-02",
+        "comment": "add golf cart paths"
+      }
+    },
+    "clubhouse": "buildings w180905500 (43.14877,-79.17002) + w180905501 (43.14896,-79.17074) with private parking w490351711/w490351712 - NOT tagged golf=clubhouse or amenity=clubhouse"
+  },
+  "boundary": {
+    "wayId": 178899710,
+    "tags": {
+      "leisure": "golf_course",
+      "source": "Bing"
+    },
+    "hasName": false,
+    "closed": true,
+    "nodes": 252,
+    "version": 5,
+    "bbox": [
+      43.13785,
+      -79.183,
+      43.15018,
+      -79.16768
+    ],
+    "centroid": [
+      43.14141,
+      -79.17506
+    ],
+    "parserImpact": "leisure=golf_course present but NO name tag, so parseOverpassGeoJson's first find() fails. The landuse=grass fallback also fails (w693655324, w693655331, w693655339, w1243594383, w1243594385 are all unnamed). Result: name='Imported Course', location=null, warning 'Couldn't find a course boundary feature'.",
+    "otherGolfCoursePolygonsChecked": "w183938182 and w1292306411 (43.177-43.181,-79.168/-79.183) are a SEPARATE small unnamed facility ~4 km north with 3 greens; not Royal Niagara. Also checked w178589426, w178590146 - unrelated."
+  },
+  "counts": {
+    "golf_hole_ways": 0,
+    "golf_hole_ways_with_ref": 0,
+    "golf_hole_ways_with_par": 0,
+    "golf_hole_ways_with_handicap": 0,
+    "greens": 11,
+    "tees": 50,
+    "tees_with_teebox_tag": 0,
+    "tees_with_tee_colour_tag": 9,
+    "bunkers": 16,
+    "fairways": 1,
+    "rough": 2,
+    "water_hazard": 0,
+    "lateral_water_hazard": 0,
+    "fringe": 0,
+    "cartpaths": 13,
+    "golf_pin_nodes": 0,
+    "clubhouse_tagged": 0,
+    "driving_range": 0,
+    "unclosedPolygons": 0,
+    "note": "all 80 golf=green/tee/fairway/bunker/rough ways are CLOSED (first coord == last coord); nothing would be silently dropped by the parser"
+  },
+  "refs": {
+    "refsPresent": "none - zero golf=hole ways exist, so zero refs",
+    "duplicateRefs": false,
+    "duplicateRefRisk": "NOT triggered today because nothing is numbered. It WILL be triggered the moment anyone draws centerlines: 27-hole facility, each nine numbered 1-9 independently (Old Canal 1-9, Escarpment 1-9, Iron Bridge 1-9). Three ways with ref=1 in one export collapse to one hole in the parser's Map."
+  },
+  "teeTagging": {
+    "problem": "The 9 colour-tagged tees use key 'tee' (tee=black/blue/white/red/green), NOT 'teebox'. importOverpass reads ONLY teebox=<colour>. So 0/50 tees get a name; all 50 import as 'Tee'.",
+    "colourTaggedWays": {
+      "1396403391": "black",
+      "1396403392": "blue",
+      "1396403393": "white",
+      "1396403394": "red",
+      "1396403395": "green",
+      "1396403397": "black",
+      "1396403398": "blue",
+      "1396403399": "white",
+      "1396403400": "red"
+    },
+    "uncolouredTeeWays": 41
+  },
+  "nineIdentification": {
+    "method": "The club's own colour-coded routing map (Old Canal=blue, Iron Bridge=gold, Escarpment=red) recovered from the Internet Archive: https://web.archive.org/web/20070925131605im_/http://www.royalniagara.com/images/coursemap-sm.gif . The 27 legend-coloured markers detected by exact RGB match (Old Canal 25,107,237 / Iron Bridge 204,153,51 / Escarpment 204,51,0), 9 each. Georeferenced onto OSM by fitting an affine transform (scale 0.1795 px/m, rotation ~0 deg, IoU 0.843) between the painted land mass and boundary way 178899710.",
+    "georeferenceValidation": "INDEPENDENTLY validated on ponds not used in the fit: all 8 painted water bodies land within 2-53 m of the matching OSM natural=water polygon (w491900971 2m, w490351227 15m, w491901492 19m, w490351225 27m, w1396403427 37m, w1102973944 46m, w1102973941 53m, w1009390017 52m). Marker positions good to roughly +/-50 m.",
+    "result": {
+      "Old Canal": {
+        "corridor": "NORTH-WEST block, approx 43.1437-43.1483 N, -79.1745 to -79.1810 W - between the clubhouse and the old Welland Canal pond chain (w1102973940-49 / w1009390018-22). Named for the 19th-century canal bordering it.",
+        "markerLatLons": [
+          [
+            43.14832,
+            -79.17284
+          ],
+          [
+            43.14733,
+            -79.17559
+          ],
+          [
+            43.1466,
+            -79.17692
+          ],
+          [
+            43.14655,
+            -79.17462
+          ],
+          [
+            43.14558,
+            -79.17661
+          ],
+          [
+            43.14558,
+            -79.18001
+          ],
+          [
+            43.14469,
+            -79.17864
+          ],
+          [
+            43.14466,
+            -79.18063
+          ],
+          [
+            43.14373,
+            -79.17744
+          ]
+        ],
+        "osmFeatures": "NONE. Zero greens, tees, bunkers. Nearest mapped green to any Old Canal marker is 132 m (and that green, w1396403382, is 96 m from an Escarpment marker). All 9 holes absent from OSM.",
+        "greenWayIds": [],
+        "teeWayIds": [],
+        "bunkerWayIds": []
+      },
+      "Escarpment": {
+        "corridor": "EAST corridor, approx 43.1403-43.1478 N, -79.1687 to -79.1730 W - the Taylor Road side running down to the CN Grimsby Subdivision, along the escarpment brow the Bruce Trail (w823863514) follows.",
+        "markerLatLons": [
+          [
+            43.14775,
+            -79.16868
+          ],
+          [
+            43.14716,
+            -79.1715
+          ],
+          [
+            43.14459,
+            -79.16958
+          ],
+          [
+            43.14418,
+            -79.17082
+          ],
+          [
+            43.14415,
+            -79.17283
+          ],
+          [
+            43.14378,
+            -79.17202
+          ],
+          [
+            43.14169,
+            -79.16967
+          ],
+          [
+            43.14103,
+            -79.17274
+          ],
+          [
+            43.14035,
+            -79.17102
+          ]
+        ],
+        "greenWayIds": [
+          1396403382,
+          1396403396,
+          1396403405,
+          1396403411,
+          1396403422,
+          1396403423,
+          1396403437
+        ],
+        "teeWayIds": [
+          1396403391,
+          1396403392,
+          1396403393,
+          1396403394,
+          1396403395,
+          1396403397,
+          1396403398,
+          1396403399,
+          1396403400,
+          1396403406,
+          1396403407,
+          1396403408,
+          1396403409,
+          1396403410,
+          1396403412,
+          1396403413,
+          1396403414,
+          1396403415,
+          1396403416,
+          1396403419,
+          1396403428,
+          1396403429,
+          1396403430,
+          1396403431,
+          1396403432,
+          1396403433,
+          1396403434,
+          1396403435,
+          1396403438,
+          1396403439,
+          1396403440,
+          1396403441,
+          1396403444,
+          1396403445
+        ],
+        "bunkerWayIds": [
+          1396403378,
+          1396403379,
+          1396403380,
+          1396403381,
+          1396403402,
+          1396403403,
+          1396403404,
+          1396403420,
+          1396403421,
+          1396403424,
+          1396403425,
+          1396403426,
+          1396403436
+        ],
+        "fairwayWayIds": [
+          1396403383
+        ],
+        "roughWayIds": [
+          1396403401
+        ],
+        "coverage": "7 of 9 holes have a green polygon; 8 tee complexes present. 2 Escarpment holes have no green."
+      },
+      "Iron Bridge": {
+        "corridor": "CENTRE / SOUTH-WEST corridor, approx 43.1392-43.1467 N, -79.1740 to -79.1773 W, running down to the CN railway iron bridges over the old canal (w141912730 at 43.1377,-79.1772; w143561273/w145442373 at 43.1371,-79.1799) that name the nine.",
+        "markerLatLons": [
+          [
+            43.14662,
+            -79.17339
+          ],
+          [
+            43.14578,
+            -79.17315
+          ],
+          [
+            43.14441,
+            -79.17531
+          ],
+          [
+            43.14324,
+            -79.17496
+          ],
+          [
+            43.14314,
+            -79.1773
+          ],
+          [
+            43.14268,
+            -79.17666
+          ],
+          [
+            43.14192,
+            -79.17504
+          ],
+          [
+            43.14129,
+            -79.17613
+          ],
+          [
+            43.13921,
+            -79.17513
+          ]
+        ],
+        "greenWayIds": [
+          1396403443,
+          1396403448,
+          1396403456,
+          1396403468
+        ],
+        "teeWayIds": [
+          1396403417,
+          1396403418,
+          1396403446,
+          1396403447,
+          1396403449,
+          1396403450,
+          1396403451,
+          1396403452,
+          1396403457,
+          1396403458,
+          1396403459,
+          1396403460,
+          1396403463,
+          1396403464,
+          1396403465,
+          1396403466
+        ],
+        "bunkerWayIds": [
+          1396403454,
+          1396403455,
+          1396403467
+        ],
+        "roughWayIds": [
+          1396403453
+        ],
+        "coverage": "4 of 9 holes have a green polygon (w1396403443, 448, 456, 468) and 4 tee complexes. The 2 northern Iron Bridge holes (markers 43.14662,-79.17339 and 43.14578,-79.17315) plus 3 others have no geometry at all."
+      }
+    },
+    "ambiguousFeatures": [
+      "w1396403412-1396403419 (8-deck tee block at 43.1450-43.1459,-79.1709/-79.1716) sits on the Escarpment/Iron Bridge boundary; nearest-marker distances for 416-419 differ by <30 m. Assigned Escarpment for 412-416/419 and Iron Bridge for 417-418, but treat the whole block as uncertain.",
+      "w1396403443 (green) Iron Bridge 160 m vs Escarpment 169 m - near tie. Assigned Iron Bridge.",
+      "w1396403444/445 (tees) lean Escarpment by nearest marker but sit in the contiguous 444-447 deck row whose other members lean Iron Bridge; the row is treated as Iron Bridge."
+    ]
+  },
+  "reconstructedHoles": {
+    "caveat": "RECONSTRUCTED by pairing each contiguous tee-deck row with the green its deck axis points at. OSM contains no hole numbering whatsoever, so hole numbers are NOT asserted. Distances are tee-centroid to green-centroid in yards, longest deck first.",
+    "pairs": [
+      {
+        "tees": [
+          1396403391,
+          1396403392,
+          1396403393,
+          1396403394,
+          1396403395
+        ],
+        "green": 1396403396,
+        "yards": [
+          395,
+          361,
+          333,
+          300,
+          252
+        ],
+        "nine": "Escarpment",
+        "note": "only 5-deck, fully colour-tagged complex (black/blue/white/red/green)"
+      },
+      {
+        "tees": [
+          1396403397,
+          1396403398,
+          1396403399,
+          1396403400
+        ],
+        "green": 1396403437,
+        "yards": [
+          516,
+          492,
+          467,
+          430
+        ],
+        "alt_green": 1396403405,
+        "alt_yards": [
+          345,
+          323,
+          299,
+          263
+        ],
+        "nine": "Escarpment"
+      },
+      {
+        "tees": [
+          1396403406,
+          1396403407,
+          1396403408,
+          1396403409,
+          1396403410
+        ],
+        "green": 1396403411,
+        "yards": [
+          451,
+          421,
+          397,
+          338,
+          297
+        ],
+        "nine": "Escarpment"
+      },
+      {
+        "tees": [
+          1396403412,
+          1396403413,
+          1396403414,
+          1396403415
+        ],
+        "green": 1396403422,
+        "yards": [
+          528,
+          498,
+          473,
+          425
+        ],
+        "nine": "Escarpment/uncertain"
+      },
+      {
+        "tees": [
+          1396403416,
+          1396403417,
+          1396403418,
+          1396403419
+        ],
+        "green": 1396403382,
+        "yards": [
+          349,
+          315,
+          289,
+          261
+        ],
+        "nine": "uncertain",
+        "note": "hole finishing at the clubhouse green w1396403382 - the only mapped fairway (w1396403383) and 4 bunkers belong to it"
+      },
+      {
+        "tees": [
+          1396403428,
+          1396403429,
+          1396403430,
+          1396403431
+        ],
+        "green": null,
+        "nine": "Escarpment",
+        "note": "no green on this deck row's axis"
+      },
+      {
+        "tees": [
+          1396403432,
+          1396403433,
+          1396403434,
+          1396403435
+        ],
+        "green": 1396403437,
+        "yards": [
+          175,
+          147,
+          120,
+          63
+        ],
+        "nine": "Escarpment",
+        "note": "short par-3-like; conflicts with the 397-400 pairing - one of the two is wrong and only a golf=hole centerline can settle it"
+      },
+      {
+        "tees": [
+          1396403438,
+          1396403439,
+          1396403440,
+          1396403441
+        ],
+        "green": 1396403443,
+        "yards": [
+          393,
+          377,
+          354,
+          331
+        ],
+        "nine": "Escarpment tees / Iron Bridge green"
+      },
+      {
+        "tees": [
+          1396403444,
+          1396403445,
+          1396403446,
+          1396403447
+        ],
+        "green": 1396403448,
+        "yards": [
+          402,
+          361,
+          334,
+          291
+        ],
+        "nine": "Iron Bridge"
+      },
+      {
+        "tees": [
+          1396403449,
+          1396403450,
+          1396403451,
+          1396403452
+        ],
+        "green": 1396403456,
+        "yards": [
+          373,
+          338,
+          329,
+          219
+        ],
+        "nine": "Iron Bridge"
+      },
+      {
+        "tees": [
+          1396403457,
+          1396403458,
+          1396403459,
+          1396403460
+        ],
+        "green": 1396403468,
+        "yards": [
+          183,
+          158,
+          135,
+          106
+        ],
+        "nine": "Iron Bridge",
+        "note": "carries ponds w1396403461/w1396403462"
+      },
+      {
+        "tees": [
+          1396403463,
+          1396403464,
+          1396403465,
+          1396403466
+        ],
+        "green": null,
+        "nine": "Iron Bridge",
+        "note": "no green on this deck row's axis"
+      }
+    ],
+    "greensWithoutAnyTeeRow": [
+      1396403405,
+      1396403423
+    ]
+  },
+  "publishedScorecards": {
+    "source": "BlueGolf course database, fetched 2026-08-06; 3 pairings cross-checked and mutually consistent",
+    "urls": [
+      "https://course.bluegolf.com/bluegolf/course/course/royalniagaraescoc/detailedscorecard.htm",
+      "https://course.bluegolf.com/bluegolf/course/course/royalniagaragc/detailedscorecard.htm",
+      "https://course.bluegolf.com/bluegolf/course/course/royalniagaraiboc/detailedscorecard.htm"
+    ],
+    "Escarpment": {
+      "par": [
+        4,
+        4,
+        4,
+        5,
+        3,
+        4,
+        3,
+        5,
+        4
+      ],
+      "championship": [
+        425,
+        365,
+        447,
+        553,
+        190,
+        388,
+        208,
+        566,
+        384
+      ],
+      "competition": [
+        399,
+        337,
+        407,
+        489,
+        156,
+        353,
+        182,
+        531,
+        342
+      ],
+      "tournament": [
+        374,
+        313,
+        385,
+        462,
+        142,
+        337,
+        160,
+        506,
+        316
+      ],
+      "forward": [
+        335,
+        286,
+        357,
+        429,
+        125,
+        312,
+        144,
+        479,
+        277
+      ],
+      "total": 3526
+    },
+    "Old Canal": {
+      "par": [
+        4,
+        5,
+        4,
+        4,
+        3,
+        5,
+        3,
+        4,
+        4
+      ],
+      "championship": [
+        378,
+        517,
+        410,
+        423,
+        213,
+        572,
+        166,
+        439,
+        410
+      ],
+      "competition": [
+        357,
+        498,
+        380,
+        394,
+        171,
+        534,
+        142,
+        409,
+        370
+      ],
+      "tournament": [
+        334,
+        475,
+        348,
+        367,
+        149,
+        516,
+        119,
+        384,
+        351
+      ],
+      "forward": [
+        307,
+        434,
+        286,
+        329,
+        130,
+        427,
+        102,
+        359,
+        269
+      ],
+      "total": 3528
+    },
+    "Iron Bridge": {
+      "par": [
+        5,
+        4,
+        4,
+        4,
+        3,
+        5,
+        4,
+        3,
+        4
+      ],
+      "championship": [
+        530,
+        431,
+        406,
+        375,
+        194,
+        601,
+        411,
+        176,
+        378
+      ],
+      "competition": [
+        511,
+        410,
+        370,
+        340,
+        167,
+        572,
+        365,
+        148,
+        359
+      ],
+      "tournament": [
+        486,
+        387,
+        348,
+        324,
+        142,
+        548,
+        342,
+        128,
+        335
+      ],
+      "forward": [
+        458,
+        308,
+        316,
+        301,
+        114,
+        470,
+        309,
+        109,
+        313
+      ],
+      "total": 3502
+    },
+    "handicapWarning": "BlueGolf lists Hcp as 1,2,3...18 in card order - a placeholder, NOT real stroke indices. Do not import those."
+  },
+  "waterAndHazards": {
+    "golfTaggedWaterHazards": 0,
+    "untaggedPondsInsidePlay": [
+      1396403427,
+      1396403442,
+      1396403461,
+      1396403462,
+      490351225,
+      490351227,
+      491900971,
+      491901492,
+      1009390017
+    ],
+    "note": "schuhk drew four ponds (w1396403427/442/461/462) in the same changeset but tagged them natural=water only, no golf=water_hazard. importOverpass's isExpandedWaterFeature() still picks natural=water up as a hazard, so they are usable - but carry no golf semantics.",
+    "streams": "Eight Mile Creek (w178899392/95/97) runs through the property as a waterway=stream centerline; the parser buffers it to a 3-yard corridor."
+  },
+  "otherNotes": [
+    "13 golf=cartpath ways exist (w935825376-78, w954568925-26, w960757459, w1396403384-90). importOverpass has no mapping for cartpath, so they are ignored.",
+    "Boundary way 178899710 needed a self-intersection fix in June 2025 (changeset 168227478) and still has an odd re-entrant notch around 43.1405-43.1420 / -79.1690 to -79.1720 that excludes some mapped Escarpment features; worth re-tracing.",
+    "No relation covers the facility; no site relation, no golf=course tag anywhere.",
+    "Working plots: rn/rn_nines.png (features coloured by nine), rn_map.png, rn/assign.json (per-way nine assignment + distances)."
+  ]
+}

@@ -1,0 +1,774 @@
+{
+  "facility": "Crosswinds Golf & Country Club",
+  "location": "6621 Guelph Line, Burlington, Ontario, Canada",
+  "auditedUtc": "2026-08-06",
+  "sources": {
+    "overpassMirror": "https://overpass-api.de/api/interpreter",
+    "liveApiCrossChecks": [
+      "https://api.openstreetmap.org/api/0.6/map.json?bbox=-79.9124,43.4490,-79.9099,43.4505  (hole 13 green area)",
+      "https://api.openstreetmap.org/api/0.6/map.json?bbox=-79.9125,43.4430,-79.9100,43.4445  (hole 15 green area)",
+      "https://api.openstreetmap.org/api/0.6/map.json?bbox=-79.9140,43.4478,-79.9115,43.4495  (clubhouse / extra green)"
+    ],
+    "queries": [
+      "[out:json][timeout:110];(way[\"leisure\"=\"golf_course\"](43.28,-80.10,43.52,-79.68);relation[\"leisure\"=\"golf_course\"](43.28,-80.10,43.52,-79.68););out tags center;",
+      "[out:json][timeout:110];way(178082438);out tags geom;",
+      "[out:json][timeout:140];(nwr[\"golf\"](43.4383,-79.9237,43.4546,-79.9018);nwr[\"leisure\"=\"golf_course\"](43.4383,-79.9237,43.4546,-79.9018););out tags center;",
+      "[out:json][timeout:140];(nwr[\"golf\"](43.4383,-79.9237,43.4546,-79.9018);nwr[\"leisure\"=\"golf_course\"](43.4383,-79.9237,43.4546,-79.9018););out tags geom;"
+    ],
+    "note": "Overpass mirror returned HTML error pages on some attempts; retried with backoff until body started with \"{\". All counts below come from a body that parsed as JSON."
+  },
+  "boundary": {
+    "wayId": 178082438,
+    "type": "way",
+    "tag": "leisure=golf_course",
+    "name": "Crosswinds Golf & Country Club",
+    "closed": true,
+    "nodes": 23,
+    "bboxSWNE": [
+      43.4403275,
+      -79.9206969,
+      43.4525937,
+      -79.9048753
+    ],
+    "centerLatLon": [
+      43.4464606,
+      -79.9127861
+    ],
+    "otherTags": {
+      "addr:city": "Burlington",
+      "addr:housenumber": "6621",
+      "addr:street": "Guelph Line",
+      "phone": "+1-905-319-5991",
+      "website": "https://www.crosswindsgolf.com/"
+    },
+    "version": 6,
+    "lastEdited": "2020-02-26T02:54:26Z",
+    "user": "Rupert10",
+    "parserVerdict": "PASS - parser finds it via leisure=golf_course + name; course name and location will import correctly."
+  },
+  "featureCounts": {
+    "bunker": 69,
+    "cartpath": 32,
+    "driving_range": 1,
+    "fairway": 23,
+    "green": 17,
+    "hole": 18,
+    "lateral_water_hazard": 3,
+    "leisure=golf_course": 1,
+    "tee": 77,
+    "water_hazard": 6
+  },
+  "elementTypes": "all golf features are OSM ways; no nodes or relations carry golf=*",
+  "multiCourse": {
+    "isMultiCourse": false,
+    "holeWayCount": 18,
+    "refsPresent": "1-18, each exactly once",
+    "duplicateRefs": [],
+    "verdict": "Single 18-hole course. No duplicate-ref Frankenstein risk."
+  },
+  "holeTable": [
+    {
+      "ref": 1,
+      "wayId": 776385062,
+      "par": 4,
+      "handicap": 13,
+      "nodes": 3,
+      "closed": false,
+      "lengthYards": 286,
+      "startLatLon": [
+        43.448276,
+        -79.912766
+      ],
+      "endLatLon": [
+        43.446311,
+        -79.914257
+      ],
+      "greenWayId": 776896883,
+      "greenDistanceFromLineEndM": 0.8,
+      "nTees": 3,
+      "nBunkers": 2,
+      "nFairwayPolys": 3,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 2,
+      "wayId": 776385073,
+      "par": 5,
+      "handicap": 17,
+      "nodes": 3,
+      "closed": false,
+      "lengthYards": 536,
+      "startLatLon": [
+        43.446061,
+        -79.913816
+      ],
+      "endLatLon": [
+        43.442591,
+        -79.917566
+      ],
+      "greenWayId": 776896897,
+      "greenDistanceFromLineEndM": 2.6,
+      "nTees": 4,
+      "nBunkers": 5,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 3,
+      "wayId": 776385074,
+      "par": 4,
+      "handicap": 7,
+      "nodes": 3,
+      "closed": false,
+      "lengthYards": 452,
+      "startLatLon": [
+        43.441989,
+        -79.917065
+      ],
+      "endLatLon": [
+        43.443404,
+        -79.912333
+      ],
+      "greenWayId": 776896908,
+      "greenDistanceFromLineEndM": 2.8,
+      "nTees": 4,
+      "nBunkers": 2,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 4,
+      "wayId": 776385075,
+      "par": 5,
+      "handicap": 3,
+      "nodes": 4,
+      "closed": false,
+      "lengthYards": 612,
+      "startLatLon": [
+        43.443315,
+        -79.911523
+      ],
+      "endLatLon": [
+        43.441646,
+        -79.917312
+      ],
+      "greenWayId": 776901571,
+      "greenDistanceFromLineEndM": 3.0,
+      "nTees": 5,
+      "nBunkers": 5,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 5,
+      "wayId": 776385076,
+      "par": 3,
+      "handicap": 11,
+      "nodes": 2,
+      "closed": false,
+      "lengthYards": 169,
+      "startLatLon": [
+        43.442045,
+        -79.918146
+      ],
+      "endLatLon": [
+        43.443332,
+        -79.918905
+      ],
+      "greenWayId": 776901584,
+      "greenDistanceFromLineEndM": 1.0,
+      "nTees": 6,
+      "nBunkers": 4,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 6,
+      "wayId": 776385077,
+      "par": 4,
+      "handicap": 1,
+      "nodes": 3,
+      "closed": false,
+      "lengthYards": 470,
+      "startLatLon": [
+        43.443718,
+        -79.917851
+      ],
+      "endLatLon": [
+        43.446816,
+        -79.914632
+      ],
+      "greenWayId": 776902602,
+      "greenDistanceFromLineEndM": 4.3,
+      "nTees": 4,
+      "nBunkers": 2,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 7,
+      "wayId": 776385078,
+      "par": 4,
+      "handicap": 9,
+      "nodes": 3,
+      "closed": false,
+      "lengthYards": 489,
+      "startLatLon": [
+        43.447067,
+        -79.914973
+      ],
+      "endLatLon": [
+        43.444063,
+        -79.918677
+      ],
+      "greenWayId": 777075210,
+      "greenDistanceFromLineEndM": 1.4,
+      "nTees": 4,
+      "nBunkers": 3,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 8,
+      "wayId": 776385079,
+      "par": 3,
+      "handicap": 15,
+      "nodes": 2,
+      "closed": false,
+      "lengthYards": 271,
+      "startLatLon": [
+        43.443718,
+        -79.920233
+      ],
+      "endLatLon": [
+        43.445373,
+        -79.91817
+      ],
+      "greenWayId": 779947918,
+      "greenDistanceFromLineEndM": 2.4,
+      "nTees": 5,
+      "nBunkers": 1,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 9,
+      "wayId": 776385080,
+      "par": 4,
+      "handicap": 5,
+      "nodes": 4,
+      "closed": false,
+      "lengthYards": 455,
+      "startLatLon": [
+        43.445828,
+        -79.917992
+      ],
+      "endLatLon": [
+        43.44841,
+        -79.914252
+      ],
+      "greenWayId": 779947932,
+      "greenDistanceFromLineEndM": 0.9,
+      "nTees": 4,
+      "nBunkers": 5,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 10,
+      "wayId": 779956301,
+      "par": 4,
+      "handicap": 10,
+      "nodes": 3,
+      "closed": false,
+      "lengthYards": 353,
+      "startLatLon": [
+        43.448837,
+        -79.912394
+      ],
+      "endLatLon": [
+        43.451641,
+        -79.911922
+      ],
+      "greenWayId": 779956299,
+      "greenDistanceFromLineEndM": 1.3,
+      "nTees": 5,
+      "nBunkers": 6,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 11,
+      "wayId": 779956313,
+      "par": 5,
+      "handicap": 6,
+      "nodes": 4,
+      "closed": false,
+      "lengthYards": 523,
+      "startLatLon": [
+        43.451267,
+        -79.911296
+      ],
+      "endLatLon": [
+        43.449257,
+        -79.906055
+      ],
+      "greenWayId": 779956310,
+      "greenDistanceFromLineEndM": 1.9,
+      "nTees": 4,
+      "nBunkers": 3,
+      "nFairwayPolys": 2,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 12,
+      "wayId": 779962243,
+      "par": 4,
+      "handicap": 2,
+      "nodes": 3,
+      "closed": false,
+      "lengthYards": 468,
+      "startLatLon": [
+        43.449584,
+        -79.905516
+      ],
+      "endLatLon": [
+        43.451449,
+        -79.909995
+      ],
+      "greenWayId": 779962240,
+      "greenDistanceFromLineEndM": 4.3,
+      "nTees": 4,
+      "nBunkers": 5,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 13,
+      "wayId": 779962252,
+      "par": 3,
+      "handicap": 16,
+      "nodes": 2,
+      "closed": false,
+      "lengthYards": 202,
+      "startLatLon": [
+        43.451354,
+        -79.911655
+      ],
+      "endLatLon": [
+        43.449726,
+        -79.911153
+      ],
+      "greenWayId": null,
+      "greenDistanceFromLineEndM": 107.8,
+      "nTees": 5,
+      "nBunkers": 3,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 14,
+      "wayId": 779970387,
+      "par": 4,
+      "handicap": 18,
+      "nodes": 3,
+      "closed": false,
+      "lengthYards": 422,
+      "startLatLon": [
+        43.450314,
+        -79.910606
+      ],
+      "endLatLon": [
+        43.448118,
+        -79.906893
+      ],
+      "greenWayId": 779970385,
+      "greenDistanceFromLineEndM": 10.1,
+      "nTees": 4,
+      "nBunkers": 4,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 15,
+      "wayId": 779970401,
+      "par": 5,
+      "handicap": 8,
+      "nodes": 3,
+      "closed": false,
+      "lengthYards": 465,
+      "startLatLon": [
+        43.446782,
+        -79.908109
+      ],
+      "endLatLon": [
+        43.443745,
+        -79.911233
+      ],
+      "greenWayId": null,
+      "greenDistanceFromLineEndM": 98.9,
+      "nTees": 5,
+      "nBunkers": 4,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 16,
+      "wayId": 779977869,
+      "par": 4,
+      "handicap": 12,
+      "nodes": 3,
+      "closed": false,
+      "lengthYards": 345,
+      "startLatLon": [
+        43.444501,
+        -79.911626
+      ],
+      "endLatLon": [
+        43.447122,
+        -79.910199
+      ],
+      "greenWayId": 779977867,
+      "greenDistanceFromLineEndM": 5.7,
+      "nTees": 4,
+      "nBunkers": 4,
+      "nFairwayPolys": 1,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 17,
+      "wayId": 779977884,
+      "par": 3,
+      "handicap": 14,
+      "nodes": 2,
+      "closed": false,
+      "lengthYards": 190,
+      "startLatLon": [
+        43.447658,
+        -79.910358
+      ],
+      "endLatLon": [
+        43.44708,
+        -79.908365
+      ],
+      "greenWayId": 779977880,
+      "greenDistanceFromLineEndM": 1.5,
+      "nTees": 4,
+      "nBunkers": 4,
+      "nFairwayPolys": 2,
+      "drawnTeeToGreen": true
+    },
+    {
+      "ref": 18,
+      "wayId": 779977898,
+      "par": 4,
+      "handicap": 4,
+      "nodes": 3,
+      "closed": false,
+      "lengthYards": 379,
+      "startLatLon": [
+        43.447931,
+        -79.907864
+      ],
+      "endLatLon": [
+        43.448897,
+        -79.911801
+      ],
+      "greenWayId": 779977891,
+      "greenDistanceFromLineEndM": 2.3,
+      "nTees": 3,
+      "nBunkers": 7,
+      "nFairwayPolys": 2,
+      "drawnTeeToGreen": true
+    }
+  ],
+  "holeWayIdsInRefOrder": [
+    776385062,
+    776385073,
+    776385074,
+    776385075,
+    776385076,
+    776385077,
+    776385078,
+    776385079,
+    776385080,
+    779956301,
+    779956313,
+    779962243,
+    779962252,
+    779970387,
+    779970401,
+    779977869,
+    779977884,
+    779977898
+  ],
+  "parSummary": {
+    "front9": 36,
+    "back9": 36,
+    "total": 72,
+    "par3s": [
+      5,
+      8,
+      13,
+      17
+    ],
+    "par4s": [
+      1,
+      3,
+      6,
+      7,
+      9,
+      10,
+      12,
+      14,
+      16,
+      18
+    ],
+    "par5s": [
+      2,
+      4,
+      11,
+      15
+    ],
+    "allHolesHaveParTag": true
+  },
+  "handicapSummary": {
+    "allHolesHaveHandicapTag": true,
+    "values": {
+      "1": 13,
+      "2": 17,
+      "3": 7,
+      "4": 3,
+      "5": 11,
+      "6": 1,
+      "7": 9,
+      "8": 15,
+      "9": 5,
+      "10": 10,
+      "11": 6,
+      "12": 2,
+      "13": 16,
+      "14": 18,
+      "15": 8,
+      "16": 12,
+      "17": 14,
+      "18": 4
+    },
+    "verdict": "1-18 each used exactly once; odd on the front nine, even on the back \u2014 conventional and internally consistent."
+  },
+  "polygonClosure": {
+    "unclosedGolfPolygonWayIds": [],
+    "verdict": "PASS - every golf=green/tee/fairway/bunker/water_hazard/lateral_water_hazard way is closed; nothing will be silently dropped."
+  },
+  "holeLineOpenness": {
+    "allGolfHoleWaysAreOpenLineStrings": true,
+    "nodeCounts": {
+      "1": 3,
+      "2": 3,
+      "3": 3,
+      "4": 4,
+      "5": 2,
+      "6": 3,
+      "7": 3,
+      "8": 2,
+      "9": 4,
+      "10": 3,
+      "11": 4,
+      "12": 3,
+      "13": 2,
+      "14": 3,
+      "15": 3,
+      "16": 3,
+      "17": 2,
+      "18": 3
+    },
+    "verdict": "PASS - all 18 are open ways (2-4 nodes), and all are digitized tee->green (each hole green sits at fraction ~0.97-1.00 of its own line), so the parser's reversal fix will not need to fire."
+  },
+  "greens": {
+    "count": 17,
+    "expected": 18,
+    "wayIds": [
+      776896883,
+      776896897,
+      776896908,
+      776901571,
+      776901584,
+      776902602,
+      777075210,
+      779947918,
+      779947932,
+      779956286,
+      779956299,
+      779956310,
+      779962240,
+      779970385,
+      779977867,
+      779977880,
+      779977891
+    ],
+    "holesWithNoGreen": [
+      13,
+      15
+    ],
+    "evidence": {
+      "hole13": "way 779962252 (par 3, hcp 16) ends at 43.44973,-79.91115; nearest golf=green centroid is 108 m away and is hole 18's green (779977891). Live OSM API bbox dump around that point returns exactly one golf=green (779977891) - confirmed absent, not mirror lag.",
+      "hole15": "way 779970401 (par 5, hcp 8) ends at 43.44374,-79.91123; nearest golf=green centroid is 99 m away and is hole 3's green (776896908). Live OSM API bbox dump around that point returns exactly one golf=green (776896908) - confirmed absent, not mirror lag."
+    },
+    "extraGreen": {
+      "wayId": 779956286,
+      "latLon": [
+        43.4486169,
+        -79.9128678
+      ],
+      "areaM2": 303,
+      "why": "Sits in the clubhouse pocket, immediately adjacent to amenity=parking way 178082443, parking aisles 466340710-12/779956285, buildings 832666643/832666644/832666653, and the hole 1 (776896880/776896881) and hole 10 (779956287-289) teeing grounds. It is 103 m from hole 18's centerline and 105 m from hole 9's. Almost certainly the practice putting green, mis-tagged golf=green.",
+      "importImpact": "Parser projects it onto the back half of hole 18's line, so hole 18 imports with TWO green polygons - one real (779977891, 2 m from the line end) and one bogus 100 m short of the green."
+    }
+  },
+  "greenAreasM2": {
+    "776896883": 588,
+    "776896897": 480,
+    "776896908": 754,
+    "776901571": 594,
+    "776901584": 578,
+    "776902602": 338,
+    "777075210": 636,
+    "779947918": 553,
+    "779947932": 499,
+    "779956286": 303,
+    "779956299": 333,
+    "779956310": 531,
+    "779962240": 498,
+    "779970385": 467,
+    "779977867": 500,
+    "779977880": 359,
+    "779977891": 411
+  },
+  "tees": {
+    "count": 77,
+    "withTeeboxTag": 0,
+    "tagKeysSeenOnGolfTeeWays": [
+      "golf",
+      "landuse"
+    ],
+    "teeboxValueHistogram": {
+      "<none>": 77
+    },
+    "importImpact": "Every one of the 77 tee polygons imports as an indistinguishable \"Tee\". No black/blue/white/red tee sets, so no per-tee-set yardages or course rating are possible.",
+    "perHoleCounts": {
+      "1": 3,
+      "2": 4,
+      "3": 4,
+      "4": 5,
+      "5": 6,
+      "6": 4,
+      "7": 4,
+      "8": 5,
+      "9": 4,
+      "10": 5,
+      "11": 4,
+      "12": 4,
+      "13": 5,
+      "14": 4,
+      "15": 5,
+      "16": 4,
+      "17": 4,
+      "18": 3
+    }
+  },
+  "fairways": {
+    "count": 23,
+    "perHoleCounts": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1,
+      "11": 2,
+      "12": 1,
+      "13": 1,
+      "14": 1,
+      "15": 1,
+      "16": 1,
+      "17": 2,
+      "18": 2
+    },
+    "note": "Every hole 1-18 has at least one fairway polygon, including holes 13 and 15 (779962251 and 779970400). A few holes carry 2-3 polygons (splits around cartpaths/hazards), which is fine - the parser keeps them all."
+  },
+  "bunkers": {
+    "count": 69,
+    "perHoleCounts": {
+      "1": 2,
+      "2": 5,
+      "3": 2,
+      "4": 5,
+      "5": 4,
+      "6": 2,
+      "7": 3,
+      "8": 1,
+      "9": 5,
+      "10": 6,
+      "11": 3,
+      "12": 5,
+      "13": 3,
+      "14": 4,
+      "15": 4,
+      "16": 4,
+      "17": 4,
+      "18": 7
+    },
+    "orphansOver60mFromEveryCenterline": [],
+    "note": "All 69 sit within 60 m of some centerline, so none will be wildly mis-attributed."
+  },
+  "water": {
+    "water_hazard": 6,
+    "lateral_water_hazard": 3,
+    "nearestHoleCounts": {
+      "1": 1,
+      "3": 3,
+      "5": 1,
+      "9": 1,
+      "11": 1,
+      "12": 1,
+      "14": 1
+    },
+    "note": "Limestone Creek (way 76963601, waterway=stream) crosses the property and has no golf=* tag; the parser picks it up via its expanded-water-feature rule and buffers it."
+  },
+  "rough": {
+    "count": 0,
+    "importImpact": "No golf=rough polygons anywhere on the property, so lie detection has no rough surface to test against - everything outside fairway/green/tee/bunker/water falls through to whatever the app's default is."
+  },
+  "fringe": {
+    "count": 0
+  },
+  "ignoredByParser": {
+    "cartpath": 32,
+    "driving_range": 1
+  },
+  "suspectTags": [
+    {
+      "hole": 8,
+      "wayId": 776385079,
+      "issue": "tagged par=3 but the centerline is 271 yd (246 m) and the back tee polygon (779947913) is 267 yd from the green centroid (779947918). Every other par 3 here is 169-202 yd. Either par should be 4 or the centerline/back tee is drawn too far back. It will import as a 271-yard par 3."
+    }
+  ],
+  "provenance": {
+    "holeGeometry": "mapped by Rupert10 in 2020 (changesets 82015924 \"crosswinds\" and neighbours)",
+    "refConversion": "changeset 118997471 by \"Spaghetti Monster\" 2022-03-27, comment \"moved hole number on golf features from name to ref\" - this is why golf=hole ways carry ref= and no name=",
+    "lastTouchedHoleWays": "2022-03-27T21:59:30Z (v2)"
+  },
+  "parserPassFail": {
+    "boundary": "PASS",
+    "holeCenterlines": "PASS - 18 open ways, refs 1-18 unique, par on all 18, handicap on all 18",
+    "polygonClosure": "PASS - 0 unclosed",
+    "greens": "FAIL - 2 of 18 missing (holes 13, 15) + 1 spurious (779956286)",
+    "teeNames": "FAIL - 0 of 77 tees carry teebox=",
+    "rough": "FAIL - 0 polygons",
+    "duplicateRefs": "PASS - none"
+  }
+}

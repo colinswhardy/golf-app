@@ -1,0 +1,604 @@
+{
+  "course": "Brora Golf Club",
+  "location": "Brora, Sutherland, Scotland",
+  "architect": "James Braid (1923 remodel; club founded 1891)",
+  "type": "Links, 18 holes (single course - no second course or extra nine)",
+  "yardageUnits": "yards",
+  "teeSets": [
+    {
+      "name": "White",
+      "gender": "Men",
+      "totalYards": 6211,
+      "par": 70,
+      "sss": 70,
+      "notes": "Men's medal/championship tees. Club's own text: \"the challenge of its 6211 yards\"."
+    },
+    {
+      "name": "Yellow",
+      "gender": "Men",
+      "totalYards": 5951,
+      "par": 70,
+      "sss": 69,
+      "notes": "Men's forward/everyday tees."
+    },
+    {
+      "name": "Red",
+      "gender": "Ladies",
+      "totalYards": 5273,
+      "par": 71,
+      "sss": 71,
+      "notes": "Ladies' tees. Same measured tees as \"Red (Men)\" but played to a different par (3, 8 and 11 are par 5) with its own stroke index."
+    },
+    {
+      "name": "Red (Men)",
+      "gender": "Men",
+      "totalYards": 5273,
+      "par": 68,
+      "notes": "Men playing off the red tees: identical yardages to \"Red\" but par 68 and a different stroke index."
+    },
+    {
+      "name": "Yellow (Ladies)",
+      "gender": "Ladies",
+      "totalYards": 5951,
+      "par": 74,
+      "notes": "Ladies playing off the yellow tees: identical yardages to \"Yellow\" but par 74 and a different stroke index."
+    },
+    {
+      "name": "Yellow 9 Hole Composite",
+      "gender": "Men",
+      "totalYards": 6082,
+      "par": 70,
+      "notes": "A 9-hole composite loop off yellow tees (3041 yds, par 35) played twice; the outward and inward halves are the same nine holes, so hole numbers 10-18 repeat holes 1-9 of the composite loop."
+    }
+  ],
+  "holes": [
+    {
+      "number": 1,
+      "name": "Ardassie",
+      "par": 4,
+      "handicap": 13,
+      "yards": {
+        "White": 297,
+        "Yellow": 280,
+        "Red": 276,
+        "Red (Men)": 276,
+        "Yellow (Ladies)": 280,
+        "Yellow 9 Hole Composite": 280
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 4,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 13,
+        "Yellow": 13,
+        "Red": 13,
+        "Red (Men)": 17,
+        "Yellow (Ladies)": 17,
+        "Yellow 9 Hole Composite": 13
+      }
+    },
+    {
+      "number": 2,
+      "name": "Bents",
+      "par": 4,
+      "handicap": 9,
+      "yards": {
+        "White": 344,
+        "Yellow": 334,
+        "Red": 323,
+        "Red (Men)": 323,
+        "Yellow (Ladies)": 334,
+        "Yellow 9 Hole Composite": 334
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 4,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 9,
+        "Yellow": 9,
+        "Red": 9,
+        "Red (Men)": 11,
+        "Yellow (Ladies)": 3,
+        "Yellow 9 Hole Composite": 9
+      }
+    },
+    {
+      "number": 3,
+      "name": "Canal",
+      "par": 4,
+      "handicap": 1,
+      "yards": {
+        "White": 447,
+        "Yellow": 447,
+        "Red": 413,
+        "Red (Men)": 413,
+        "Yellow (Ladies)": 447,
+        "Yellow 9 Hole Composite": 447
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 5,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 5,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 1,
+        "Yellow": 1,
+        "Red": 7,
+        "Red (Men)": 3,
+        "Yellow (Ladies)": 9,
+        "Yellow 9 Hole Composite": 1
+      }
+    },
+    {
+      "number": 4,
+      "name": "White Post",
+      "par": 4,
+      "handicap": 15,
+      "yards": {
+        "White": 325,
+        "Yellow": 313,
+        "Red": 277,
+        "Red (Men)": 277,
+        "Yellow (Ladies)": 313,
+        "Yellow 9 Hole Composite": 313
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 4,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 15,
+        "Yellow": 15,
+        "Red": 15,
+        "Red (Men)": 15,
+        "Yellow (Ladies)": 11,
+        "Yellow 9 Hole Composite": 15
+      }
+    },
+    {
+      "number": 5,
+      "name": "Burn",
+      "par": 4,
+      "handicap": 3,
+      "yards": {
+        "White": 428,
+        "Yellow": 418,
+        "Red": 378,
+        "Red (Men)": 378,
+        "Yellow (Ladies)": 418,
+        "Yellow 9 Hole Composite": 305
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 5,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 3,
+        "Yellow": 3,
+        "Red": 1,
+        "Red (Men)": 1,
+        "Yellow (Ladies)": 15,
+        "Yellow 9 Hole Composite": 17
+      }
+    },
+    {
+      "number": 6,
+      "name": "Witch",
+      "par": 3,
+      "handicap": 7,
+      "yards": {
+        "White": 190,
+        "Yellow": 164,
+        "Red": 153,
+        "Red (Men)": 153,
+        "Yellow (Ladies)": 164,
+        "Yellow 9 Hole Composite": 399
+      },
+      "parByTee": {
+        "White": 3,
+        "Yellow": 3,
+        "Red": 3,
+        "Red (Men)": 3,
+        "Yellow (Ladies)": 3,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 7,
+        "Yellow": 7,
+        "Red": 11,
+        "Red (Men)": 7,
+        "Yellow (Ladies)": 5,
+        "Yellow 9 Hole Composite": 3
+      }
+    },
+    {
+      "number": 7,
+      "name": "Second Burn",
+      "par": 4,
+      "handicap": 11,
+      "yards": {
+        "White": 350,
+        "Yellow": 340,
+        "Red": 333,
+        "Red (Men)": 333,
+        "Yellow (Ladies)": 340,
+        "Yellow 9 Hole Composite": 335
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 4,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 11,
+        "Yellow": 11,
+        "Red": 3,
+        "Red (Men)": 5,
+        "Yellow (Ladies)": 1,
+        "Yellow 9 Hole Composite": 11
+      }
+    },
+    {
+      "number": 8,
+      "name": "Long Hole",
+      "par": 5,
+      "handicap": 5,
+      "yards": {
+        "White": 501,
+        "Yellow": 501,
+        "Red": 430,
+        "Red (Men)": 430,
+        "Yellow (Ladies)": 501,
+        "Yellow 9 Hole Composite": 438
+      },
+      "parByTee": {
+        "White": 5,
+        "Yellow": 5,
+        "Red": 5,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 5,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 5,
+        "Yellow": 5,
+        "Red": 5,
+        "Red (Men)": 9,
+        "Yellow (Ladies)": 7,
+        "Yellow 9 Hole Composite": 5
+      }
+    },
+    {
+      "number": 9,
+      "name": "Sea Hole",
+      "par": 3,
+      "handicap": 17,
+      "yards": {
+        "White": 162,
+        "Yellow": 149,
+        "Red": 141,
+        "Red (Men)": 141,
+        "Yellow (Ladies)": 149,
+        "Yellow 9 Hole Composite": 190
+      },
+      "parByTee": {
+        "White": 3,
+        "Yellow": 3,
+        "Red": 3,
+        "Red (Men)": 3,
+        "Yellow (Ladies)": 3,
+        "Yellow 9 Hole Composite": 3
+      },
+      "handicapByTee": {
+        "White": 17,
+        "Yellow": 17,
+        "Red": 17,
+        "Red (Men)": 13,
+        "Yellow (Ladies)": 13,
+        "Yellow 9 Hole Composite": 7
+      }
+    },
+    {
+      "number": 10,
+      "name": "Greenhill",
+      "par": 4,
+      "handicap": 6,
+      "yards": {
+        "White": 435,
+        "Yellow": 425,
+        "Red": 395,
+        "Red (Men)": 395,
+        "Yellow (Ladies)": 425,
+        "Yellow 9 Hole Composite": 280
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 5,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 6,
+        "Yellow": 6,
+        "Red": 2,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 14,
+        "Yellow 9 Hole Composite": 14
+      }
+    },
+    {
+      "number": 11,
+      "name": "Achrimsdale Burn",
+      "par": 5,
+      "handicap": 8,
+      "yards": {
+        "White": 497,
+        "Yellow": 491,
+        "Red": 383,
+        "Red (Men)": 383,
+        "Yellow (Ladies)": 491,
+        "Yellow 9 Hole Composite": 334
+      },
+      "parByTee": {
+        "White": 5,
+        "Yellow": 5,
+        "Red": 5,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 5,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 8,
+        "Yellow": 8,
+        "Red": 10,
+        "Red (Men)": 16,
+        "Yellow (Ladies)": 6,
+        "Yellow 9 Hole Composite": 10
+      }
+    },
+    {
+      "number": 12,
+      "name": "Dalchalm",
+      "par": 4,
+      "handicap": 10,
+      "yards": {
+        "White": 362,
+        "Yellow": 314,
+        "Red": 273,
+        "Red (Men)": 273,
+        "Yellow (Ladies)": 314,
+        "Yellow 9 Hole Composite": 447
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 4,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 10,
+        "Yellow": 10,
+        "Red": 6,
+        "Red (Men)": 12,
+        "Yellow (Ladies)": 10,
+        "Yellow 9 Hole Composite": 2
+      }
+    },
+    {
+      "number": 13,
+      "name": "Snake",
+      "par": 3,
+      "handicap": 18,
+      "yards": {
+        "White": 125,
+        "Yellow": 108,
+        "Red": 108,
+        "Red (Men)": 108,
+        "Yellow (Ladies)": 108,
+        "Yellow 9 Hole Composite": 313
+      },
+      "parByTee": {
+        "White": 3,
+        "Yellow": 3,
+        "Red": 3,
+        "Red (Men)": 3,
+        "Yellow (Ladies)": 3,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 18,
+        "Yellow": 18,
+        "Red": 18,
+        "Red (Men)": 18,
+        "Yellow (Ladies)": 18,
+        "Yellow 9 Hole Composite": 16
+      }
+    },
+    {
+      "number": 14,
+      "name": "Trap",
+      "par": 4,
+      "handicap": 16,
+      "yards": {
+        "White": 334,
+        "Yellow": 305,
+        "Red": 282,
+        "Red (Men)": 282,
+        "Yellow (Ladies)": 305,
+        "Yellow 9 Hole Composite": 305
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 4,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 16,
+        "Yellow": 16,
+        "Red": 12,
+        "Red (Men)": 14,
+        "Yellow (Ladies)": 12,
+        "Yellow 9 Hole Composite": 18
+      }
+    },
+    {
+      "number": 15,
+      "name": "Sahara",
+      "par": 4,
+      "handicap": 2,
+      "yards": {
+        "White": 430,
+        "Yellow": 399,
+        "Red": 324,
+        "Red (Men)": 324,
+        "Yellow (Ladies)": 399,
+        "Yellow 9 Hole Composite": 399
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 4,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 2,
+        "Yellow": 2,
+        "Red": 8,
+        "Red (Men)": 2,
+        "Yellow (Ladies)": 2,
+        "Yellow 9 Hole Composite": 4
+      }
+    },
+    {
+      "number": 16,
+      "name": "Plateau",
+      "par": 4,
+      "handicap": 12,
+      "yards": {
+        "White": 345,
+        "Yellow": 335,
+        "Red": 256,
+        "Red (Men)": 256,
+        "Yellow (Ladies)": 335,
+        "Yellow 9 Hole Composite": 335
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 4,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 12,
+        "Yellow": 12,
+        "Red": 14,
+        "Red (Men)": 8,
+        "Yellow (Ladies)": 4,
+        "Yellow 9 Hole Composite": 12
+      }
+    },
+    {
+      "number": 17,
+      "name": "Tarbatness",
+      "par": 4,
+      "handicap": 4,
+      "yards": {
+        "White": 438,
+        "Yellow": 438,
+        "Red": 386,
+        "Red (Men)": 386,
+        "Yellow (Ladies)": 438,
+        "Yellow 9 Hole Composite": 438
+      },
+      "parByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 4,
+        "Yellow (Ladies)": 5,
+        "Yellow 9 Hole Composite": 4
+      },
+      "handicapByTee": {
+        "White": 4,
+        "Yellow": 4,
+        "Red": 4,
+        "Red (Men)": 6,
+        "Yellow (Ladies)": 16,
+        "Yellow 9 Hole Composite": 6
+      }
+    },
+    {
+      "number": 18,
+      "name": "Home Hole",
+      "par": 3,
+      "handicap": 14,
+      "yards": {
+        "White": 201,
+        "Yellow": 190,
+        "Red": 142,
+        "Red (Men)": 142,
+        "Yellow (Ladies)": 190,
+        "Yellow 9 Hole Composite": 190
+      },
+      "parByTee": {
+        "White": 3,
+        "Yellow": 3,
+        "Red": 3,
+        "Red (Men)": 3,
+        "Yellow (Ladies)": 3,
+        "Yellow 9 Hole Composite": 3
+      },
+      "handicapByTee": {
+        "White": 14,
+        "Yellow": 14,
+        "Red": 16,
+        "Red (Men)": 10,
+        "Yellow (Ladies)": 8,
+        "Yellow 9 Hole Composite": 8
+      }
+    }
+  ],
+  "sources": [
+    "https://www.broragolfclub.co.uk/the_course_overview",
+    "https://www.broragolfclub.co.uk/hole_1 (through /hole_18)",
+    "https://www.golfshake.com/course/view/14105/Brora_Golf_Club.html",
+    "https://golfsherpa.co.uk/courses/scotland/brora-golf-club",
+    "https://www.top100golfcourses.com/golf-course/brora"
+  ],
+  "notes": "PRIMARY SOURCE: the club's own scorecard table on broragolfclub.co.uk/the_course_overview (click 'Open Scorecard'), which publishes six columns. Top-level 'par'/'handicap' on each hole are the standard men's card (White and Yellow share identical par and stroke index); use 'parByTee'/'handicapByTee' for the Red-men, Yellow-ladies and composite variants. All six columns were verified to sum correctly to their printed OUT/IN/TOTAL rows, and every stroke-index column is a valid 1-18 set with odds outward / evens inward. CROSS-CHECKS: Golfshake independently lists White 6211/par 70/SSS 70, Yellow 5951/par 70/SSS 69, Red 5273/par 71/SSS 71 - identical totals to the official card. GolfSherpa reproduces all 18 stroke indexes for the White/Yellow men's card and all 18 Red yardages and stroke indexes identically. DISAGREEMENTS: (1) GolfSherpa's yardages are a stale card - it shows hole 11 as 442 (White) / 412 (Yellow) par 4 for a 6156-yard par-69/70 total, and hole 6 Yellow as 174. The club's current card has hole 11 at 497 (White) / 491 (Yellow) as a par 5 for 6211/par 70, and the club's own hole-11 page confirms 'Achrimsdale Burn (497 yards par 5)'. The widely-quoted '6156 yards' figure is the superseded card. (2) The club's hole-6 and hole-9 narrative pages say 174 and 152 yards, which match neither White (190/162) nor Yellow (164/149) on the current card - those two prose pages appear stale; the scorecard table was preferred. (3) Golfshake also lists a 'Blue' tee at 5099 yds, par 74, SSS 73 that does not appear on the club's published card - not included here. RATINGS: SSS values are from Golfshake. No WHS Course Rating / Slope is published on the club site; GolfSherpa quotes CR/Slope of White 70.0/118, Yellow-men 68.9/116, Yellow-ladies 74.2/128, Red-men 65.8/110, but these are derived from its stale 6156-yard card and one search result reported slope 110 for White instead of 118, so slope/CR is NOT included as verified data."
+}

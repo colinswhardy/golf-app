@@ -1,0 +1,330 @@
+{
+  "audit": {
+    "facility": "Victoria Park Valley Golf Club",
+    "address": "7660 Maltby Rd. East, Puslinch, Ontario N0B 2J0 (marketed as Guelph)",
+    "expected_layout": "27 holes / three executive-length nines: Valley, Pines, Lakes (per victoriaparkgolf.com)",
+    "audited_on": "2026-08-06",
+    "overpass_mirror": "https://overpass-api.de/api/interpreter",
+    "overpass_timestamp_osm_base": "2026-08-06T18:16:06Z",
+    "verdict": "not-mapped",
+    "headline": "Victoria Park Valley exists in OSM ONLY as a single untagged-except-leisure=golf_course outline polygon (way 353716100). There are ZERO golf=* features of any kind inside it. Nothing importable."
+  },
+  "boundary": {
+    "found": true,
+    "osm_type": "way",
+    "osm_id": 353716100,
+    "tags": {
+      "leisure": "golf_course"
+    },
+    "has_name_tag": false,
+    "closed": true,
+    "node_count": 18,
+    "area_m2": 544516,
+    "area_hectares": 54.5,
+    "area_acres": 134.6,
+    "bbox_S_W_N_E": [
+      43.5006061,
+      -80.1561682,
+      43.5122904,
+      -80.1463001
+    ],
+    "centroid_approx": {
+      "lat": 43.506963,
+      "lng": -80.150758
+    },
+    "contains_golfpass_facility_point_43.50816_-80.15179": true,
+    "history": [
+      {
+        "version": 1,
+        "changeset": 31972349,
+        "user": "twodimes",
+        "timestamp": "2015-06-14T22:28:30Z",
+        "changeset_comment": "Misc updates",
+        "editor": "iD 1.7.3",
+        "imagery": "Bing;OpenStreetMap GPS traces"
+      },
+      {
+        "version": 2,
+        "changeset": 32308658,
+        "user": "kartler175",
+        "timestamp": "2015-06-30T13:35:59Z",
+        "changeset_comment": "OSMI MP invalid_geometry",
+        "editor": "JOSM/1.5 (8339 de)",
+        "source": "Bing"
+      }
+    ],
+    "note": "Untouched since 2015. v2 was a pure geometry repair, not a survey. The polygon is a crude 18-node Bing trace of the property outline; no name, no addr, no website, no holes=27, no sport=golf."
+  },
+  "feature_counts_inside_facility": {
+    "golf_hole_ways": 0,
+    "golf_green": 0,
+    "golf_fairway": 0,
+    "golf_tee": 0,
+    "golf_rough": 0,
+    "golf_bunker": 0,
+    "golf_water_hazard": 0,
+    "golf_lateral_water_hazard": 0,
+    "golf_fringe": 0,
+    "golf_cartpath": 0,
+    "golf_driving_range": 0,
+    "golf_clubhouse": 0,
+    "any_golf_star_tag": 0,
+    "ref_tags": 0,
+    "par_tags": 0,
+    "handicap_tags": 0,
+    "teebox_colour_tags": 0,
+    "landuse_grass_with_name": 0,
+    "unclosed_polygons_that_would_be_dropped": 0,
+    "duplicate_refs": false,
+    "note": "Counting zero is the finding. Both the Overpass mirror and the live OSM API agree."
+  },
+  "per_hole_table": {
+    "rows": [],
+    "note": "Empty by necessity \u2014 there is not a single golf=hole way anywhere inside or within 2 km of the Victoria Park Valley boundary. No ref, par, or handicap data exists to tabulate."
+  },
+  "nines_identification": {
+    "resolved": false,
+    "reason": "Cannot be determined from OSM: there are no hole ways to cluster by way-ID series or geography, and no changesets touching golf features on this site. Valley / Pines / Lakes exist only in the club's own marketing, not in OSM.",
+    "way_id_series_per_nine": null,
+    "duplicate_ref_risk_when_mapped": "HIGH. When a mapper does survey this site they will almost certainly number each nine ref=1..9 independently (that is what OSM convention and every comparable 27-hole site does). importOverpass.ts keys holes with holeLineByNumber.set(ref, f) in a plain Map, so the third nine surveyed would silently overwrite the first two and yield a 9-hole Frankenstein course. Guard against this BEFORE importing Victoria Park Valley."
+  },
+  "non_golf_features_inside_boundary": {
+    "method": "Point-in-polygon of every way centroid from the live OSM API map call against way 353716100's geometry.",
+    "total_ways_inside": 21,
+    "water_polygons": [
+      {
+        "id": 1427151546,
+        "tags": {
+          "natural": "water",
+          "water": "pond"
+        },
+        "closed": true,
+        "nodes": 26
+      },
+      {
+        "id": 1427151547,
+        "tags": {
+          "natural": "water",
+          "water": "pond"
+        },
+        "closed": true,
+        "nodes": 14
+      },
+      {
+        "id": 1427151548,
+        "tags": {
+          "natural": "water",
+          "water": "pond"
+        },
+        "closed": true,
+        "nodes": 14
+      },
+      {
+        "id": 1427151549,
+        "tags": {
+          "natural": "water",
+          "water": "pond"
+        },
+        "closed": true,
+        "nodes": 23
+      },
+      {
+        "id": 1427151550,
+        "tags": {
+          "natural": "water",
+          "water": "pond"
+        },
+        "closed": true,
+        "nodes": 12
+      },
+      {
+        "id": 39881196,
+        "tags": {
+          "natural": "water",
+          "source": "CanVec_Import_2009"
+        },
+        "closed": true,
+        "nodes": 10
+      }
+    ],
+    "waterway_lines": [
+      {
+        "id": 1427151551,
+        "tags": {
+          "waterway": "stream"
+        },
+        "closed": false,
+        "nodes": 5
+      }
+    ],
+    "service_roads_driveways": [
+      1423313169,
+      1427151552,
+      1427151554,
+      1428010599,
+      1428010602,
+      1535708867
+    ],
+    "buildings": [
+      1427151553,
+      1428010595,
+      1428010596,
+      1428010597,
+      1428010598,
+      1428010600,
+      1428010601,
+      1428010603
+    ],
+    "parser_impact": "The 6 water polygons + 1 stream WOULD be picked up by isExpandedWaterFeature(), but nearestHoleNumber() returns null when holeLineList is empty, so `if (!nearest) continue` drops all of them. None of these ponds carries golf=water_hazard, and none of the buildings carries golf=clubhouse."
+  },
+  "simulated_import_result": {
+    "boundary_match": "MISS \u2014 features.find(leisure=golf_course && name) fails (no name tag); fallback features.find(landuse=grass && name) also fails (zero landuse=grass in the bbox).",
+    "resulting_course_name": "Imported Course",
+    "resulting_location": null,
+    "maxHoleNumber": "0 -> falls back to 18",
+    "holes_created": "18 empty placeholders, par 4, parInferred=true, defaultYardage=null",
+    "features_created": 0,
+    "teeBoxes_created": 0,
+    "centerlines_created": 0,
+    "warnings_expected": [
+      "Couldn't find a course boundary feature \u2014 using a generic name and no location.",
+      "No golf=hole centerlines with a usable ref number were found \u2014 falling back to 18 holes, par 4, with no shape data.",
+      "Holes 1..18 have no OSM centerline \u2014 created as empty placeholders (par defaulted to 4). ..."
+    ],
+    "conclusion": "A completely empty, unusable, unlocatable 18-hole shell for a facility that actually has 27 holes."
+  },
+  "nearby_confusables_do_not_import_by_mistake": [
+    {
+      "name_in_osm": "(unnamed)",
+      "real_name": "Victoria Park EAST Golf Club (sister club, 18 holes, par 71)",
+      "boundary_way": 39872928,
+      "boundary_tags": {
+        "leisure": "golf_course",
+        "sport": "golf",
+        "source": "CanVec_Import_2009"
+      },
+      "center": {
+        "lat": 43.5312448,
+        "lng": -80.1885686
+      },
+      "distance_from_vpv_km_approx": 2.9,
+      "golf_hole_ways": [
+        910027975,
+        910027976,
+        910027977,
+        910027978,
+        910027979,
+        910027980,
+        910027981,
+        910050873,
+        910050889,
+        910058528,
+        910058541,
+        910063811,
+        910063817,
+        910063829,
+        910068424,
+        910068440,
+        910073343,
+        910073352
+      ],
+      "refs_present": "1-18, no duplicates",
+      "holes_with_par": 15,
+      "holes_without_par": [
+        7,
+        12
+      ],
+      "note": "This IS mapped in detail (greens, fairways, tees, bunkers, cartpaths, rough). It is NOT Victoria Park Valley. Its boundary polygon is also unnamed, so a naive bbox export around 'Victoria Park' would produce this course under the wrong identity. Confirmed as East via GolfPass coords 43.5297229715,-80.1921701431."
+    },
+    {
+      "name_in_osm": "Springfield Golf & Country Club",
+      "boundary_way": 68311667,
+      "center": {
+        "lat": 43.4970005,
+        "lng": -80.176192
+      },
+      "distance_from_vpv_km_approx": 2.2,
+      "golf_hole_ways": [
+        911974424,
+        911974437,
+        911998186,
+        911998193,
+        912189708,
+        912189719,
+        912189726,
+        912197488,
+        912197498,
+        912197504,
+        912199544,
+        912215619,
+        912222751,
+        912222766,
+        912222750,
+        912222759,
+        912222772,
+        912197515
+      ],
+      "refs_present": "1-18, no duplicates",
+      "holes_with_par": 0,
+      "note": "Immediately SW of Victoria Park Valley and shares a bbox with it if you pad the query. Fully mapped but zero par tags \u2014 every hole would silently default to par 4."
+    }
+  ],
+  "queries_run": [
+    {
+      "purpose": "Find all golf courses around Guelph",
+      "url": "https://overpass-api.de/api/interpreter",
+      "data": "[out:json][timeout:110];(way[\"leisure\"=\"golf_course\"](43.40,-80.40,43.65,-80.05);relation[\"leisure\"=\"golf_course\"](43.40,-80.40,43.65,-80.05););out tags center;",
+      "result": "14 courses; none named 'Victoria Park *'. One unnamed way 353716100 at 43.5064,-80.1512."
+    },
+    {
+      "purpose": "Name search for the facility",
+      "data": "[out:json][timeout:110];nwr[\"name\"~\"Victoria Park\",i](43.20,-80.60,43.80,-79.90);out tags center;",
+      "result": "20 hits, all parks/pavilions/stations in Kitchener/Fergus/Brantford. NO golf club of that name exists in OSM."
+    },
+    {
+      "purpose": "Nominatim geocode",
+      "url": "https://nominatim.openstreetmap.org/search?q=Victoria Park Valley Golf Club, Guelph, Ontario&format=json",
+      "result": "[] \u2014 empty. Also empty for 'Victoria Park Golf Club Guelph'."
+    },
+    {
+      "purpose": "Boundary tags + geometry",
+      "data": "[out:json][timeout:110];way(353716100);out tags geom;",
+      "result": "tags={leisure:golf_course} only; 18 nodes; closed=True; bbox 43.5006061,-80.1561682,43.5122904,-80.1463001"
+    },
+    {
+      "purpose": "Every golf feature at the facility (tight bbox)",
+      "data": "[out:json][timeout:140];(nwr[\"golf\"](43.4950,-80.1700,43.5200,-80.1350);nwr[\"leisure\"=\"golf_course\"](43.4950,-80.1700,43.5200,-80.1350););out tags center;",
+      "result": "1 element total \u2014 way 353716100 itself. ZERO golf=* features."
+    },
+    {
+      "purpose": "Wide sweep to make sure nothing was just outside the boundary",
+      "data": "[out:json][timeout:140];(nwr[\"golf\"](43.4800,-80.1900,43.5300,-80.1200);nwr[\"leisure\"=\"golf_course\"](43.4800,-80.1900,43.5300,-80.1200);nwr[\"sport\"=\"golf\"](43.4800,-80.1900,43.5300,-80.1200););out tags center;",
+      "result": "229 elements, ALL belonging to Springfield G&CC or Victoria Park East. Zero within 1.5 km of the VPV polygon."
+    },
+    {
+      "purpose": "Broad golf=hole census across Guelph/Puslinch",
+      "data": "[out:json][timeout:140];way[\"golf\"=\"hole\"](43.4400,-80.2800,43.5800,-80.0800);out tags center;",
+      "result": "60 hole ways in 4 geographic clusters \u2014 Springfield, Victoria Park East, Cutten Fields, Ariss Valley. None inside 43.5006-43.5123 / -80.1562--80.1463."
+    },
+    {
+      "purpose": "Live OSM API cross-check (mirror-lag control)",
+      "url": "https://api.openstreetmap.org/api/0.6/map.json?bbox=-80.1600,43.4990,-80.1440,43.5140",
+      "result": "1261 elements. golf=* count: 0. leisure=golf_course count: 1 (way 353716100, unnamed, v2, cs 32308658, 2015-06-30). landuse=grass count: 0. Confirms the absence is real, not mirror lag."
+    },
+    {
+      "purpose": "Changeset provenance",
+      "url": "https://api.openstreetmap.org/api/0.6/way/353716100/history.json + /changeset/{31972349,32308658}.json",
+      "result": "v1 twodimes 2015-06-14 'Misc updates'; v2 kartler175 2015-06-30 'OSMI MP invalid_geometry'."
+    }
+  ],
+  "gaps_ordered_by_import_impact": [
+    "Nothing golf-specific is mapped at all: 0 golf=hole, 0 golf=green, 0 golf=fairway, 0 golf=tee, 0 golf=bunker, 0 golf=rough, 0 golf=water_hazard inside way 353716100. All 27 holes need surveying from scratch before any import is possible.",
+    "The only boundary, way 353716100, has NO name tag (its entire tag set is leisure=golf_course), so importOverpass.ts finds no boundary at all and the course lands as 'Imported Course' with location=null. Add name=Victoria Park Valley Golf Club (plus holes=27, sport=golf, addr, website).",
+    "27 holes across three nines means refs WILL collide: number the ways ref=1..27 in a single sequence, or teach the parser to namespace by nine, before importing. As tagged today there is nothing to collide, but the trap is unavoidable the moment someone maps Valley/Pines/Lakes as 1-9 each.",
+    "No golf=hole centerlines means every green/tee/fairway/bunker added later would be orphaned \u2014 the parser matches features to holes geometrically off the centerlines. Survey centerlines FIRST, tee->green, open ways, with ref= and par=.",
+    "No handicap=<1-18> and no par= exist anywhere on site, so stroke index is unavailable and every hole would silently default to par 4.",
+    "The 6 ponds and 1 stream inside the property (ways 1427151546-51, 39881196) carry natural=water / waterway=stream but no golf=water_hazard, and are dropped entirely today because there are no centerlines to attach them to.",
+    "No golf=tee polygons exist, therefore no teebox= colour tags \u2014 the club's multiple tee decks are entirely unrepresented and would all import as indistinguishable 'Tee' even after tees are added.",
+    "Do not confuse this site with unnamed way 39872928 2.9 km north \u2014 that is the sister club Victoria Park EAST (18 holes, fully mapped, refs 1-18, par missing on holes 7 and 12). Its boundary is also unnamed, so a loose bbox export will import East under the wrong name."
+  ]
+}

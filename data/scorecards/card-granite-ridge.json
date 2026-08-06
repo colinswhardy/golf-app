@@ -1,0 +1,306 @@
+{
+ "course": "Granite Ridge Golf Club - Cobalt Course (Milton, Ontario, Canada)",
+ "facility": "Granite Ridge Golf Club, 9503 Dublin Line, Milton, ON L9T 2X7",
+ "courseIdentification": "COBALT course only. The facility has two separate 18-hole courses: Cobalt (par 72) and Ruby (par 70). Data below is Cobalt, taken from the club's own 'Cobalt Course' scorecard graphic. Ruby's card was pulled separately and confirmed to be a different, par-70 layout (Blue 5747), so there is no cross-contamination here.",
+ "teeSets": [
+  {
+   "name": "Blue",
+   "totalYards": 6288,
+   "outYards": 2961,
+   "inYards": 3327,
+   "par": 72,
+   "rating": 70.2,
+   "slope": 131,
+   "womensRating": 76.2,
+   "womensSlope": 140,
+   "ratingSource": "Golf Canada (men's/women's course & slope rating)",
+   "ratingFiledAtYards": 6546,
+   "ratingMatchesPrintedCard": false
+  },
+  {
+   "name": "Blue/White Hybrid",
+   "totalYards": 5996,
+   "outYards": 2866,
+   "inYards": 3130,
+   "par": 72,
+   "rating": 68.8,
+   "slope": 127,
+   "womensRating": 74.5,
+   "womensSlope": 136,
+   "ratingSource": "Golf Canada (men's/women's course & slope rating)",
+   "ratingFiledAtYards": 6157,
+   "ratingMatchesPrintedCard": false
+  },
+  {
+   "name": "White",
+   "totalYards": 5835,
+   "outYards": 2777,
+   "inYards": 3058,
+   "par": 72,
+   "rating": 68.1,
+   "slope": 125,
+   "womensRating": 73.7,
+   "womensSlope": 134,
+   "ratingSource": "Golf Canada (men's/women's course & slope rating)",
+   "ratingFiledAtYards": 5952,
+   "ratingMatchesPrintedCard": false
+  },
+  {
+   "name": "White/Red Hybrid",
+   "totalYards": 5268,
+   "outYards": 2598,
+   "inYards": 2670,
+   "par": 72,
+   "rating": 65.7,
+   "slope": 118,
+   "womensRating": 70.5,
+   "womensSlope": 126,
+   "ratingSource": "Golf Canada (men's/women's course & slope rating)",
+   "ratingFiledAtYards": 5270,
+   "ratingMatchesPrintedCard": false
+  },
+  {
+   "name": "Red",
+   "totalYards": 5005,
+   "outYards": 2443,
+   "inYards": 2562,
+   "par": 72,
+   "rating": 64.2,
+   "slope": 115,
+   "womensRating": 69.4,
+   "womensSlope": 122,
+   "ratingSource": "Golf Canada (men's/women's course & slope rating)",
+   "ratingFiledAtYards": 5077,
+   "ratingMatchesPrintedCard": false
+  }
+ ],
+ "holes": [
+  {
+   "number": 1,
+   "par": 4,
+   "handicap": 15,
+   "yards": {
+    "Blue": 330,
+    "Blue/White Hybrid": 330,
+    "White": 313,
+    "White/Red Hybrid": 313,
+    "Red": 283
+   }
+  },
+  {
+   "number": 2,
+   "par": 4,
+   "handicap": 11,
+   "yards": {
+    "Blue": 351,
+    "Blue/White Hybrid": 351,
+    "White": 340,
+    "White/Red Hybrid": 340,
+    "Red": 305
+   }
+  },
+  {
+   "number": 3,
+   "par": 3,
+   "handicap": 13,
+   "yards": {
+    "Blue": 148,
+    "Blue/White Hybrid": 148,
+    "White": 139,
+    "White/Red Hybrid": 139,
+    "Red": 116
+   }
+  },
+  {
+   "number": 4,
+   "par": 5,
+   "handicap": 5,
+   "yards": {
+    "Blue": 501,
+    "Blue/White Hybrid": 501,
+    "White": 494,
+    "White/Red Hybrid": 457,
+    "Red": 457
+   }
+  },
+  {
+   "number": 5,
+   "par": 3,
+   "handicap": 3,
+   "yards": {
+    "Blue": 161,
+    "Blue/White Hybrid": 141,
+    "White": 141,
+    "White/Red Hybrid": 110,
+    "Red": 110
+   }
+  },
+  {
+   "number": 6,
+   "par": 4,
+   "handicap": 9,
+   "yards": {
+    "Blue": 286,
+    "Blue/White Hybrid": 286,
+    "White": 264,
+    "White/Red Hybrid": 234,
+    "Red": 234
+   }
+  },
+  {
+   "number": 7,
+   "par": 5,
+   "handicap": 1,
+   "yards": {
+    "Blue": 560,
+    "Blue/White Hybrid": 528,
+    "White": 528,
+    "White/Red Hybrid": 447,
+    "Red": 447
+   }
+  },
+  {
+   "number": 8,
+   "par": 4,
+   "handicap": 17,
+   "yards": {
+    "Blue": 294,
+    "Blue/White Hybrid": 294,
+    "White": 271,
+    "White/Red Hybrid": 271,
+    "Red": 241
+   }
+  },
+  {
+   "number": 9,
+   "par": 4,
+   "handicap": 7,
+   "yards": {
+    "Blue": 330,
+    "Blue/White Hybrid": 287,
+    "White": 287,
+    "White/Red Hybrid": 287,
+    "Red": 250
+   }
+  },
+  {
+   "number": 10,
+   "par": 4,
+   "handicap": 8,
+   "yards": {
+    "Blue": 403,
+    "Blue/White Hybrid": 403,
+    "White": 390,
+    "White/Red Hybrid": 353,
+    "Red": 353
+   }
+  },
+  {
+   "number": 11,
+   "par": 4,
+   "handicap": 16,
+   "yards": {
+    "Blue": 347,
+    "Blue/White Hybrid": 347,
+    "White": 310,
+    "White/Red Hybrid": 310,
+    "Red": 225
+   }
+  },
+  {
+   "number": 12,
+   "par": 4,
+   "handicap": 12,
+   "yards": {
+    "Blue": 360,
+    "Blue/White Hybrid": 338,
+    "White": 338,
+    "White/Red Hybrid": 293,
+    "Red": 293
+   }
+  },
+  {
+   "number": 13,
+   "par": 4,
+   "handicap": 10,
+   "yards": {
+    "Blue": 362,
+    "Blue/White Hybrid": 332,
+    "White": 332,
+    "White/Red Hybrid": 301,
+    "Red": 301
+   }
+  },
+  {
+   "number": 14,
+   "par": 4,
+   "handicap": 4,
+   "yards": {
+    "Blue": 405,
+    "Blue/White Hybrid": 375,
+    "White": 375,
+    "White/Red Hybrid": 300,
+    "Red": 300
+   }
+  },
+  {
+   "number": 15,
+   "par": 5,
+   "handicap": 2,
+   "yards": {
+    "Blue": 570,
+    "Blue/White Hybrid": 525,
+    "White": 525,
+    "White/Red Hybrid": 440,
+    "Red": 440
+   }
+  },
+  {
+   "number": 16,
+   "par": 3,
+   "handicap": 18,
+   "yards": {
+    "Blue": 160,
+    "Blue/White Hybrid": 160,
+    "White": 138,
+    "White/Red Hybrid": 138,
+    "Red": 115
+   }
+  },
+  {
+   "number": 17,
+   "par": 4,
+   "handicap": 6,
+   "yards": {
+    "Blue": 380,
+    "Blue/White Hybrid": 350,
+    "White": 350,
+    "White/Red Hybrid": 280,
+    "Red": 280
+   }
+  },
+  {
+   "number": 18,
+   "par": 4,
+   "handicap": 14,
+   "yards": {
+    "Blue": 340,
+    "Blue/White Hybrid": 300,
+    "White": 300,
+    "White/Red Hybrid": 255,
+    "Red": 255
+   }
+  }
+ ],
+ "sources": [
+  "https://golfgranite.com/wp-content/uploads/2025/02/cobalt-full-scorecard.png",
+  "https://golfgranite.com/golf/cobalt-course/",
+  "https://www.golfpass.com/travel-advisor/courses/27612-granite-ridge-golf-club-cobalt",
+  "https://www.golfcanada.ca/golf-facility/granite-ridge-golf-club-en/",
+  "https://golfgranite.com/wp-content/uploads/2025/02/ruby-scorecard.png",
+  "https://mscorecard.com/mscorecard/showcourse.php?cid=1120577492086",
+  "https://18birdies.com/golf-courses/club/774e13e0-86ac-11e4-8c28-020000005b00/granite-ridge-golf-club",
+  "https://www.golfify.io/courses/granite-ridge-golf-club-cobalt"
+ ],
+ "notes": "PRIMARY SOURCE: the operator's own scorecard image, linked from golfgranite.com/golf/cobalt-course/ (uploaded 2025-02-05; the club's media library contains only two scorecard files, Cobalt and Ruby, so this is the current published card). Every per-hole yardage was read at 4x zoom and independently reconciled against the printed OUT / IN / TOTAL subtotals on the card - all five tee sets sum exactly. Par (36/36/72) and the stroke-index allocation (odds on the front nine, evens on the back, 1-18 each used once) also validate. \n\nCROSS-CHECK: GolfPass's hole-by-hole table reproduces the identical 18 Blue yardages, pars and stroke indexes (Blue 2961/3327/6288). Two sources agree on the per-hole data. \n\nKNOWN DISCREPANCY - TWO GENERATIONS OF CARD. Several databases still carry an older, longer measurement of Cobalt: Blue 6546, White 5952, Red 5077 (Golf Canada, mScorecard, InteGolf, and GolfPass's own tee-set summary table, which contradicts GolfPass's own hole-by-hole table on the same page). The current club card is Blue 6288. Use the 6288 generation for the scorecard screen; the 6546 figures are stale. \n\nKNOWN DISCREPANCY - STROKE INDEX. Golf Canada files a different SI allocation than the printed card: GC = 15,7,17,11,3,5,1,9,13 / 6,8,12,16,4,2,18,10,14; printed card = 15,11,13,5,3,9,1,17,7 / 8,16,12,10,4,2,18,6,14. They agree only on holes 1,5,7,12,14,15,16,18. The printed-card values are used above (club card + GolfPass agree); the Golf Canada variant is recorded here so it can be swapped in if you post scores through Golf Canada. \n\nRATINGS CAVEAT. The club's printed card shows NO course/slope rating. The rating/slope values above are Golf Canada's published ratings, and their tee names match the card exactly, but they are filed against the older longer measurement (see ratingFiledAtYards / ratingMatchesPrintedCard - none of them match the printed totals). Treat them as the correct values for handicap posting but not as a rating of the 6288-yard card. 18Birdies separately lists Cobalt at 6288 yds with rating 69.6 / slope 118, which would be a rating of the current card, but I could not confirm that against an official rating body, so it is not used above. Golf Canada also marks every Cobalt tee isActive=false, which may indicate the ratings are pending revision. \n\nSOURCE REJECTED: golfify.io's 'Granite Ridge Golf Club - Cobalt' page publishes a par-70, 5973-yard layout with completely different hole yardages. Cobalt is par 72. That page is the Ruby course (or a variant of it) mislabelled as Cobalt - a clear example of the two courses being conflated. Do not use it. \n\nNOTE ON HYBRID TEES: 'Blue/White Hybrid' and 'White/Red Hybrid' are combination tee sets printed on the club card; each hole plays from either the Blue or the White (resp. White or Red) marker. They are real, separately-rated tee sets, not interpolations."
+}

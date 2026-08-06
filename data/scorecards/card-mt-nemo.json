@@ -1,0 +1,99 @@
+{
+  "course": "Mount Nemo Golf Club",
+  "formerName": "Indian Wells Golf Club",
+  "location": "5377 Walkers Line, Burlington, ON L7M 0P9, Canada",
+  "holeCount": 18,
+  "designer": "Rene Muylaert",
+  "opened": 1973,
+  "menOnlyOneCourse": true,
+  "teeSets": [
+    {
+      "name": "Brown",
+      "colour": "brown",
+      "recommendedFor": "0-9 handicap",
+      "totalYards": 6216,
+      "outYards": 3267,
+      "inYards": 2949,
+      "par": 71,
+      "rating": 71.8,
+      "slope": 126,
+      "ratingSource": "18birdies_only_not_on_operator_card",
+      "womensRating": 74.6,
+      "womensSlope": 125
+    },
+    {
+      "name": "Blue",
+      "colour": "blue",
+      "recommendedFor": "10-29 handicap",
+      "totalYards": 5855,
+      "outYards": 3071,
+      "inYards": 2784,
+      "par": 71,
+      "rating": 69.5,
+      "slope": 123,
+      "ratingSource": "18birdies_only_not_on_operator_card",
+      "womensRating": 72.6,
+      "womensSlope": 120
+    },
+    {
+      "name": "Orange",
+      "colour": "orange",
+      "recommendedFor": "30+ handicap",
+      "totalYards": 5003,
+      "outYards": 2644,
+      "inYards": 2359,
+      "par": 71,
+      "rating": 64.0,
+      "slope": 100,
+      "ratingSource": "18birdies_only_not_on_operator_card",
+      "womensRating": 68.8,
+      "womensSlope": 115
+    },
+    {
+      "name": "Green",
+      "colour": "green",
+      "totalYards": 3678,
+      "outYards": 1878,
+      "inYards": 1800,
+      "par": 71,
+      "rating": 58.9,
+      "slope": 93,
+      "ratingSource": "18birdies_only_not_on_operator_card",
+      "womensRating": 59.5,
+      "womensSlope": 97
+    }
+  ],
+  "parTotals": {
+    "mens": { "out": 36, "in": 35, "total": 71 },
+    "ladies": { "out": 36, "in": 36, "total": 72 }
+  },
+  "holes": [
+    { "number": 1,  "par": 5, "ladiesPar": 5, "handicap": 7,  "yards": { "Brown": 493, "Blue": 486, "Orange": 449, "Green": 300 } },
+    { "number": 2,  "par": 4, "ladiesPar": 4, "handicap": 1,  "yards": { "Brown": 413, "Blue": 385, "Orange": 320, "Green": 250 } },
+    { "number": 3,  "par": 4, "ladiesPar": 4, "handicap": 13, "yards": { "Brown": 371, "Blue": 354, "Orange": 274, "Green": 215 } },
+    { "number": 4,  "par": 3, "ladiesPar": 3, "handicap": 17, "yards": { "Brown": 180, "Blue": 150, "Orange": 126, "Green": 120 } },
+    { "number": 5,  "par": 4, "ladiesPar": 4, "handicap": 9,  "yards": { "Brown": 339, "Blue": 320, "Orange": 296, "Green": 230 } },
+    { "number": 6,  "par": 5, "ladiesPar": 5, "handicap": 3,  "yards": { "Brown": 504, "Blue": 487, "Orange": 433, "Green": 260 } },
+    { "number": 7,  "par": 3, "ladiesPar": 3, "handicap": 15, "yards": { "Brown": 239, "Blue": 212, "Orange": 144, "Green": 75  } },
+    { "number": 8,  "par": 4, "ladiesPar": 4, "handicap": 11, "yards": { "Brown": 385, "Blue": 373, "Orange": 347, "Green": 220 } },
+    { "number": 9,  "par": 4, "ladiesPar": 4, "handicap": 5,  "yards": { "Brown": 343, "Blue": 304, "Orange": 255, "Green": 208 } },
+    { "number": 10, "par": 4, "ladiesPar": 4, "handicap": 2,  "yards": { "Brown": 333, "Blue": 322, "Orange": 284, "Green": 238 } },
+    { "number": 11, "par": 4, "ladiesPar": 4, "handicap": 14, "yards": { "Brown": 354, "Blue": 334, "Orange": 312, "Green": 205 } },
+    { "number": 12, "par": 4, "ladiesPar": 4, "handicap": 12, "yards": { "Brown": 355, "Blue": 327, "Orange": 285, "Green": 222 } },
+    { "number": 13, "par": 3, "ladiesPar": 3, "handicap": 16, "yards": { "Brown": 163, "Blue": 140, "Orange": 97,  "Green": 85  } },
+    { "number": 14, "par": 4, "ladiesPar": 5, "handicap": 4,  "yards": { "Brown": 396, "Blue": 385, "Orange": 352, "Green": 225 } },
+    { "number": 15, "par": 5, "ladiesPar": 5, "handicap": 8,  "yards": { "Brown": 492, "Blue": 457, "Orange": 374, "Green": 355 } },
+    { "number": 16, "par": 4, "ladiesPar": 4, "handicap": 10, "yards": { "Brown": 325, "Blue": 314, "Orange": 235, "Green": 170 } },
+    { "number": 17, "par": 3, "ladiesPar": 3, "handicap": 18, "yards": { "Brown": 171, "Blue": 160, "Orange": 120, "Green": 80  } },
+    { "number": 18, "par": 4, "ladiesPar": 4, "handicap": 6,  "yards": { "Brown": 360, "Blue": 345, "Orange": 300, "Green": 220 } }
+  ],
+  "sources": [
+    "https://www.mountnemogolfclub.ca/aboutus/course-layout/",
+    "https://www.mountnemogolfclub.ca/wp-content/uploads/sites/4299/2019/09/IndianWells2019_V3-3-page-002.jpg",
+    "https://18birdies.com/golf-courses/club/76c9a1a0-86ac-11e4-8c28-020000005b00/mount-nemo-golf-club",
+    "https://www.golfpass.com/travel-advisor/courses/27233-indian-wells-golf-club",
+    "https://www.golfcanada.ca/golf-facility/mount-nemo-golf-club-en/",
+    "https://www.golfnow.com/tee-times/facility/4565-mount-nemo-golf-club-formerly-indian-wells-golf-club/search"
+  ],
+  "notes": "PRIMARY SOURCE: the operator's own printed scorecard image published on mountnemogolfclub.ca (course-layout page). The card is branded 'Indian Wells Golf Club' because that is the club's former name - GolfNow/TeeOff facility 4565 is slugged 'mount-nemo-golf-club-formerly-indian-wells-golf-club', confirming the rename. Single 18-hole course at this facility; no multiple nines, so no conflation risk between courses. IDENTITY CHECK: card's Brown total 6216 matches the widely published 'par 71 over 6,216 yards from the back tees' for Mount Nemo. ARITHMETIC CHECK: every tee row and both par rows sum exactly to their printed OUT/IN/TOT values. Men's handicap allocation is a valid 1-18 set (odds 1-17 on the front nine, evens 2-18 on the back). CROSS-CHECKS: 18Birdies independently reproduces the entire Brown row hole-by-hole plus par and handicap, identically. GolfPass (under the old Indian Wells listing) independently reproduces the entire Blue row hole-by-hole plus par and handicap, identically. Orange and Green per-hole yardages come from the operator card alone, though 18Birdies confirms their 5003 and 3678 totals. PAR: men's par is 71 (out 36 / in 35). Ladies' par is 72 - hole 14 plays as a par 5 from the forward tees. 18Birdies flattens every tee to par 71 and so drops the ladies' par 72. STROKE INDEX: the card prints only a MEN'S HDCP row; the ladies' handicap row is blank on the card, so no ladies' stroke index is available. RATING/SLOPE - TREAT AS UNVERIFIED: the operator card itself carries no ratings, printing 'Golf Canada slope and course rating coming soon', and Golf Canada's own facility page publishes no rating or slope either. The rating/slope values recorded here come from 18Birdies only. Caution: 71.8/126 and 69.5/123 are the same numbers GolfPass attaches to a legacy configuration (Blue 6402 yds and White 6004 yds), so they may be carried-over values re-labelled onto the current tee names rather than a fresh rating of the current card. DISAGREEMENTS BETWEEN SOURCES: (1) Golf Canada lists Total Yards 6141, which matches no tee on the current card (card back tee is 6216). (2) GolfPass's summary table lists tees Blue 6402 / White 6004 / Red(W) 5372, contradicting both the current card's Brown/Blue/Orange/Green naming and GolfPass's own hole-by-hole table, which is the current 5855 Blue row - GolfPass's summary is stale pre-rename data. (3) Hole19 publishes a completely different dataset - 'Blue (L)' 5353 yards, par 72, with per-hole yardages and stroke indexes matching nothing on the official card - and its own header contradicts its table (says par 71 while the table sums to 72); Hole19 should be disregarded. LOCATION NOTE: the request mentioned Guelph Line, but the club's actual address is 5377 Walkers Line, Burlington (the next concession road east), on the Mount Nemo plateau along the Niagara Escarpment. It is Burlington, not Milton. YARDAGE MARKERS: measured to centre of green. RECOMMENDED TEES per the card: Brown 0-9 hdcp, Blue 10-29 hdcp, Orange 30+ hdcp."
+}

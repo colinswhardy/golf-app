@@ -1,0 +1,336 @@
+{
+ "course": "Ussher's Creek at Legends on the Niagara",
+ "facility": "Legends on the Niagara (Niagara Parks), Niagara Falls, Ontario, Canada",
+ "architect": "Thomas McBroom",
+ "established": 2002,
+ "units": "yards",
+ "teeSets": [
+  {
+   "name": "Gold",
+   "outYards": 3520,
+   "inYards": 3660,
+   "totalYards": 7180,
+   "par": 72,
+   "rating": 74.4,
+   "slope": 140,
+   "ratingLadies": 81.4,
+   "slopeLadies": 150
+  },
+  {
+   "name": "Blue",
+   "outYards": 3311,
+   "inYards": 3443,
+   "totalYards": 6754,
+   "par": 72,
+   "rating": 72.0,
+   "slope": 132,
+   "ratingLadies": 79.1,
+   "slopeLadies": 148
+  },
+  {
+   "name": "Blue/White",
+   "outYards": 3209,
+   "inYards": 3277,
+   "totalYards": 6486,
+   "par": 72,
+   "rating": 70.3,
+   "slope": 128,
+   "ratingLadies": 76.9,
+   "slopeLadies": 144
+  },
+  {
+   "name": "White",
+   "outYards": 3001,
+   "inYards": 3184,
+   "totalYards": 6185,
+   "par": 72,
+   "rating": 69.3,
+   "slope": 123,
+   "ratingLadies": 75.0,
+   "slopeLadies": 139
+  },
+  {
+   "name": "White/Green",
+   "outYards": 2843,
+   "inYards": 2992,
+   "totalYards": 5835,
+   "par": 72,
+   "rating": 67.6,
+   "slope": 118,
+   "ratingLadies": 72.6,
+   "slopeLadies": 133
+  },
+  {
+   "name": "Green",
+   "outYards": 2663,
+   "inYards": 2758,
+   "totalYards": 5421,
+   "par": 72,
+   "rating": 65.6,
+   "slope": 115,
+   "ratingLadies": 70.8,
+   "slopeLadies": 128
+  }
+ ],
+ "holes": [
+  {
+   "number": 1,
+   "par": 4,
+   "handicap": 17,
+   "handicapLadies": 17,
+   "yards": {
+    "Gold": 390,
+    "Blue": 366,
+    "Blue/White": 366,
+    "White": 334,
+    "White/Green": 334,
+    "Green": 289
+   }
+  },
+  {
+   "number": 2,
+   "par": 5,
+   "handicap": 9,
+   "handicapLadies": 5,
+   "yards": {
+    "Gold": 530,
+    "Blue": 502,
+    "Blue/White": 502,
+    "White": 477,
+    "White/Green": 477,
+    "Green": 436
+   }
+  },
+  {
+   "number": 3,
+   "par": 3,
+   "handicap": 11,
+   "handicapLadies": 13,
+   "yards": {
+    "Gold": 178,
+    "Blue": 153,
+    "Blue/White": 153,
+    "White": 114,
+    "White/Green": 114,
+    "Green": 95
+   }
+  },
+  {
+   "number": 4,
+   "par": 4,
+   "handicap": 7,
+   "handicapLadies": 9,
+   "yards": {
+    "Gold": 412,
+    "Blue": 386,
+    "Blue/White": 349,
+    "White": 349,
+    "White/Green": 321,
+    "Green": 321
+   }
+  },
+  {
+   "number": 5,
+   "par": 4,
+   "handicap": 15,
+   "handicapLadies": 11,
+   "yards": {
+    "Gold": 360,
+    "Blue": 335,
+    "Blue/White": 335,
+    "White": 299,
+    "White/Green": 299,
+    "Green": 258
+   }
+  },
+  {
+   "number": 6,
+   "par": 4,
+   "handicap": 3,
+   "handicapLadies": 7,
+   "yards": {
+    "Gold": 439,
+    "Blue": 410,
+    "Blue/White": 381,
+    "White": 381,
+    "White/Green": 333,
+    "Green": 333
+   }
+  },
+  {
+   "number": 7,
+   "par": 3,
+   "handicap": 13,
+   "handicapLadies": 15,
+   "yards": {
+    "Gold": 186,
+    "Blue": 162,
+    "Blue/White": 140,
+    "White": 140,
+    "White/Green": 119,
+    "Green": 119
+   }
+  },
+  {
+   "number": 8,
+   "par": 4,
+   "handicap": 1,
+   "handicapLadies": 1,
+   "yards": {
+    "Gold": 472,
+    "Blue": 459,
+    "Blue/White": 445,
+    "White": 445,
+    "White/Green": 384,
+    "Green": 384
+   }
+  },
+  {
+   "number": 9,
+   "par": 5,
+   "handicap": 5,
+   "handicapLadies": 3,
+   "yards": {
+    "Gold": 553,
+    "Blue": 538,
+    "Blue/White": 538,
+    "White": 462,
+    "White/Green": 462,
+    "Green": 428
+   }
+  },
+  {
+   "number": 10,
+   "par": 4,
+   "handicap": 6,
+   "handicapLadies": 4,
+   "yards": {
+    "Gold": 457,
+    "Blue": 433,
+    "Blue/White": 405,
+    "White": 405,
+    "White/Green": 372,
+    "Green": 372
+   }
+  },
+  {
+   "number": 11,
+   "par": 4,
+   "handicap": 16,
+   "handicapLadies": 10,
+   "yards": {
+    "Gold": 398,
+    "Blue": 379,
+    "Blue/White": 355,
+    "White": 355,
+    "White/Green": 321,
+    "Green": 321
+   }
+  },
+  {
+   "number": 12,
+   "par": 5,
+   "handicap": 8,
+   "handicapLadies": 8,
+   "yards": {
+    "Gold": 505,
+    "Blue": 490,
+    "Blue/White": 490,
+    "White": 476,
+    "White/Green": 476,
+    "Green": 391
+   }
+  },
+  {
+   "number": 13,
+   "par": 3,
+   "handicap": 18,
+   "handicapLadies": 18,
+   "yards": {
+    "Gold": 177,
+    "Blue": 161,
+    "Blue/White": 137,
+    "White": 137,
+    "White/Green": 137,
+    "Green": 98
+   }
+  },
+  {
+   "number": 14,
+   "par": 5,
+   "handicap": 2,
+   "handicapLadies": 2,
+   "yards": {
+    "Gold": 556,
+    "Blue": 523,
+    "Blue/White": 523,
+    "White": 484,
+    "White/Green": 484,
+    "Green": 419
+   }
+  },
+  {
+   "number": 15,
+   "par": 4,
+   "handicap": 12,
+   "handicapLadies": 14,
+   "yards": {
+    "Gold": 461,
+    "Blue": 432,
+    "Blue/White": 402,
+    "White": 402,
+    "White/Green": 339,
+    "Green": 339
+   }
+  },
+  {
+   "number": 16,
+   "par": 3,
+   "handicap": 14,
+   "handicapLadies": 16,
+   "yards": {
+    "Gold": 233,
+    "Blue": 206,
+    "Blue/White": 172,
+    "White": 172,
+    "White/Green": 146,
+    "Green": 146
+   }
+  },
+  {
+   "number": 17,
+   "par": 4,
+   "handicap": 10,
+   "handicapLadies": 12,
+   "yards": {
+    "Gold": 422,
+    "Blue": 399,
+    "Blue/White": 399,
+    "White": 359,
+    "White/Green": 359,
+    "Green": 314
+   }
+  },
+  {
+   "number": 18,
+   "par": 4,
+   "handicap": 4,
+   "handicapLadies": 6,
+   "yards": {
+    "Gold": 451,
+    "Blue": 420,
+    "Blue/White": 394,
+    "White": 394,
+    "White/Green": 358,
+    "Green": 358
+   }
+  }
+ ],
+ "sources": [
+  "https://www.niagaraparks.com/media/2023/12/2023_Golf_ScoreCard_UsshersCreek.pdf",
+  "https://niagaraparks.com/media/2023/03/Golf_2022_Score-Card_Usshers-Creek_V3.pdf",
+  "https://www.hole19golf.com/courses/legends-on-the-niagara-ussher-s-creek",
+  "https://www.niagaraparks.com/media/2023/12/2023_Golf_ScoreCard_Battlefield.pdf"
+ ],
+ "notes": "PRIMARY SOURCE: official Niagara Parks 2023 Ussher's Creek scorecard PDF (operator's own card). CROSS-CHECK 1: the official 2022 Niagara Parks Ussher's Creek card reproduces every per-hole yardage, par and both handicap rows identically for Gold/Blue/White/White-Green/Green; it predates the Blue/White combo tee, which appears only on the 2023 card. CROSS-CHECK 2: Hole19 independently matches all 18 pars and all 18 men's stroke indexes exactly. ARITHMETIC: every tee's OUT, IN and TOTAL were recomputed from the per-hole yardages and match the printed totals exactly; the men's and ladies' handicap rows are each a complete permutation of 1-18 (odds on the front, evens on the back). 'handicap' is the MEN'S stroke index; 'handicapLadies' is the ladies' row. TEE NAMES: printed on the card as GOLD, BLUE, BLUE WHITE, WHITE, WHITE GREEN, GREEN. Blue/White and White/Green are combination tees (a mix of the adjacent tee decks), separately rated. DISCREPANCIES: (a) the 2022 card lists the White/Green ladies' slope as 129, the 2023 card as 133 - the 2023 value is used here; (b) the 2022 card publishes no ladies' rating for the Gold tee ('-'), the 2023 card gives 81.4/150. All other rating/slope values agree between the two cards. NOT BATTLEFIELD: verified against the official Battlefield card (7309 yds Gold, par sequence 5-4-3-4-4-5-4-3-4), which shares no numbers with this one. Chippawa is the facility's separate nine. Rating/slope are Golf Canada men's and ladies' values as printed. All distances measured to centre of green."
+}

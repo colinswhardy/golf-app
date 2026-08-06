@@ -1,0 +1,859 @@
+{
+  "facility": "Victoria Park East Golf Club",
+  "location": "1096 Victoria Rd S, Guelph, Ontario, Canada",
+  "auditDate": "2026-08-06",
+  "identification": {
+    "method": "No OSM feature anywhere in SW Ontario is named 'Victoria Park East'. Identified the site geometrically: the only leisure=golf_course polygon in south-east Guelph, bounded by Victoria Road South (SW), Stone Road East (N) and Arkell Road (SE), with a golf=clubhouse building fronting Victoria Road South at 43.529205,-80.191490 \u2014 matching the club's published address 1096 Victoria Rd S and its 18-hole layout.",
+    "boundaryWayId": 39872928,
+    "boundaryTags": {
+      "canvec:UUID": "8cf8a0ced6a140f38343972f3455a308",
+      "leisure": "golf_course",
+      "source": "CanVec_Import_2009",
+      "sport": "golf"
+    },
+    "boundaryHasName": false,
+    "boundaryClosed": true,
+    "boundaryNodes": 35,
+    "boundaryBbox": {
+      "south": 43.5269387,
+      "west": -80.1946475,
+      "north": 43.535551,
+      "east": -80.1824897
+    },
+    "boundaryVersion": 4,
+    "boundaryChangeset": 125524358,
+    "boundaryUser": "saun-ders",
+    "boundaryTimestamp": "2022-08-29T13:29:00Z",
+    "otherGolfCourseWaysChecked": {
+      "39872929": "unnamed leisure=golf_course at 43.5700,-80.2657 (NW Guelph) - not this facility",
+      "353716100": "unnamed leisure=golf_course at 43.5064,-80.1512 (Victoria Rd S / Maltby Rd E) - contains ZERO golf=* features; not this facility",
+      "39872938": "Cutten Fields Course",
+      "67789027": "Beaverdale Golf Club",
+      "68311667": "Springfield Golf & Country Club",
+      "178104866": "Guelph Lakes Golf and Country Club"
+    }
+  },
+  "multiCourseTrap": {
+    "duplicateRefs": false,
+    "refsPresent": "1-18, each exactly once",
+    "note": "Single 18-hole course. One leisure=golf_course polygon, 18 golf=hole ways with refs 1..18, no repeats, so the parser's ref-keyed Map cannot overwrite anything. No nines to disambiguate."
+  },
+  "counts": {
+    "golfHoleWays": 18,
+    "greens": 19,
+    "fairways": 19,
+    "tees": 60,
+    "bunkers": 78,
+    "waterHazards": 8,
+    "rough": 6,
+    "cartpaths": 27,
+    "clubhouse": 1,
+    "drivingRange": 1,
+    "totalGolfElements": 237
+  },
+  "tagCompleteness": {
+    "holesWithRef": 18,
+    "holesWithPar": 16,
+    "holesWithHandicap": 0,
+    "holesMissingPar": [
+      {
+        "ref": 7,
+        "wayId": 910027981,
+        "lengthYards": 398,
+        "parWouldDefaultTo": 4
+      },
+      {
+        "ref": 12,
+        "wayId": 910063811,
+        "lengthYards": 383,
+        "parWouldDefaultTo": 4
+      }
+    ],
+    "teesWithTeeboxTag": 0,
+    "teeboxValuesSeen": [],
+    "teeTagKeysSeen": {
+      "golf": 60,
+      "landuse=grass": 51
+    }
+  },
+  "geometryValidity": {
+    "unclosedPolygonsThatWouldBeDropped": 0,
+    "allHoleWaysAreOpenLines": true,
+    "allGreenFairwayTeeRoughBunkerWaterWaysClosed": true,
+    "allGolfFeatureCentroidsInsideBoundaryPolygon": true,
+    "featuresMoreThan100mFromAnyCenterline": 0
+  },
+  "perHole": [
+    {
+      "ref": 1,
+      "wayId": 910027975,
+      "par": "5",
+      "handicap": null,
+      "nodes": 6,
+      "isOpenLine": true,
+      "lengthMeters": 444,
+      "lengthYards": 485,
+      "tags": {
+        "golf": "hole",
+        "par": "5",
+        "ref": "1"
+      }
+    },
+    {
+      "ref": 2,
+      "wayId": 910027976,
+      "par": "4",
+      "handicap": null,
+      "nodes": 4,
+      "isOpenLine": true,
+      "lengthMeters": 356,
+      "lengthYards": 389,
+      "tags": {
+        "golf": "hole",
+        "par": "4",
+        "ref": "2"
+      }
+    },
+    {
+      "ref": 3,
+      "wayId": 910027977,
+      "par": "4",
+      "handicap": null,
+      "nodes": 3,
+      "isOpenLine": true,
+      "lengthMeters": 386,
+      "lengthYards": 422,
+      "tags": {
+        "golf": "hole",
+        "par": "4",
+        "ref": "3"
+      }
+    },
+    {
+      "ref": 4,
+      "wayId": 910027978,
+      "par": "3",
+      "handicap": null,
+      "nodes": 2,
+      "isOpenLine": true,
+      "lengthMeters": 162,
+      "lengthYards": 177,
+      "tags": {
+        "golf": "hole",
+        "par": "3",
+        "ref": "4"
+      }
+    },
+    {
+      "ref": 5,
+      "wayId": 910027979,
+      "par": "5",
+      "handicap": null,
+      "nodes": 4,
+      "isOpenLine": true,
+      "lengthMeters": 364,
+      "lengthYards": 398,
+      "tags": {
+        "golf": "hole",
+        "par": "5",
+        "ref": "5"
+      }
+    },
+    {
+      "ref": 6,
+      "wayId": 910027980,
+      "par": "3",
+      "handicap": null,
+      "nodes": 2,
+      "isOpenLine": true,
+      "lengthMeters": 133,
+      "lengthYards": 145,
+      "tags": {
+        "golf": "hole",
+        "par": "3",
+        "ref": "6"
+      }
+    },
+    {
+      "ref": 7,
+      "wayId": 910027981,
+      "par": null,
+      "handicap": null,
+      "nodes": 4,
+      "isOpenLine": true,
+      "lengthMeters": 364,
+      "lengthYards": 398,
+      "tags": {
+        "golf": "hole",
+        "ref": "7"
+      }
+    },
+    {
+      "ref": 8,
+      "wayId": 910050873,
+      "par": "5",
+      "handicap": null,
+      "nodes": 5,
+      "isOpenLine": true,
+      "lengthMeters": 495,
+      "lengthYards": 542,
+      "tags": {
+        "golf": "hole",
+        "par": "5",
+        "ref": "8"
+      }
+    },
+    {
+      "ref": 9,
+      "wayId": 910050889,
+      "par": "4",
+      "handicap": null,
+      "nodes": 6,
+      "isOpenLine": true,
+      "lengthMeters": 381,
+      "lengthYards": 417,
+      "tags": {
+        "golf": "hole",
+        "par": "4",
+        "ref": "9"
+      }
+    },
+    {
+      "ref": 10,
+      "wayId": 910058528,
+      "par": "5",
+      "handicap": null,
+      "nodes": 4,
+      "isOpenLine": true,
+      "lengthMeters": 474,
+      "lengthYards": 518,
+      "tags": {
+        "golf": "hole",
+        "par": "5",
+        "ref": "10"
+      }
+    },
+    {
+      "ref": 11,
+      "wayId": 910058541,
+      "par": "3",
+      "handicap": null,
+      "nodes": 2,
+      "isOpenLine": true,
+      "lengthMeters": 167,
+      "lengthYards": 183,
+      "tags": {
+        "golf": "hole",
+        "par": "3",
+        "ref": "11"
+      }
+    },
+    {
+      "ref": 12,
+      "wayId": 910063811,
+      "par": null,
+      "handicap": null,
+      "nodes": 4,
+      "isOpenLine": true,
+      "lengthMeters": 350,
+      "lengthYards": 383,
+      "tags": {
+        "golf": "hole",
+        "ref": "12"
+      }
+    },
+    {
+      "ref": 13,
+      "wayId": 910063817,
+      "par": "3",
+      "handicap": null,
+      "nodes": 3,
+      "isOpenLine": true,
+      "lengthMeters": 150,
+      "lengthYards": 164,
+      "tags": {
+        "golf": "hole",
+        "par": "3",
+        "ref": "13"
+      }
+    },
+    {
+      "ref": 14,
+      "wayId": 910063829,
+      "par": "4",
+      "handicap": null,
+      "nodes": 4,
+      "isOpenLine": true,
+      "lengthMeters": 324,
+      "lengthYards": 354,
+      "tags": {
+        "golf": "hole",
+        "par": "4",
+        "ref": "14"
+      }
+    },
+    {
+      "ref": 15,
+      "wayId": 910068424,
+      "par": "3",
+      "handicap": null,
+      "nodes": 4,
+      "isOpenLine": true,
+      "lengthMeters": 160,
+      "lengthYards": 175,
+      "tags": {
+        "golf": "hole",
+        "par": "3",
+        "ref": "15"
+      }
+    },
+    {
+      "ref": 16,
+      "wayId": 910068440,
+      "par": "5",
+      "handicap": null,
+      "nodes": 5,
+      "isOpenLine": true,
+      "lengthMeters": 481,
+      "lengthYards": 526,
+      "tags": {
+        "golf": "hole",
+        "par": "5",
+        "ref": "16"
+      }
+    },
+    {
+      "ref": 17,
+      "wayId": 910073343,
+      "par": "4",
+      "handicap": null,
+      "nodes": 4,
+      "isOpenLine": true,
+      "lengthMeters": 310,
+      "lengthYards": 339,
+      "tags": {
+        "golf": "hole",
+        "par": "4",
+        "ref": "17"
+      }
+    },
+    {
+      "ref": 18,
+      "wayId": 910073352,
+      "par": "5",
+      "handicap": null,
+      "nodes": 4,
+      "isOpenLine": true,
+      "lengthMeters": 349,
+      "lengthYards": 382,
+      "tags": {
+        "golf": "hole",
+        "par": "5",
+        "ref": "18"
+      }
+    }
+  ],
+  "featureClassBreakdown": {
+    "water_hazard": {
+      "count": 8,
+      "closedWays": 8,
+      "openWays": 0,
+      "nodes": 0,
+      "wayIds": [
+        39881009,
+        39884021,
+        39884024,
+        39884654,
+        208501982,
+        208502078,
+        910073351,
+        910077031
+      ]
+    },
+    "clubhouse": {
+      "count": 1,
+      "closedWays": 1,
+      "openWays": 0,
+      "nodes": 0,
+      "wayIds": [
+        801653460
+      ]
+    },
+    "tee": {
+      "count": 60,
+      "closedWays": 60,
+      "openWays": 0,
+      "nodes": 0,
+      "wayIds": [
+        909806966,
+        909806967,
+        909806968,
+        909806985,
+        909811958,
+        909811959,
+        909811960,
+        909811961,
+        909811965,
+        909811966,
+        909811967,
+        909811972,
+        909811973,
+        909813653,
+        909813654,
+        909813659,
+        909813660,
+        909813661,
+        909813662,
+        910027966,
+        910027984,
+        910027985,
+        910027986,
+        910027987,
+        910050874,
+        910050875,
+        910050876,
+        910050877,
+        910050878,
+        910050895,
+        910050896,
+        910050897,
+        910050898,
+        910058530,
+        910058531,
+        910058542,
+        910058543,
+        910058544,
+        910063812,
+        910063818,
+        910063819,
+        910063820,
+        910063831,
+        910063832,
+        910068425,
+        910068426,
+        910068441,
+        910068442,
+        910068443,
+        910073344,
+        910073345,
+        1341396717,
+        1341398965,
+        1341398966,
+        1341399900,
+        1341399903,
+        1341405665,
+        1342658214,
+        1342714944,
+        1342716685
+      ]
+    },
+    "fairway": {
+      "count": 19,
+      "closedWays": 19,
+      "openWays": 0,
+      "nodes": 0,
+      "wayIds": [
+        909806969,
+        909806986,
+        909806988,
+        909811962,
+        909811968,
+        909813647,
+        910027967,
+        910027988,
+        910050879,
+        910058514,
+        910058532,
+        910058545,
+        910063813,
+        910063821,
+        910063833,
+        910068427,
+        910073340,
+        910073347,
+        1341400793
+      ]
+    },
+    "bunker": {
+      "count": 78,
+      "closedWays": 78,
+      "openWays": 0,
+      "nodes": 0,
+      "wayIds": [
+        909806970,
+        909806971,
+        909806972,
+        909806973,
+        909806978,
+        909806979,
+        909806980,
+        909806989,
+        909806990,
+        909806991,
+        909811951,
+        909811952,
+        909811953,
+        909811954,
+        909811955,
+        909811956,
+        909811957,
+        909811970,
+        909811971,
+        909813648,
+        909813656,
+        909813657,
+        909813663,
+        909813664,
+        910027969,
+        910027970,
+        910027989,
+        910027990,
+        910027991,
+        910027992,
+        910027993,
+        910027994,
+        910027995,
+        910027996,
+        910027997,
+        910027998,
+        910027999,
+        910050880,
+        910050881,
+        910050882,
+        910050883,
+        910050884,
+        910058515,
+        910058516,
+        910058522,
+        910058523,
+        910058524,
+        910058525,
+        910058526,
+        910058533,
+        910058534,
+        910058535,
+        910063807,
+        910063808,
+        910063816,
+        910063822,
+        910063823,
+        910063824,
+        910063825,
+        910063826,
+        910068418,
+        910068419,
+        910068420,
+        910068432,
+        910068433,
+        910068434,
+        910068435,
+        910068436,
+        910068437,
+        910068444,
+        910068445,
+        910068446,
+        910068447,
+        910068448,
+        910073348,
+        910073349,
+        1341400794,
+        1341400795
+      ]
+    },
+    "green": {
+      "count": 19,
+      "closedWays": 19,
+      "openWays": 0,
+      "nodes": 0,
+      "wayIds": [
+        909806992,
+        909811964,
+        909811969,
+        909813649,
+        909813658,
+        910027971,
+        910028000,
+        910050885,
+        910058527,
+        910058536,
+        910063809,
+        910063815,
+        910063827,
+        910068438,
+        910073350,
+        1304696092,
+        1341395189,
+        1341400792,
+        1342703723
+      ]
+    },
+    "cartpath": {
+      "count": 27,
+      "closedWays": 0,
+      "openWays": 27,
+      "nodes": 0,
+      "wayIds": [
+        910027968,
+        910027972,
+        910027973,
+        910027974,
+        910027982,
+        910027983,
+        910050887,
+        910050888,
+        910050890,
+        910058529,
+        910063810,
+        910063814,
+        910068423,
+        910068439,
+        910073341,
+        910073346,
+        910077030,
+        1341399901,
+        1341399902,
+        1341403064,
+        1341403065,
+        1342700109,
+        1342700869,
+        1342702620,
+        1342702621,
+        1342716683,
+        1342716684
+      ]
+    },
+    "hole": {
+      "count": 18,
+      "closedWays": 0,
+      "openWays": 18,
+      "nodes": 0,
+      "wayIds": [
+        910027975,
+        910027976,
+        910027977,
+        910027978,
+        910027979,
+        910027980,
+        910027981,
+        910050873,
+        910050889,
+        910058528,
+        910058541,
+        910063811,
+        910063817,
+        910063829,
+        910068424,
+        910068440,
+        910073343,
+        910073352
+      ]
+    },
+    "driving_range": {
+      "count": 1,
+      "closedWays": 1,
+      "openWays": 0,
+      "nodes": 0,
+      "wayIds": [
+        1341405663
+      ]
+    },
+    "rough": {
+      "count": 6,
+      "closedWays": 6,
+      "openWays": 0,
+      "nodes": 0,
+      "wayIds": [
+        1342708205,
+        1342709131,
+        1342711343,
+        1342711596,
+        1342715132,
+        1342717736
+      ]
+    }
+  },
+  "geometricMatchingSimulation": {
+    "note": "Re-implemented parseOverpassGeoJson's nearestHoleByCenterlineHalf (green->fraction>=0.5, tee->fraction<=0.5, perpendicular-closest among qualifiers) in Python over the real geometry.",
+    "greensPerHole": {
+      "1": [
+        1304696092,
+        1341400792
+      ],
+      "2": [
+        909806992
+      ],
+      "3": [
+        909811964
+      ],
+      "4": [
+        909811969
+      ],
+      "5": [
+        909813649
+      ],
+      "6": [
+        909813658
+      ],
+      "7": [
+        910027971
+      ],
+      "8": [
+        910028000
+      ],
+      "9": [
+        910050885,
+        1341395189
+      ],
+      "10": [
+        910058527
+      ],
+      "11": [
+        910058536
+      ],
+      "12": [
+        910063809
+      ],
+      "13": [
+        910063815
+      ],
+      "14": [
+        910063827
+      ],
+      "15": [],
+      "16": [
+        910068438
+      ],
+      "17": [
+        1342703723
+      ],
+      "18": [
+        910073350
+      ]
+    },
+    "holeWithNoGreen": 15,
+    "sprayGreens": [
+      {
+        "wayId": 1341395189,
+        "areaM2": 681,
+        "centroid": {
+          "lat": 43.529492,
+          "lon": -80.191032
+        },
+        "interpretation": "practice putting green ~40m from the clubhouse building; parser will attach it to hole 9 as a second green 41m off the centerline"
+      },
+      {
+        "wayId": 1341400792,
+        "areaM2": 162,
+        "centroid": {
+          "lat": 43.5315,
+          "lon": -80.193946
+        },
+        "interpretation": "small practice/chipping green (162 m2, less than half the size of any real green here) beside the driving range; parser will attach it to hole 1 as a second green 65m off the centerline"
+      }
+    ],
+    "extraFairways": [
+      {
+        "wayId": 1341400793,
+        "areaM2": 421,
+        "centroid": {
+          "lat": 43.531547,
+          "lon": -80.193905
+        },
+        "interpretation": "apron of the practice chipping green above; parser assigns to hole 1"
+      },
+      {
+        "wayId": 909806988,
+        "areaM2": 3367,
+        "interpretation": "second half of hole 2's split fairway - legitimate"
+      }
+    ],
+    "holeWithNoFairway": 6,
+    "teesPerHole": {
+      "1": 3,
+      "2": 2,
+      "3": 4,
+      "4": 4,
+      "5": 5,
+      "6": 4,
+      "7": 6,
+      "8": 4,
+      "9": 5,
+      "10": 4,
+      "11": 2,
+      "12": 3,
+      "13": 2,
+      "14": 3,
+      "15": 2,
+      "16": 2,
+      "17": 3,
+      "18": 2
+    },
+    "bunkersPerHole": {
+      "1": 9,
+      "2": 3,
+      "3": 6,
+      "4": 2,
+      "5": 2,
+      "6": 1,
+      "7": 5,
+      "8": 7,
+      "9": 5,
+      "10": 7,
+      "11": 3,
+      "12": 6,
+      "13": 0,
+      "14": 6,
+      "15": 3,
+      "16": 6,
+      "17": 5,
+      "18": 2
+    },
+    "waterHazardsPerHole": {
+      "4": 1,
+      "5": 2,
+      "7": 1,
+      "13": 2,
+      "14": 1,
+      "18": 1
+    },
+    "knockOnEffect": "Because hole 15 has no green, greensByHole has no entry for hole 15, so all 3 bunkers assigned to hole 15 fall through to bunker_fairway regardless of whether they are greenside."
+  },
+  "predictedParserOutput": {
+    "courseName": "Imported Course",
+    "courseLocation": null,
+    "reason": "boundary way 39872928 has leisure=golf_course but NO name tag, and there is no named landuse=grass polygon at the site, so the boundary lookup on lines 92-98 of importOverpass.ts returns undefined.",
+    "warningsExpected": [
+      "Couldn't find a course boundary feature - using a generic name and no location.",
+      "Ignored 1 other OSM feature(s) not tracked by this app (driving range; the 27 cartpaths are LineStrings and are skipped before the ignore counter)."
+    ],
+    "holesCreated": 18,
+    "parInferredFor": [
+      7,
+      12
+    ],
+    "teeBoxNames": "all 60 imported as the literal string \"Tee\" (no teebox= tags), so every hole's tee boxes are indistinguishable in the UI",
+    "strokeIndex": "unavailable for all 18 holes (no handicap= tags anywhere)"
+  },
+  "crossChecks": {
+    "liveOsmApi": "https://api.openstreetmap.org/api/0.6/map.json?bbox=-80.1875,43.5290,-80.1825,43.5330 returned 2944 elements and confirms live OSM matches the Overpass mirror: hole 15 (way 910068424, golf=hole par=3 ref=15) is present but no golf=green exists anywhere near its end point (nearest green is 132m away, and it is hole 10's). Also confirms ways 910027981 (ref=7) and 910063811 (ref=12) carry no par tag live.",
+    "nominatim": "Nominatim returns no result for 'Victoria Park East Golf Club, Guelph, Ontario' - the name is genuinely absent from OSM.",
+    "nameSearch": "Overpass nwr[name~'Victoria Park',i] over bbox 43.30,-80.60,43.75,-79.90 returned 19 elements, none of them a golf course.",
+    "changesets": {
+      "910027975 (hole 1)": "cs 154617264 'added green' by alborzg 2024-07-30",
+      "910068424 (hole 15)": "cs 99840941 'O22' by Proposerrr 2021-02-23",
+      "1342703723 (hole 17 green)": "cs 160285810 'undefined #ireland #meath #buildings' by eireidium 2024-12-14",
+      "1304696092 (hole 1 green)": "cs 160107554 'Adding Detail around Dublin Street United' by eireidium 2024-12-09"
+    }
+  },
+  "overpassQueriesRun": [
+    "[out:json][timeout:110];(way[\"leisure\"=\"golf_course\"](43.45,-80.35,43.62,-80.10);relation[\"leisure\"=\"golf_course\"](43.45,-80.35,43.62,-80.10););out tags center;",
+    "[out:json][timeout:130];(nwr[\"golf\"](43.44,-80.36,43.62,-80.08););out tags center;",
+    "[out:json][timeout:130];(nwr[\"golf\"](43.5230,-80.2010,43.5400,-80.1770);nwr[\"leisure\"=\"golf_course\"](43.5230,-80.2010,43.5400,-80.1770););out tags geom;   <-- primary dataset (238 elements)",
+    "[out:json][timeout:100];way(39872928);out geom;",
+    "[out:json][timeout:120];(nwr[\"name\"~\"Victoria Park\",i](43.30,-80.60,43.75,-79.90););out tags center;",
+    "[out:json][timeout:120];(nwr[\"name\"](43.4960,-80.1650,43.5170,-80.1380););out tags center;",
+    "[out:json][timeout:100];(way[\"highway\"](43.4990,-80.1600,43.5140,-80.1440);nwr[\"building\"](...);nwr[\"amenity\"](...);nwr[\"addr:housenumber\"](...););out tags center;",
+    "[out:json][timeout:100];way[\"highway\"][\"name\"~\"Victoria Road South|Stone Road East|Arkell Road|Watson Road South\"](43.5250,-80.2010,43.5390,-80.1780);out tags center;"
+  ],
+  "recommendedExportQuery": "[out:json][timeout:60];(nwr(around:60,43.531,-80.1886)[\"leisure\"=\"golf_course\"];nwr[\"golf\"](43.5230,-80.2010,43.5400,-80.1770););out geom;  -- or simply bbox 43.5230,-80.2010,43.5400,-80.1770 which captures the whole site with nothing from a neighbouring facility."
+}

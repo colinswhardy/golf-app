@@ -1,0 +1,286 @@
+{
+ "course": "Tarandowah Golfers Club",
+ "location": "15125 Putnam Rd, Springfield, Ontario N0L 2J0, Canada",
+ "courseNote": "Single 18-hole links course (Martin Hawtree, 2006). No second course or alternate nines exist, so there is no risk of conflation.",
+ "sourceCard": "Official club scorecard PDF, uploaded 2026-04-30 (Scorecard-Web.pdf)",
+ "teeSets": [
+  {
+   "name": "Black",
+   "totalYards": 7067,
+   "outYards": 3457,
+   "inYards": 3610,
+   "par": 70,
+   "rating": 74.5,
+   "slope": 137,
+   "ratingGender": "men"
+  },
+  {
+   "name": "Gold",
+   "totalYards": 6622,
+   "outYards": 3211,
+   "inYards": 3411,
+   "par": 70,
+   "rating": 72.2,
+   "slope": 129,
+   "ratingGender": "men"
+  },
+  {
+   "name": "Blue",
+   "totalYards": 6327,
+   "outYards": 3095,
+   "inYards": 3232,
+   "par": 70,
+   "rating": 70.1,
+   "slope": 125,
+   "ratingGender": "men"
+  },
+  {
+   "name": "White",
+   "totalYards": 5775,
+   "outYards": 2885,
+   "inYards": 2890,
+   "par": 70,
+   "rating": 68.6,
+   "slope": 122,
+   "ratingGender": "men"
+  },
+  {
+   "name": "Red",
+   "totalYards": 5099,
+   "outYards": 2497,
+   "inYards": 2602,
+   "par": 70,
+   "rating": 71.7,
+   "slope": 121,
+   "ratingGender": "women",
+   "note": "71.7/121 is the women's rating printed on the card; no men's rating is printed for Red."
+  }
+ ],
+ "holes": [
+  {
+   "number": 1,
+   "par": 4,
+   "handicap": 14,
+   "yards": {
+    "Black": 387,
+    "Gold": 375,
+    "Blue": 365,
+    "White": 337,
+    "Red": 274
+   }
+  },
+  {
+   "number": 2,
+   "par": 4,
+   "handicap": 10,
+   "yards": {
+    "Black": 408,
+    "Gold": 373,
+    "Blue": 347,
+    "White": 325,
+    "Red": 280
+   }
+  },
+  {
+   "number": 3,
+   "par": 3,
+   "handicap": 16,
+   "yards": {
+    "Black": 184,
+    "Gold": 166,
+    "Blue": 160,
+    "White": 148,
+    "Red": 130
+   }
+  },
+  {
+   "number": 4,
+   "par": 4,
+   "handicap": 6,
+   "yards": {
+    "Black": 434,
+    "Gold": 399,
+    "Blue": 390,
+    "White": 375,
+    "Red": 330
+   }
+  },
+  {
+   "number": 5,
+   "par": 4,
+   "handicap": 2,
+   "yards": {
+    "Black": 459,
+    "Gold": 430,
+    "Blue": 403,
+    "White": 366,
+    "Red": 312
+   }
+  },
+  {
+   "number": 6,
+   "par": 4,
+   "handicap": 12,
+   "yards": {
+    "Black": 384,
+    "Gold": 350,
+    "Blue": 326,
+    "White": 302,
+    "Red": 270
+   }
+  },
+  {
+   "number": 7,
+   "par": 3,
+   "handicap": 18,
+   "yards": {
+    "Black": 202,
+    "Gold": 178,
+    "Blue": 174,
+    "White": 152,
+    "Red": 142
+   }
+  },
+  {
+   "number": 8,
+   "par": 4,
+   "handicap": 4,
+   "yards": {
+    "Black": 446,
+    "Gold": 414,
+    "Blue": 413,
+    "White": 379,
+    "Red": 325
+   }
+  },
+  {
+   "number": 9,
+   "par": 5,
+   "handicap": 8,
+   "yards": {
+    "Black": 553,
+    "Gold": 526,
+    "Blue": 517,
+    "White": 501,
+    "Red": 434
+   }
+  },
+  {
+   "number": 10,
+   "par": 4,
+   "handicap": 11,
+   "yards": {
+    "Black": 415,
+    "Gold": 387,
+    "Blue": 363,
+    "White": 352,
+    "Red": 319
+   }
+  },
+  {
+   "number": 11,
+   "par": 4,
+   "handicap": 1,
+   "yards": {
+    "Black": 468,
+    "Gold": 457,
+    "Blue": 434,
+    "White": 384,
+    "Red": 384
+   }
+  },
+  {
+   "number": 12,
+   "par": 3,
+   "handicap": 15,
+   "yards": {
+    "Black": 216,
+    "Gold": 177,
+    "Blue": 159,
+    "White": 140,
+    "Red": 112
+   }
+  },
+  {
+   "number": 13,
+   "par": 4,
+   "handicap": 13,
+   "yards": {
+    "Black": 343,
+    "Gold": 340,
+    "Blue": 335,
+    "White": 317,
+    "Red": 296
+   }
+  },
+  {
+   "number": 14,
+   "par": 5,
+   "handicap": 5,
+   "yards": {
+    "Black": 588,
+    "Gold": 549,
+    "Blue": 519,
+    "White": 478,
+    "Red": 431
+   }
+  },
+  {
+   "number": 15,
+   "par": 3,
+   "handicap": 17,
+   "yards": {
+    "Black": 230,
+    "Gold": 207,
+    "Blue": 192,
+    "White": 169,
+    "Red": 128
+   }
+  },
+  {
+   "number": 16,
+   "par": 4,
+   "handicap": 3,
+   "yards": {
+    "Black": 441,
+    "Gold": 425,
+    "Blue": 401,
+    "White": 352,
+    "Red": 321
+   }
+  },
+  {
+   "number": 17,
+   "par": 4,
+   "handicap": 9,
+   "yards": {
+    "Black": 447,
+    "Gold": 427,
+    "Blue": 406,
+    "White": 325,
+    "Red": 290
+   }
+  },
+  {
+   "number": 18,
+   "par": 4,
+   "handicap": 7,
+   "yards": {
+    "Black": 462,
+    "Gold": 442,
+    "Blue": 423,
+    "White": 373,
+    "Red": 321
+   }
+  }
+ ],
+ "sources": [
+  "https://tarandowah.ca/wp-content/uploads/2026/04/Scorecard-Web.pdf",
+  "https://tarandowah.ca/links/",
+  "https://tarandowah.ca/wp-content/uploads/2025/08/yardage-insides.pdf",
+  "https://offcourse.co/courses/scorecard/tarandowah-golfers-club",
+  "https://course.bluegolf.com/bluegolf/course/course/tarandowahgc/detailedscorecard.htm",
+  "https://www.golfcanada.ca/golf-facility/tarandowah-golfers-club-en/"
+ ],
+ "notes": "PRIMARY SOURCE: the club's own scorecard PDF linked from tarandowah.ca/links (DOWNLOAD SCORECARD -> /wp-content/uploads/2026/04/Scorecard-Web.pdf, generated 2026-04-30). Every per-hole yardage, par and stroke index below was read off that card and all five tee totals reconcile exactly to the printed OUT/IN/TOT figures. Par is a single row on the card (70) applying to all five tees, including Red. STROKE INDEX: front nine carries the even indexes (14,10,16,6,2,12,18,4,8) and back nine the odd (11,1,15,13,5,17,3,9,7) - unusual but complete 1-18. Independently confirmed hole-for-hole by offcourse.co. HOWEVER Golf Canada's own facility record and BlueGolf both carry an OLDER allocation (1:11, 2:9, 3:17, 4:7, 5:1, 6:13, 7:15, 8:5, 9:3, 10:12, 11:2, 12:16, 13:14, 14:4, 15:18, 16:10, 17:8, 18:6). Golf Canada's tee records are all flagged isActive=false (stale), so the current printed card was preferred, but if the app posts scores to Golf Canada the stroke allocation there may differ. YARDAGE DISAGREEMENTS: Black tee is corroborated at 7067 (official card + offcourse + the club's 2025 yardage guide, which sums to 7067) but Golf Canada and BlueGolf list Black at 7038 with slightly different per-hole numbers (e.g. hole 1 = 380 not 387), an older measurement. The Gold/Blue/White/Red decks were evidently moved between the 2025 yardage guide and the 2026 card (e.g. 2025 guide has Blue hole 8 = 379, the 2026 card has 413); the 2026 card is used throughout. RATINGS: the five rating/slope pairs are taken from the colour-swatch legend printed at the foot of the official card (Black 74.5/137, Gold 72.2/129, Blue 70.1/125, White 68.6/122, Red 71.7/121); offcourse.co carries the identical set of values. Caveat: those ratings appear to predate the current forward-tee yardages - offcourse ties 70.1/125 to a 6203-yard set and 68.6/122 to a 5896-yard set, whereas the current card prints Blue 6327 and White 5775, so the club has carried old ratings onto re-measured decks. Golf Canada's archived record instead shows Black 74.2/130, Gold 72.3/127, Blue 70.2/123, White 68.8/122, Red 66.2/116 men / 71.6/124 women. LOCATION: the request said Mossley, Ontario; the club's own address is 15125 Putnam Rd, Springfield ON N0L 2J0 (some listings say Avon). Mossley is a nearby hamlet - same course, only one Tarandowah exists."
+}

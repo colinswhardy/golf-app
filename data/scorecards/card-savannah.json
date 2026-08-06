@@ -1,0 +1,293 @@
+{
+  "course": "Savannah Golf Links",
+  "location": "1206 Cheese Factory Rd, Cambridge, Ontario N1R 5S6, Canada",
+  "holeCount": 18,
+  "architect": "David Moote (1998)",
+  "yardageUnits": "yards",
+  "teeSets": [
+    {
+      "name": "Gold",
+      "colour": "Gold",
+      "totalYards": 6213,
+      "outYards": 3354,
+      "inYards": 2859,
+      "par": 71,
+      "frontPar": 36,
+      "backPar": 35,
+      "rating": 69.4,
+      "slope": 129,
+      "womensRating": 76.1,
+      "womensSlope": 140
+    },
+    {
+      "name": "Blue",
+      "colour": "Blue",
+      "totalYards": 5833,
+      "outYards": 3139,
+      "inYards": 2694,
+      "par": 71,
+      "frontPar": 36,
+      "backPar": 35,
+      "rating": 67.7,
+      "slope": 123,
+      "womensRating": 73.7,
+      "womensSlope": 133
+    },
+    {
+      "name": "White",
+      "colour": "White",
+      "totalYards": 5463,
+      "outYards": 2916,
+      "inYards": 2547,
+      "par": 71,
+      "frontPar": 36,
+      "backPar": 35,
+      "rating": 66.0,
+      "slope": 111,
+      "womensRating": 71.2,
+      "womensSlope": 127
+    },
+    {
+      "name": "Red",
+      "colour": "Red",
+      "totalYards": 4563,
+      "outYards": 2454,
+      "inYards": 2109,
+      "par": 71,
+      "frontPar": 36,
+      "backPar": 35,
+      "rating": 62.4,
+      "slope": 100,
+      "womensRating": 65.8,
+      "womensSlope": 115,
+      "womensTotalYards": 4557,
+      "note": "Golf Canada's women's Red rating record measures 4557 yds (hole 1 = 294, hole 12 = 293); the men's Red record and the club's own course guide both give 4563 (297 / 296). Difference is 6 yds total."
+    }
+  ],
+  "holes": [
+    {
+      "number": 1,
+      "par": 4,
+      "handicap": 17,
+      "ladiesHandicap": 7,
+      "yards": {
+        "Gold": 398,
+        "Blue": 367,
+        "White": 343,
+        "Red": 297
+      }
+    },
+    {
+      "number": 2,
+      "par": 5,
+      "handicap": 1,
+      "ladiesHandicap": 1,
+      "yards": {
+        "Gold": 613,
+        "Blue": 590,
+        "White": 549,
+        "Red": 508
+      }
+    },
+    {
+      "number": 3,
+      "par": 3,
+      "handicap": 15,
+      "ladiesHandicap": 15,
+      "yards": {
+        "Gold": 143,
+        "Blue": 111,
+        "White": 102,
+        "Red": 97
+      }
+    },
+    {
+      "number": 4,
+      "par": 4,
+      "handicap": 7,
+      "ladiesHandicap": 9,
+      "yards": {
+        "Gold": 307,
+        "Blue": 295,
+        "White": 254,
+        "Red": 205
+      }
+    },
+    {
+      "number": 5,
+      "par": 3,
+      "handicap": 5,
+      "ladiesHandicap": 13,
+      "yards": {
+        "Gold": 189,
+        "Blue": 171,
+        "White": 166,
+        "Red": 147
+      }
+    },
+    {
+      "number": 6,
+      "par": 4,
+      "handicap": 3,
+      "ladiesHandicap": 5,
+      "yards": {
+        "Gold": 362,
+        "Blue": 348,
+        "White": 313,
+        "Red": 254
+      }
+    },
+    {
+      "number": 7,
+      "par": 4,
+      "handicap": 11,
+      "ladiesHandicap": 11,
+      "yards": {
+        "Gold": 408,
+        "Blue": 370,
+        "White": 365,
+        "Red": 292
+      }
+    },
+    {
+      "number": 8,
+      "par": 4,
+      "handicap": 13,
+      "ladiesHandicap": 17,
+      "yards": {
+        "Gold": 416,
+        "Blue": 385,
+        "White": 348,
+        "Red": 261
+      }
+    },
+    {
+      "number": 9,
+      "par": 5,
+      "handicap": 9,
+      "ladiesHandicap": 3,
+      "yards": {
+        "Gold": 518,
+        "Blue": 502,
+        "White": 476,
+        "Red": 393
+      }
+    },
+    {
+      "number": 10,
+      "par": 5,
+      "handicap": 2,
+      "ladiesHandicap": 2,
+      "yards": {
+        "Gold": 523,
+        "Blue": 512,
+        "White": 483,
+        "Red": 428
+      }
+    },
+    {
+      "number": 11,
+      "par": 3,
+      "handicap": 18,
+      "ladiesHandicap": 14,
+      "yards": {
+        "Gold": 123,
+        "Blue": 115,
+        "White": 97,
+        "Red": 93
+      }
+    },
+    {
+      "number": 12,
+      "par": 4,
+      "handicap": 6,
+      "ladiesHandicap": 8,
+      "yards": {
+        "Gold": 381,
+        "Blue": 369,
+        "White": 355,
+        "Red": 296
+      }
+    },
+    {
+      "number": 13,
+      "par": 3,
+      "handicap": 14,
+      "ladiesHandicap": 18,
+      "yards": {
+        "Gold": 153,
+        "Blue": 133,
+        "White": 119,
+        "Red": 94
+      }
+    },
+    {
+      "number": 14,
+      "par": 4,
+      "handicap": 16,
+      "ladiesHandicap": 10,
+      "yards": {
+        "Gold": 325,
+        "Blue": 313,
+        "White": 294,
+        "Red": 281
+      }
+    },
+    {
+      "number": 15,
+      "par": 4,
+      "handicap": 8,
+      "ladiesHandicap": 4,
+      "yards": {
+        "Gold": 316,
+        "Blue": 289,
+        "White": 278,
+        "Red": 252
+      }
+    },
+    {
+      "number": 16,
+      "par": 4,
+      "handicap": 10,
+      "ladiesHandicap": 12,
+      "yards": {
+        "Gold": 318,
+        "Blue": 291,
+        "White": 284,
+        "Red": 203
+      }
+    },
+    {
+      "number": 17,
+      "par": 3,
+      "handicap": 12,
+      "ladiesHandicap": 16,
+      "yards": {
+        "Gold": 204,
+        "Blue": 171,
+        "White": 160,
+        "Red": 124
+      }
+    },
+    {
+      "number": 18,
+      "par": 5,
+      "handicap": 4,
+      "ladiesHandicap": 6,
+      "yards": {
+        "Gold": 516,
+        "Blue": 501,
+        "White": 477,
+        "Red": 338
+      }
+    }
+  ],
+  "sources": [
+    "https://www.savannahgolflinks.ca/images/documents/Savannah_Golf_Links_Course_Guide.pdf",
+    "https://www.savannahgolflinks.ca/course/course-details",
+    "https://www.golfcanada.ca/golf-facility/savannah-golf-links-en/",
+    "https://www.golfpass.com/travel-advisor/courses/27262-savannah-golf-links",
+    "https://course.bluegolf.com/bluegolf/course/course/savannahglinks/detailedscorecard.htm"
+  ],
+  "notes": "VERIFIED. Two independent authoritative sources agree hole-for-hole, tee-for-tee, and on both men's and ladies' stroke indexes: (1) the operator's own published Complete Course Guide PDF on savannahgolflinks.ca, and (2) the Golf Canada / Golf Ontario course-rating database record for the facility (embedded JSON on the Golf Canada facility page, tee IDs 213581/583/585/587 men's and 213582/584/586/588 women's). Internal checks pass: per-hole yardages sum exactly to the four published totals (6213 / 5833 / 5463 / 4563), which also match the club's own course-details summary table and GolfPass; par sums to 71 (36 out / 35 in); men's and ladies' stroke indexes are each a complete 1-18 with odd on the front nine and even on the back. Single 18-hole course (Golf Canada classifies it 'EighteenHole') - no second course or extra nine to conflate. DISAGREEMENT: BlueGolf's detailed scorecard publishes a materially different and apparently stale card (Gold 6090 / Blue 5705 / White 5313 / Red 4395, with different per-hole yardages such as hole 3 Gold 136 vs 143 and hole 2 Gold 615 vs 613) and carries no stroke-index data at all (all -1); its women's par of 73 with holes 7 and 8 as par 5 is contradicted by both primary sources. BlueGolf's figures were NOT used. MINOR DISCREPANCY: the club's course guide labels hole 18 'Par 5/R4', implying par 4 from the Red tees (Red par 70), but Golf Canada's women's Red rating record carries hole 18 as par 5 and a total par of 71. Par 71 is used here for all tees. CAVEAT: the operator's course guide PDF was authored in 2013; the Golf Canada rating record independently corroborates every number, but the tee records are flagged isActive:false in that dataset, so the ratings may be from a rating cycle that has since lapsed rather than a current re-rating."
+}

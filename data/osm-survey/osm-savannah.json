@@ -1,0 +1,545 @@
+{
+  "facility": "Savannah Golf Links",
+  "location": "1499 Alps Rd, Cambridge, Ontario, Canada",
+  "auditedUtc": "2026-08-06T18:30Z",
+  "overpassMirror": "https://overpass-api.de/api/interpreter",
+  "overpassTimestampOsmBase": "2026-08-06T18:24:21Z",
+  "queriesRun": [
+    "[out:json][timeout:110];(way[\"leisure\"=\"golf_course\"](43.30,-80.45,43.48,-80.20);relation[\"leisure\"=\"golf_course\"](43.30,-80.45,43.48,-80.20););out tags center;",
+    "[out:json][timeout:110];way(1355815800);out tags geom;",
+    "[out:json][timeout:140];(nwr[\"golf\"](43.3247,-80.3014,43.3427,-80.2789);nwr[\"leisure\"=\"golf_course\"](43.3247,-80.3014,43.3427,-80.2789););out tags geom;",
+    "[out:json][timeout:110];relation(18635353);out tags geom;",
+    "[out:json][timeout:110];rel(18635353);out tags geom;>;out tags geom;",
+    "[out:json][timeout:110];(nwr[\"teebox\"](bbox);nwr[\"golf\"=\"rough\"](bbox);nwr[\"golf\"=\"hole\"][\"ref\"!~\".\"](bbox);node[\"golf\"](bbox););out tags center;  -> 0 elements",
+    "live cross-checks: api.openstreetmap.org/api/0.6/way/{1497363536,895756280,895419529,1546197190,1497352893}.json ; relation/18635353.json"
+  ],
+  "note": "Overpass mirror returned HTML error pages on several attempts; every query was retried with backoff until the body started with '{'. All counts below come from a parsed JSON body.",
+  "boundary": {
+    "wayId": 1355815800,
+    "type": "way",
+    "tag": "leisure=golf_course",
+    "tags": {
+      "leisure": "golf_course",
+      "name": "Savannah Golf Links",
+      "opening_hours": "Mo-Fr 07:30-18:00",
+      "website": "https://www.savannahgolflinks.ca/"
+    },
+    "nodes": 97,
+    "closed": true,
+    "bbox": [
+      43.32772,
+      -80.29439,
+      43.33567,
+      -80.28591
+    ],
+    "verdict": "OK - leisure=golf_course WITH name, closed. Parser will get a real course name + location."
+  },
+  "multiCourse": {
+    "leisureGolfCoursePolygonsInBbox": 1,
+    "duplicateRefs": false,
+    "refsPresent": "1-18, each exactly once",
+    "conclusion": "Single 18-hole course. No 27/36/45-hole duplicate-ref trap. Way-ID series: 1497352893-1497642010 (holes 3-18, changesets 180997055/180999240, 2026-04-07) and 1546197190-1546197191 (holes 1-2, changeset 186684583, 2026-07-31). Both series are geographically interleaved across the same single property, i.e. one continuous 18, not two nines."
+  },
+  "holes": [
+    {
+      "ref": 1,
+      "wayId": 1546197190,
+      "par": "4",
+      "handicap": null,
+      "name": null,
+      "nodes": 3,
+      "open": true,
+      "measuredYards": 378,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 2,
+      "wayId": 1546197191,
+      "par": "5",
+      "handicap": null,
+      "name": null,
+      "nodes": 3,
+      "open": true,
+      "measuredYards": 605,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 3,
+      "wayId": 1497352893,
+      "par": "3",
+      "handicap": null,
+      "name": null,
+      "nodes": 2,
+      "open": true,
+      "measuredYards": 138,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 4,
+      "wayId": 1497352894,
+      "par": "4",
+      "handicap": null,
+      "name": null,
+      "nodes": 3,
+      "open": true,
+      "measuredYards": 278,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 5,
+      "wayId": 1497352895,
+      "par": "3",
+      "handicap": null,
+      "name": null,
+      "nodes": 2,
+      "open": true,
+      "measuredYards": 161,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 6,
+      "wayId": 1497363527,
+      "par": "4",
+      "handicap": null,
+      "name": null,
+      "nodes": 3,
+      "open": true,
+      "measuredYards": 337,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 7,
+      "wayId": 1497363528,
+      "par": "4",
+      "handicap": null,
+      "name": null,
+      "nodes": 3,
+      "open": true,
+      "measuredYards": 354,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 8,
+      "wayId": 1497363529,
+      "par": "4",
+      "handicap": null,
+      "name": null,
+      "nodes": 3,
+      "open": true,
+      "measuredYards": 408,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 9,
+      "wayId": 1497363530,
+      "par": "5",
+      "handicap": null,
+      "name": null,
+      "nodes": 4,
+      "open": true,
+      "measuredYards": 472,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 10,
+      "wayId": 1497363531,
+      "par": "5",
+      "handicap": null,
+      "name": null,
+      "nodes": 4,
+      "open": true,
+      "measuredYards": 522,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 11,
+      "wayId": 1497363532,
+      "par": "3",
+      "handicap": null,
+      "name": null,
+      "nodes": 2,
+      "open": true,
+      "measuredYards": 116,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 12,
+      "wayId": 1497363533,
+      "par": "4",
+      "handicap": null,
+      "name": null,
+      "nodes": 3,
+      "open": true,
+      "measuredYards": 365,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 13,
+      "wayId": 1497363534,
+      "par": "3",
+      "handicap": null,
+      "name": null,
+      "nodes": 2,
+      "open": true,
+      "measuredYards": 143,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 14,
+      "wayId": 1497363535,
+      "par": "4",
+      "handicap": null,
+      "name": null,
+      "nodes": 3,
+      "open": true,
+      "measuredYards": 305,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 15,
+      "wayId": 1497363536,
+      "par": null,
+      "handicap": null,
+      "name": null,
+      "nodes": 3,
+      "open": true,
+      "measuredYards": 306,
+      "tagKeys": [
+        "golf",
+        "ref"
+      ]
+    },
+    {
+      "ref": 16,
+      "wayId": 1497363537,
+      "par": "4",
+      "handicap": null,
+      "name": null,
+      "nodes": 3,
+      "open": true,
+      "measuredYards": 313,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 17,
+      "wayId": 1497363538,
+      "par": "3",
+      "handicap": null,
+      "name": null,
+      "nodes": 3,
+      "open": true,
+      "measuredYards": 190,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    },
+    {
+      "ref": 18,
+      "wayId": 1497642010,
+      "par": "5",
+      "handicap": null,
+      "name": null,
+      "nodes": 4,
+      "open": true,
+      "measuredYards": 516,
+      "tagKeys": [
+        "golf",
+        "par",
+        "ref"
+      ]
+    }
+  ],
+  "holeTotals": {
+    "golfHoleWays": 18,
+    "allOpenLines": true,
+    "withRef": 18,
+    "withPar": 17,
+    "withHandicap": 0,
+    "withName": 0,
+    "missingPar": [
+      {
+        "ref": 15,
+        "wayId": 1497363536,
+        "measuredYards": 306,
+        "liveApiConfirmed": "v1 cs180999240 2026-04-07, tags {golf:hole, ref:15} - genuinely no par, not mirror lag"
+      }
+    ],
+    "measuredTotalYards": 5907,
+    "parSumIf15Defaults4": 71
+  },
+  "polygons": {
+    "green": {
+      "count": 19,
+      "closed": 19,
+      "unclosed": 0
+    },
+    "fairway": {
+      "countWays": 34,
+      "closed": 34,
+      "unclosed": 0,
+      "plusMultipolygonRelations": 1
+    },
+    "tee": {
+      "count": 61,
+      "closed": 61,
+      "unclosed": 0,
+      "withTeeboxTag": 0
+    },
+    "bunker": {
+      "count": 46,
+      "closed": 46,
+      "unclosed": 0
+    },
+    "water_hazard": {
+      "count": 15,
+      "closed": 15,
+      "unclosed": 0
+    },
+    "rough": {
+      "count": 0
+    },
+    "fringe": {
+      "count": 0
+    },
+    "lateral_water_hazard": {
+      "count": 0
+    },
+    "cartpath": {
+      "count": 27,
+      "closed": 1,
+      "open": 26,
+      "note": "golf=cartpath is NOT in the parser's DIRECT_TAG_MAP - ignored entirely, so the 26 open ways are harmless."
+    },
+    "clubhouse": {
+      "count": 2,
+      "wayIds": [
+        895696999,
+        895698521
+      ],
+      "note": "ignored by parser"
+    },
+    "unclosedWaysThatWouldBeSilentlyDropped": 0
+  },
+  "teeboxAudit": {
+    "golfTeeWays": 61,
+    "withTeeboxColour": 0,
+    "tagKeysSeenOnEveryTee": [
+      "golf",
+      "landuse"
+    ],
+    "targetedQueryForAnyTeeboxKeyInBbox": "0 elements",
+    "impact": "All 61 tee polygons import as an indistinguishable 'Tee'. No colour/tee-name data exists at all.",
+    "teesPerHole": {
+      "1": 5,
+      "2": 5,
+      "3": 5,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 3,
+      "8": 4,
+      "9": 3,
+      "10": 4,
+      "11": 2,
+      "12": 3,
+      "13": 2,
+      "14": 2,
+      "15": 3,
+      "16": 3,
+      "17": 3,
+      "18": 5
+    }
+  },
+  "greenToHoleMatching": {
+    "method": "replicated parser logic: green centroid must project onto fraction >= 0.5 of a golf=hole line; among qualifying, perpendicular-nearest wins",
+    "result": "holes 1-18 each get exactly one green; NO orphaned holes",
+    "perpendicularDistanceMetres": {
+      "1": 2.4,
+      "2": 0.1,
+      "3": 0.8,
+      "4": 2.5,
+      "5": 0.3,
+      "6": 3.0,
+      "7": 37.4,
+      "8": 0.6,
+      "9": 18.3,
+      "10": 0.0,
+      "11": 0.4,
+      "12": 0.3,
+      "13": 0.1,
+      "14": 3.3,
+      "15": 0.7,
+      "16": 0.9,
+      "17": 0.6,
+      "18": 2.6
+    },
+    "spuriousExtraGreen": {
+      "wayId": 895756280,
+      "tags": {
+        "golf": "green",
+        "landuse": "grass"
+      },
+      "centre": [
+        43.33012,
+        -80.29192
+      ],
+      "areaSqM": 269,
+      "note": "Smallest of all 19 greens (median 377 m2, max 796). Sits 120-135 m from the nearest hole line endpoint (hole 6) and >160 m from any other; adjacent only to cartpaths 895756285/895756286 and hole 6's back tee. Almost certainly a practice putting/chipping green, but carries no tag distinguishing it from a real green.",
+      "parserOutcome": "matched onto hole 8 back half at fraction 0.70, 118 m perpendicular -> imports as a SECOND green on hole 8 and trips the parser's >100 m low-confidence counter.",
+      "mappedIn": "changeset 97588848, 2021-01-16"
+    }
+  },
+  "fairwayRelationTrap": {
+    "relationId": 18635353,
+    "tags": {
+      "golf": "fairway",
+      "landuse": "grass",
+      "type": "multipolygon"
+    },
+    "members": [
+      {
+        "type": "way",
+        "ref": 895419529,
+        "role": "outer",
+        "tags": null
+      },
+      {
+        "type": "way",
+        "ref": 895419527,
+        "role": "inner",
+        "tags": {
+          "golf": "green",
+          "landuse": "grass"
+        }
+      }
+    ],
+    "outerWayUntagged": true,
+    "problem": "Hole 3 is the ONLY hole with zero plain golf=fairway ways. Its fairway exists solely as this multipolygon (a donut cutting out the hole-3 green). The outer ring way 895419529 carries NO tags, so an nwr[\"golf\"] Overpass export returns the relation but not its geometry-bearing member. Overpass 'out geom' on this relation returns no members array at all (verified twice). The parser then either sees no feature or a non-Polygon geometry, and importOverpass.ts line ~215 does `if (f.geometry.type !== \"Polygon\") continue;`.",
+    "impact": "Hole 3's fairway will be missing from the import.",
+    "fix": "Tag way 895419529 directly with golf=fairway + landuse=grass (the relation is unnecessary - the app does not need the green punched out of the fairway)."
+  },
+  "fairwaysPerHole": {
+    "1": 2,
+    "2": 2,
+    "3": 0,
+    "4": 2,
+    "5": 1,
+    "6": 2,
+    "7": 2,
+    "8": 3,
+    "9": 3,
+    "10": 3,
+    "11": 1,
+    "12": 2,
+    "13": 2,
+    "14": 2,
+    "15": 2,
+    "16": 2,
+    "17": 1,
+    "18": 2
+  },
+  "bunkersPerHole": {
+    "1": 6,
+    "2": 2,
+    "3": 1,
+    "4": 4,
+    "5": 1,
+    "6": 2,
+    "7": 4,
+    "8": 1,
+    "9": 2,
+    "10": 1,
+    "11": 3,
+    "12": 2,
+    "13": 2,
+    "14": 2,
+    "15": 4,
+    "16": 1,
+    "17": 3,
+    "18": 5
+  },
+  "waterHazardsPerHole": {
+    "1": 0,
+    "2": 3,
+    "3": 1,
+    "4": 0,
+    "5": 1,
+    "6": 2,
+    "7": 1,
+    "8": 1,
+    "9": 2,
+    "10": 1,
+    "11": 1,
+    "12": 0,
+    "13": 0,
+    "14": 0,
+    "15": 0,
+    "16": 0,
+    "17": 0,
+    "18": 1
+  },
+  "featuresOutsideBoundaryPolygon": 0,
+  "verdict": "minor-gaps"
+}

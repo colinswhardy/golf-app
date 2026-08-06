@@ -1,0 +1,953 @@
+{
+  "facility": "Flamborough Hills Golf & Country Club",
+  "location": "71 Highway 52, Flamborough/Copetown, Hamilton, Ontario, Canada",
+  "auditedAt": "2026-08-06",
+  "overpassMirror": "https://overpass-api.de/api/interpreter",
+  "overpassDataTimestamp": "2026-08-06T17:59:36Z",
+  "queriesRun": [
+    {
+      "purpose": "locate by name",
+      "query": "[out:json][timeout:140];area[\"name\"=\"Ontario\"][\"admin_level\"=\"4\"]->.on;(nwr[\"name\"~\"Flamborough\",i](area.on););out tags center;"
+    },
+    {
+      "purpose": "boundary geometry",
+      "query": "[out:json][timeout:140];way(180203424);out geom;"
+    },
+    {
+      "purpose": "all golf features, tags only",
+      "query": "[out:json][timeout:160];(nwr[\"golf\"](43.2380,-80.0850,43.2620,-80.0480);nwr[\"leisure\"=\"golf_course\"](43.2380,-80.0850,43.2620,-80.0480););out tags center;"
+    },
+    {
+      "purpose": "all golf features, full geometry (closedness check)",
+      "query": "[out:json][timeout:180];(nwr[\"golf\"](43.2380,-80.0850,43.2620,-80.0480);nwr[\"leisure\"=\"golf_course\"](43.2380,-80.0850,43.2620,-80.0480););out geom;"
+    },
+    {
+      "purpose": "named features inside facility",
+      "query": "[out:json][timeout:110];(nwr[\"name\"](43.2440,-80.0730,43.2555,-80.0575););out tags center;"
+    },
+    {
+      "purpose": "live cross-check (mirror lag)",
+      "query": "https://api.openstreetmap.org/api/0.6/map.json?bbox=-80.0730,43.2440,-80.0575,43.2555"
+    },
+    {
+      "purpose": "changeset attribution",
+      "query": "api.openstreetmap.org/api/0.6/way/<id>.json then /changeset/<id>.json for ways 1453384961,1453384969,1452641596,1452354959,1452401786"
+    }
+  ],
+  "boundary": {
+    "wayId": 180203424,
+    "tags": {
+      "addr:housenumber": "71",
+      "addr:street": "Highway 52",
+      "leisure": "golf_course",
+      "name": "Flamborough Hills Golf & Country Club",
+      "source": "CanVec_Import_2009;CanVec 6.0 - NRCan",
+      "sport": "golf",
+      "website": "https://www.flamboroughhills.com"
+    },
+    "nodes": 52,
+    "closed": true,
+    "bboxSWNE": [
+      43.244114,
+      -80.072702,
+      43.254839,
+      -80.058091
+    ],
+    "centroid": {
+      "lat": 43.24867,
+      "lng": -80.068
+    },
+    "verdict": "GOOD - leisure=golf_course WITH name. Parser will name the course and locate it correctly."
+  },
+  "adjacentCourseContamination": {
+    "wayId": 329809545,
+    "name": "Copetown Woods Golf Club",
+    "bboxSWNE": [
+      43.250972,
+      -80.080992,
+      43.260403,
+      -80.069387
+    ],
+    "bboxesOverlap": true,
+    "note": "Copetown Woods sits immediately NW and its bbox OVERLAPS Flamborough Hills' bbox in both lat and lon, so NO rectangular Overpass bbox can separate them. Must clip by polygon (area(...) / poly:) instead.",
+    "copetownHoleWays": [
+      {
+        "wayId": 807271117,
+        "ref": "1",
+        "par": "5",
+        "handicap": "3"
+      },
+      {
+        "wayId": 807271118,
+        "ref": "2",
+        "par": "4",
+        "handicap": "1"
+      },
+      {
+        "wayId": 807271119,
+        "ref": "3",
+        "par": "4",
+        "handicap": "7"
+      },
+      {
+        "wayId": 807271120,
+        "ref": "4",
+        "par": "3",
+        "handicap": "17"
+      },
+      {
+        "wayId": 807271121,
+        "ref": "5",
+        "par": "4",
+        "handicap": "9"
+      },
+      {
+        "wayId": 807271122,
+        "ref": "6",
+        "par": "4",
+        "handicap": "11"
+      },
+      {
+        "wayId": 807271123,
+        "ref": "7",
+        "par": "3",
+        "handicap": "15"
+      },
+      {
+        "wayId": 807271124,
+        "ref": "8",
+        "par": "4",
+        "handicap": "13"
+      },
+      {
+        "wayId": 807271125,
+        "ref": "9",
+        "par": "4",
+        "handicap": "5"
+      },
+      {
+        "wayId": 807271126,
+        "ref": "10",
+        "par": "5",
+        "handicap": "10"
+      },
+      {
+        "wayId": 807271127,
+        "ref": "11",
+        "par": "3",
+        "handicap": "2"
+      },
+      {
+        "wayId": 807271128,
+        "ref": "12",
+        "par": "4",
+        "handicap": "16"
+      },
+      {
+        "wayId": 807271129,
+        "ref": "13",
+        "par": "4",
+        "handicap": "14"
+      },
+      {
+        "wayId": 807271130,
+        "ref": "14",
+        "par": "5",
+        "handicap": "8"
+      },
+      {
+        "wayId": 807271131,
+        "ref": "15",
+        "par": "4",
+        "handicap": "12"
+      },
+      {
+        "wayId": 807271132,
+        "ref": "16",
+        "par": "5",
+        "handicap": "6"
+      },
+      {
+        "wayId": 807271133,
+        "ref": "17",
+        "par": "3",
+        "handicap": "18"
+      },
+      {
+        "wayId": 807271134,
+        "ref": "18",
+        "par": "4",
+        "handicap": "4"
+      }
+    ],
+    "leakingIntoFlamboroughBbox": {
+      "water_hazard": {
+        "count": 1,
+        "ids": [
+          379843176
+        ]
+      },
+      "tee": {
+        "count": 11,
+        "ids": [
+          788733376,
+          788733377,
+          788736438,
+          788736439,
+          788736440,
+          788736441,
+          788736446,
+          788736447,
+          788736449,
+          788736450,
+          809372914
+        ]
+      },
+      "bunker": {
+        "count": 16,
+        "ids": [
+          788733378,
+          788733379,
+          788733380,
+          788736433,
+          788736434,
+          788736442,
+          788938093,
+          788938101,
+          788938102,
+          788938104,
+          788938105,
+          788938106,
+          788938107,
+          788938108,
+          788938109,
+          788938110
+        ]
+      },
+      "green": {
+        "count": 10,
+        "ids": [
+          788736443,
+          788938094,
+          788938095,
+          788938096,
+          788938097,
+          788938098,
+          788938099,
+          788938100,
+          788938103,
+          1230329307
+        ]
+      },
+      "fairway": {
+        "count": 3,
+        "ids": [
+          788736444,
+          1230324293,
+          1230324294
+        ]
+      },
+      "cartpath": {
+        "count": 7,
+        "ids": [
+          788944218,
+          788944219,
+          788944220,
+          788944221,
+          788944222,
+          788948738,
+          1229566942
+        ]
+      },
+      "hole": {
+        "count": 2,
+        "ids": [
+          807271126,
+          807271127
+        ]
+      },
+      "rough": {
+        "count": 8,
+        "ids": [
+          1229566944,
+          1229566945,
+          1230329308,
+          1230329309,
+          1230329310,
+          1230329311,
+          1230329312,
+          1230329313
+        ]
+      }
+    }
+  },
+  "flamboroughHillsFeatureCounts": {
+    "bunker": {
+      "closed": 33,
+      "unclosed": 0,
+      "unclosedIds": []
+    },
+    "cartpath": {
+      "closed": 0,
+      "unclosed": 30,
+      "unclosedIds": [
+        1452354971,
+        1452355962,
+        1452355963,
+        1452358949,
+        1452358953,
+        1452358954,
+        1452358961,
+        1452358962,
+        1452358963,
+        1452369496,
+        1452369497,
+        1452369501,
+        1452419870,
+        1452419871,
+        1452419872,
+        1452606920,
+        1452615622,
+        1452615623,
+        1452641595,
+        1452641602,
+        1452645130,
+        1452645131,
+        1452645139,
+        1452645140,
+        1452645141,
+        1452645142,
+        1452645143,
+        1452645144,
+        1452901620,
+        1452906277
+      ]
+    },
+    "driving_range": {
+      "closed": 1,
+      "unclosed": 0,
+      "unclosedIds": []
+    },
+    "fairway": {
+      "closed": 28,
+      "unclosed": 0,
+      "unclosedIds": []
+    },
+    "green": {
+      "closed": 28,
+      "unclosed": 0,
+      "unclosedIds": []
+    },
+    "hole": {
+      "closed": 0,
+      "unclosed": 9,
+      "unclosedIds": [
+        1453384961,
+        1453384962,
+        1453384963,
+        1453384964,
+        1453384965,
+        1453384966,
+        1453384967,
+        1453384968,
+        1453384969
+      ]
+    },
+    "rough": {
+      "closed": 1,
+      "unclosed": 0,
+      "unclosedIds": []
+    },
+    "tee": {
+      "closed": 62,
+      "unclosed": 0,
+      "unclosedIds": []
+    },
+    "water_hazard": {
+      "closed": 7,
+      "unclosed": 0,
+      "unclosedIds": []
+    }
+  },
+  "holeCenterlines": {
+    "count": 9,
+    "allOpenLines": true,
+    "refsPresent": "1-9 only",
+    "allHaveRef": true,
+    "allHavePar": true,
+    "handicapTagged": 0,
+    "table": [
+      {
+        "wayId": 1453384961,
+        "ref": "1",
+        "par": "5",
+        "handicap": null,
+        "nodes": 3,
+        "closed": false,
+        "lengthYards": 414,
+        "otherTags": {}
+      },
+      {
+        "wayId": 1453384962,
+        "ref": "2",
+        "par": "3",
+        "handicap": null,
+        "nodes": 2,
+        "closed": false,
+        "lengthYards": 115,
+        "otherTags": {}
+      },
+      {
+        "wayId": 1453384963,
+        "ref": "3",
+        "par": "4",
+        "handicap": null,
+        "nodes": 3,
+        "closed": false,
+        "lengthYards": 363,
+        "otherTags": {}
+      },
+      {
+        "wayId": 1453384964,
+        "ref": "4",
+        "par": "4",
+        "handicap": null,
+        "nodes": 3,
+        "closed": false,
+        "lengthYards": 359,
+        "otherTags": {}
+      },
+      {
+        "wayId": 1453384965,
+        "ref": "5",
+        "par": "3",
+        "handicap": null,
+        "nodes": 2,
+        "closed": false,
+        "lengthYards": 211,
+        "otherTags": {}
+      },
+      {
+        "wayId": 1453384966,
+        "ref": "6",
+        "par": "4",
+        "handicap": null,
+        "nodes": 3,
+        "closed": false,
+        "lengthYards": 381,
+        "otherTags": {}
+      },
+      {
+        "wayId": 1453384967,
+        "ref": "7",
+        "par": "4",
+        "handicap": null,
+        "nodes": 3,
+        "closed": false,
+        "lengthYards": 416,
+        "otherTags": {}
+      },
+      {
+        "wayId": 1453384968,
+        "ref": "8",
+        "par": "5",
+        "handicap": null,
+        "nodes": 4,
+        "closed": false,
+        "lengthYards": 442,
+        "otherTags": {}
+      },
+      {
+        "wayId": 1453384969,
+        "ref": "9",
+        "par": "4",
+        "handicap": null,
+        "nodes": 3,
+        "closed": false,
+        "lengthYards": 444,
+        "otherTags": {}
+      }
+    ]
+  },
+  "nines": {
+    "north_nine_MAPPED": {
+      "bunker": {
+        "count": 10,
+        "ids": [
+          1452354961,
+          1452641597,
+          1452641598,
+          1452641604,
+          1452641605,
+          1452645133,
+          1452645134,
+          1452901624,
+          1452901625,
+          1452901629
+        ]
+      },
+      "cartpath": {
+        "count": 7,
+        "ids": [
+          1452641595,
+          1452641602,
+          1452645130,
+          1452645131,
+          1452645139,
+          1452645140,
+          1452901620
+        ]
+      },
+      "fairway": {
+        "count": 10,
+        "ids": [
+          1452354963,
+          1452641607,
+          1452901619,
+          1452901628,
+          1452904902,
+          1452904903,
+          1452904907,
+          1452904909,
+          1452904910,
+          1452904911
+        ]
+      },
+      "green": {
+        "count": 8,
+        "ids": [
+          1452354962,
+          1452641596,
+          1452641603,
+          1452641606,
+          1452641608,
+          1452645132,
+          1452901626,
+          1452904908
+        ]
+      },
+      "hole": {
+        "count": 9,
+        "ids": [
+          1453384961,
+          1453384962,
+          1453384963,
+          1453384964,
+          1453384965,
+          1453384966,
+          1453384967,
+          1453384968,
+          1453384969
+        ]
+      },
+      "tee": {
+        "count": 24,
+        "ids": [
+          1452354960,
+          1452354969,
+          1452354970,
+          1452641592,
+          1452641593,
+          1452641594,
+          1452641599,
+          1452641600,
+          1452641601,
+          1452641609,
+          1452641610,
+          1452645127,
+          1452645128,
+          1452645129,
+          1452645135,
+          1452645136,
+          1452645137,
+          1452901621,
+          1452901622,
+          1452901623,
+          1452901627,
+          1452904904,
+          1452904905,
+          1452904906
+        ]
+      },
+      "water_hazard": {
+        "count": 2,
+        "ids": [
+          379843311,
+          379843389
+        ]
+      }
+    },
+    "east_nine_UNMAPPED": {
+      "bunker": {
+        "count": 10,
+        "ids": [
+          1452354957,
+          1452354958,
+          1452369494,
+          1452369503,
+          1452419876,
+          1452901613,
+          1452901614,
+          1452904899,
+          1452904900,
+          1452904901
+        ]
+      },
+      "cartpath": {
+        "count": 11,
+        "ids": [
+          1452354971,
+          1452369496,
+          1452369497,
+          1452419872,
+          1452615622,
+          1452615623,
+          1452645141,
+          1452645142,
+          1452645143,
+          1452645144,
+          1452906277
+        ]
+      },
+      "driving_range": {
+        "count": 1,
+        "ids": [
+          1452615621
+        ]
+      },
+      "fairway": {
+        "count": 8,
+        "ids": [
+          1452354956,
+          1452354968,
+          1452354972,
+          1452359669,
+          1452369498,
+          1452419869,
+          1452419874,
+          1452904898
+        ]
+      },
+      "green": {
+        "count": 10,
+        "ids": [
+          1452354955,
+          1452354959,
+          1452358947,
+          1452369493,
+          1452369495,
+          1452369502,
+          1452419868,
+          1452419875,
+          1452901615,
+          1452904897
+        ]
+      },
+      "rough": {
+        "count": 1,
+        "ids": [
+          1452615619
+        ]
+      },
+      "tee": {
+        "count": 16,
+        "ids": [
+          1452369491,
+          1452369492,
+          1452400275,
+          1452400276,
+          1452419873,
+          1452419877,
+          1452419882,
+          1452420502,
+          1452606919,
+          1452615620,
+          1452901610,
+          1452901611,
+          1452901612,
+          1452901616,
+          1452901617,
+          1452901618
+        ]
+      },
+      "water_hazard": {
+        "count": 2,
+        "ids": [
+          379843346,
+          379843347
+        ]
+      }
+    },
+    "southwest_nine_UNMAPPED": {
+      "bunker": {
+        "count": 13,
+        "ids": [
+          1452358946,
+          1452358955,
+          1452359668,
+          1452400279,
+          1452401780,
+          1452401781,
+          1452401787,
+          1452419879,
+          1452419880,
+          1452420503,
+          1452606921,
+          1452606922,
+          1452606923
+        ]
+      },
+      "cartpath": {
+        "count": 12,
+        "ids": [
+          1452355962,
+          1452355963,
+          1452358949,
+          1452358953,
+          1452358954,
+          1452358961,
+          1452358962,
+          1452358963,
+          1452369501,
+          1452419870,
+          1452419871,
+          1452606920
+        ]
+      },
+      "fairway": {
+        "count": 10,
+        "ids": [
+          1452354967,
+          1452355965,
+          1452358948,
+          1452358957,
+          1452400280,
+          1452400281,
+          1452401783,
+          1452401788,
+          1452419881,
+          1452606918
+        ]
+      },
+      "green": {
+        "count": 10,
+        "ids": [
+          1452354966,
+          1452355964,
+          1452358956,
+          1452359667,
+          1452369490,
+          1452400278,
+          1452401782,
+          1452401786,
+          1452419878,
+          1452606917
+        ]
+      },
+      "tee": {
+        "count": 22,
+        "ids": [
+          1452354964,
+          1452354965,
+          1452355959,
+          1452355960,
+          1452355961,
+          1452358950,
+          1452358951,
+          1452358958,
+          1452358959,
+          1452358960,
+          1452359664,
+          1452359665,
+          1452359666,
+          1452369499,
+          1452369500,
+          1452400277,
+          1452400282,
+          1452401784,
+          1452401785,
+          1452401789,
+          1452419866,
+          1452419867
+        ]
+      },
+      "water_hazard": {
+        "count": 3,
+        "ids": [
+          1411930756,
+          1411930757,
+          1411930758
+        ]
+      }
+    }
+  },
+  "nineIdentification": {
+    "method": "point-in-polygon against the two leisure=golf_course boundaries, then k-means on the 28 golf=green centroids inside Flamborough Hills",
+    "osmHasNoNineNames": true,
+    "detail": "OSM carries NO name, ref or relation distinguishing the three nines - a query for every named feature inside the boundary returned only Highway 52, Big Creek, the rail corridor, the two course polygons and a vet clinic. There is no clubhouse, no hole-name tags, no golf=hole name=*. Changeset comments are all the generic 'aligning golf course features' by user MWBtfd (Nov 2025), so they are NOT decisive either. The nines below are therefore labelled by geography only.",
+    "north_nine_MAPPED": "centroid 43.25206,-80.06438 - the ONLY nine with golf=hole centerlines (ways 1453384961-1453384969, ref 1-9). 9 greens 1452641596/1452641603/1452641606/1452641608/1452645132/1452901615/1452901626/1452904897/1452904908, all within 0-4 m of their centerline.",
+    "east_nine_UNMAPPED": "centroid 43.24842,-80.06485 - 10 greens, 8 fairways, 16 tees, 10 bunkers, plus the driving range. ZERO golf=hole centerlines.",
+    "southwest_nine_UNMAPPED": "centroid 43.24669,-80.06972 - 10 greens, 10 fairways, 22 tees, 13 bunkers. ZERO golf=hole centerlines."
+  },
+  "orphanedGreens": {
+    "count": 19,
+    "note": "19 of the 28 golf=green polygons inside the boundary are 121-739 m from the nearest golf=hole centerline. Because hole membership is purely geometric (green -> back half of nearest centerline), every one of these will be force-attached to a hole on the mapped north nine, stacking multiple greens onto holes 1-9.",
+    "ids": [
+      1452354955,
+      1452354959,
+      1452354962,
+      1452354966,
+      1452355964,
+      1452358947,
+      1452358956,
+      1452359667,
+      1452369490,
+      1452369493,
+      1452369495,
+      1452369502,
+      1452400278,
+      1452401782,
+      1452401786,
+      1452419868,
+      1452419875,
+      1452419878,
+      1452606917
+    ]
+  },
+  "teeboxTags": {
+    "golfTeePolygons": 62,
+    "withTeeboxColour": 0,
+    "note": "Every golf=tee way inside Flamborough Hills carries exactly one tag: golf=tee. No teebox=, no name, no ref. All 62 import as an indistinguishable 'Tee'. Confirmed against the live API too (79 tees in the wider bbox, 0 with teebox)."
+  },
+  "multipolygonRelation": {
+    "id": 16809076,
+    "tags": {
+      "golf": "fairway",
+      "landuse": "grass",
+      "type": "multipolygon"
+    },
+    "belongsTo": "Copetown Woods (first member centroid 43.25226,-80.07153)",
+    "note": "Exports as MultiPolygon; parser only accepts geometry.type === 'Polygon', so it is silently skipped. Not a Flamborough Hills problem."
+  },
+  "parserSimulation": {
+    "assumedExportOrder": "Overpass Turbo emits ways in ascending id, so 807271117-807271134 (Copetown) are processed BEFORE 1453384961-1453384969 (Flamborough Hills). Map.set means the later way wins for a duplicate ref.",
+    "boundaryChosen": "way 180203424 Flamborough Hills - correct, it is the first leisure=golf_course+name in id order.",
+    "resultingHoles": [
+      {
+        "hole": 1,
+        "wayId": 1453384961,
+        "par": 5,
+        "sourceCourse": "Flamborough Hills"
+      },
+      {
+        "hole": 2,
+        "wayId": 1453384962,
+        "par": 3,
+        "sourceCourse": "Flamborough Hills"
+      },
+      {
+        "hole": 3,
+        "wayId": 1453384963,
+        "par": 4,
+        "sourceCourse": "Flamborough Hills"
+      },
+      {
+        "hole": 4,
+        "wayId": 1453384964,
+        "par": 4,
+        "sourceCourse": "Flamborough Hills"
+      },
+      {
+        "hole": 5,
+        "wayId": 1453384965,
+        "par": 3,
+        "sourceCourse": "Flamborough Hills"
+      },
+      {
+        "hole": 6,
+        "wayId": 1453384966,
+        "par": 4,
+        "sourceCourse": "Flamborough Hills"
+      },
+      {
+        "hole": 7,
+        "wayId": 1453384967,
+        "par": 4,
+        "sourceCourse": "Flamborough Hills"
+      },
+      {
+        "hole": 8,
+        "wayId": 1453384968,
+        "par": 5,
+        "sourceCourse": "Flamborough Hills"
+      },
+      {
+        "hole": 9,
+        "wayId": 1453384969,
+        "par": 4,
+        "sourceCourse": "Flamborough Hills"
+      },
+      {
+        "hole": 10,
+        "wayId": 807271126,
+        "par": 5,
+        "sourceCourse": "COPETOWN WOODS"
+      },
+      {
+        "hole": 11,
+        "wayId": 807271127,
+        "par": 3,
+        "sourceCourse": "COPETOWN WOODS"
+      },
+      {
+        "hole": 12,
+        "wayId": 807271128,
+        "par": 4,
+        "sourceCourse": "COPETOWN WOODS"
+      },
+      {
+        "hole": 13,
+        "wayId": 807271129,
+        "par": 4,
+        "sourceCourse": "COPETOWN WOODS"
+      },
+      {
+        "hole": 14,
+        "wayId": 807271130,
+        "par": 5,
+        "sourceCourse": "COPETOWN WOODS"
+      },
+      {
+        "hole": 15,
+        "wayId": 807271131,
+        "par": 4,
+        "sourceCourse": "COPETOWN WOODS"
+      },
+      {
+        "hole": 16,
+        "wayId": 807271132,
+        "par": 5,
+        "sourceCourse": "COPETOWN WOODS"
+      },
+      {
+        "hole": 17,
+        "wayId": 807271133,
+        "par": 3,
+        "sourceCourse": "COPETOWN WOODS"
+      },
+      {
+        "hole": 18,
+        "wayId": 807271134,
+        "par": 4,
+        "sourceCourse": "COPETOWN WOODS"
+      }
+    ],
+    "maxHoleNumber": 18,
+    "verdict": "A wide-bbox export produces an 18-hole 'Flamborough Hills Golf & Country Club' whose front nine is Flamborough's mapped north nine and whose back nine is Copetown Woods' actual back nine, ~1 km away. Even a bbox clipped to Flamborough's own boundary rectangle still drags in Copetown ways 807271126 (ref 10) and 807271127 (ref 11) plus 10 greens, 16 bunkers, 11 tees, 3 fairways, 8 rough."
+  },
+  "parserNote": "handicap=* is NOT read anywhere in src/lib/importOverpass.ts (grep for 'handicap' hits only demoRound.ts). Stroke index is not imported today regardless of tagging.",
+  "liveApiCrossCheck": {
+    "performed": true,
+    "result": "api.openstreetmap.org map.json over the Flamborough bbox returns the same 9 golf=hole ways 1453384961-1453384969 and 0 teebox tags on 79 golf=tee ways. Overpass mirror is not lagging; the missing data is genuinely missing."
+  }
+}

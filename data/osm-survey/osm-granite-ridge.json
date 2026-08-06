@@ -1,0 +1,407 @@
+{
+  "facility": "Granite Ridge Golf Club (Cobalt course), 9503 Dublin Line, Milton, Ontario, Canada",
+  "auditDate": "2026-08-06",
+  "verdict": "not-mapped",
+  "realWorldFacility": {
+    "source": "golfgranite.com + GolfPass (fetched during audit)",
+    "courses": [
+      "Ruby (18 holes)",
+      "Cobalt (18 holes)"
+    ],
+    "totalHoles": 36,
+    "cobalt": {
+      "holes": 18,
+      "par": 72,
+      "yardageBlue": 6546,
+      "rating": 71.7,
+      "slope": 135,
+      "tees": [
+        "Blue 6546",
+        "White 5952",
+        "Red 5077"
+      ],
+      "built": 1996,
+      "architects": [
+        "Rene Muylaert",
+        "Dick Kirkpatrick"
+      ]
+    }
+  },
+  "boundary": {
+    "wayId": 209486388,
+    "tags": {
+      "leisure": "golf_course",
+      "name": "Granite Ridge Golf Club",
+      "sport": "golf"
+    },
+    "closed": true,
+    "nodes": 22,
+    "areaAcres": 192,
+    "areaKm2": 0.78,
+    "bbox_S_W_N_E": [
+      43.53562,
+      -79.94824,
+      43.54664,
+      -79.93314
+    ],
+    "centroid": {
+      "lat": 43.540177,
+      "lng": -79.938584
+    },
+    "parserRequirementMet": true,
+    "note": "Satisfies the leisure=golf_course + name requirement. Single polygon for the WHOLE 36-hole facility - there is no separate Cobalt or Ruby polygon anywhere in OSM. 192 acres is small for 36 holes; the polygon may under-cover the real property.",
+    "history": [
+      {
+        "v": 1,
+        "date": "2013-03-12",
+        "user": "fx99",
+        "cs": 15335962,
+        "nodes": 88,
+        "tags": "leisure=golf_course;sport=golf (no name)"
+      },
+      {
+        "v": 2,
+        "date": "2014-10-31",
+        "user": "Bootprint",
+        "cs": 26462337,
+        "nodes": 88,
+        "tags": "+name=Granite Ridge Golf Club"
+      },
+      {
+        "v": 3,
+        "date": "2019-09-04",
+        "user": "Ivars Leitis",
+        "cs": 74092356,
+        "nodes": 20,
+        "note": "simplified 88 -> 20 nodes"
+      },
+      {
+        "v": 4,
+        "date": "2019-09-04",
+        "user": "Ivars Leitis",
+        "cs": 74093565,
+        "nodes": 21
+      },
+      {
+        "v": 5,
+        "date": "2021-03-13",
+        "user": "Kevo",
+        "cs": 100939985,
+        "nodes": 21
+      },
+      {
+        "v": 6,
+        "date": "2025-10-07",
+        "user": "Shrinks99",
+        "cs": 172965415,
+        "nodes": 22,
+        "comment": "Add farmland"
+      }
+    ]
+  },
+  "holeCenterlines": {
+    "golfHoleWaysInsideBoundary": 0,
+    "wayIds": [],
+    "refsPresent": "none",
+    "parTagged": 0,
+    "handicapTagged": 0,
+    "duplicateRefs": false,
+    "note": "ZERO golf=hole LineString ways exist anywhere inside the Granite Ridge boundary. Verified twice: Overpass area query and the live OSM API (api.openstreetmap.org/api/0.6/map.json) - not mirror lag."
+  },
+  "legacyHoleRelations": [
+    {
+      "id": 2074814,
+      "type": "multipolygon",
+      "tags": {
+        "golf": "hole",
+        "type": "multipolygon"
+      },
+      "ref": null,
+      "par": null,
+      "handicap": null,
+      "version": 4,
+      "lastEdit": "2013-04-15",
+      "user": "fx99",
+      "changeset": 15734791,
+      "members": [
+        {
+          "way": 154122656,
+          "role": "outer",
+          "golf": "green"
+        },
+        {
+          "way": 154122666,
+          "role": "outer",
+          "golf": "fairway"
+        },
+        {
+          "way": 154122696,
+          "role": "outer",
+          "golf": "tee"
+        },
+        {
+          "way": 154122671,
+          "role": "outer",
+          "golf": "tee"
+        }
+      ],
+      "approxCenter": {
+        "lat": 43.54378,
+        "lng": -79.94445
+      },
+      "teeToGreenYards": [
+        246,
+        275
+      ],
+      "parserVisible": false,
+      "why": "It is a RELATION with polygon members, not an open LineString way. Overpass Turbo exports it as a MultiPolygon, so the parser's golf=hole + LineString filter never sees it; it then falls through to DIRECT_TAG_MAP where 'hole' is unmapped and is discarded."
+    },
+    {
+      "id": 2074836,
+      "type": "collection",
+      "tags": {
+        "golf": "hole",
+        "type": "collection"
+      },
+      "ref": null,
+      "par": null,
+      "handicap": null,
+      "version": 2,
+      "lastEdit": "2012-03-09",
+      "user": "rw__",
+      "changeset": 10919739,
+      "members": [
+        {
+          "way": 154123462,
+          "golf": "green"
+        },
+        {
+          "way": 154123466,
+          "golf": "fairway"
+        },
+        {
+          "relation": 2074926,
+          "golf": "tee"
+        }
+      ],
+      "approxCenter": {
+        "lat": 43.54273,
+        "lng": -79.94037
+      },
+      "teeToGreenYards": [
+        385,
+        365,
+        337
+      ],
+      "parserVisible": false,
+      "why": "type=collection relation - Overpass Turbo cannot even render this as a polygon. Invisible to the parser."
+    }
+  ],
+  "polygonFeaturesInsideBoundary": {
+    "green": {
+      "count": 2,
+      "wayIds": [
+        154122656,
+        154123462
+      ],
+      "allClosed": true
+    },
+    "fairway": {
+      "count": 2,
+      "wayIds": [
+        154122666,
+        154123466
+      ],
+      "allClosed": true
+    },
+    "tee": {
+      "count": 2,
+      "wayIds": [
+        154122671,
+        154122696
+      ],
+      "allClosed": true,
+      "teeboxTagged": 0,
+      "extraUntagged": {
+        "wayIds": [
+          154123469,
+          154123473,
+          154123474
+        ],
+        "closed": true,
+        "note": "These 3 tee polygons are members of golf=tee relation 2074926 but carry NO tags of their own - zero golf=tee, zero teebox. Completely invisible to the parser even after centerlines are added."
+      }
+    },
+    "bunker": {
+      "count": 3,
+      "wayIds": [
+        154122652,
+        154122685,
+        154122686
+      ],
+      "allClosed": true
+    },
+    "rough": {
+      "count": 0
+    },
+    "fringe": {
+      "count": 0
+    },
+    "water_hazard": {
+      "count": 0
+    },
+    "lateral_water_hazard": {
+      "count": 0
+    },
+    "cartpath": {
+      "count": 24,
+      "note": "golf=cartpath, all open LineStrings; parser has no mapping for 'cartpath' so they land in the 'ignored' bucket. Useful only as a human tracing aid - the 24 paths do trace the routing across the property."
+    },
+    "unclosedGolfPolygons": 0,
+    "teeboxColourTagsAnywhere": 0,
+    "naturalWaterPolygonsInsideBoundary": 14
+  },
+  "nineIdentification": {
+    "cobaltVsRuby": "IMPOSSIBLE FROM OSM DATA",
+    "reasoning": [
+      "There is exactly ONE leisure=golf_course polygon (way 209486388) covering the whole 36-hole site; no Cobalt or Ruby sub-polygon exists.",
+      "An OSM-wide name search for 'Cobalt' or 'Ruby' over bbox 43.50,-80.00,43.58,-79.88 returned ZERO objects.",
+      "Neither of the two legacy golf=hole relations carries ref, name, par or handicap - nothing distinguishes them.",
+      "With 0 refs there are also 0 duplicate refs, so the multi-course duplicate-ref overwrite trap does not (yet) apply - but it WILL the moment someone maps Ruby 1-18 and Cobalt 1-18 into this single boundary."
+    ],
+    "geographicHint": "Both partially-mapped holes sit in the NORTH-CENTRAL strip of the property (43.5419-43.5445 N, -79.9460 to -79.9396 W). Hole-A (rel 2074814) runs roughly E->W, ~246-275 yd tee-to-green. Hole-B (rel 2074836) runs roughly NW->SE, ~337-385 yd tee-to-green. Which of Ruby/Cobalt this is cannot be determined from OSM; a surveyor on site or the club's own layout must decide."
+  },
+  "neighbouringCoursesNotToConfuse": {
+    "warning": "A naive bbox Overpass export around Granite Ridge WILL swallow two neighbouring ClubLink courses that ARE well mapped. Restrict the export to way 209486388 via map_to_area, or you will import Greystone's holes as Granite Ridge.",
+    "Greystone Golf Club": {
+      "boundaryWay": 721952357,
+      "golfHoleWays": 18,
+      "refs": "1-18",
+      "allHavePar": true,
+      "allHaveHandicap": true,
+      "wayIds": [
+        803143485,
+        803143486,
+        803143487,
+        803144773,
+        805817195,
+        805817196,
+        805817197,
+        805817198,
+        805817199,
+        805817200,
+        805817201,
+        805817202,
+        805817203,
+        805817204,
+        805817205,
+        805817206,
+        805817207,
+        805817208
+      ]
+    },
+    "Glencairn Golf Club": {
+      "boundaryWay": 113020216,
+      "golfHoleWays": 12,
+      "refs": "1,2,9,10,11,12,13,14,15,16,17,18 - NOTE 27-hole club, refs 1/2/9 appear TWICE across nines (ways 905109738/905109739/905109746 vs the 10-18 series), a live duplicate-ref hazard",
+      "wayIds": [
+        905109720,
+        905109721,
+        905109722,
+        905109723,
+        905109724,
+        905109725,
+        905109726,
+        905109727,
+        905109728,
+        905109738,
+        905109739,
+        905109746
+      ]
+    }
+  },
+  "parserSimulation": {
+    "method": "Built an Overpass-Turbo-shaped GeoJSON of everything inside way 209486388 (35 features) and ran the real /home/user/golf-app/src/lib/importOverpass.ts through vite-node.",
+    "exportFile": "/tmp/claude-0/-home-user-golf-app/bb146158-4a83-5bf4-a63d-cc08dcafb444/scratchpad/research/granite_ridge_export.geojson",
+    "result": {
+      "name": "Granite Ridge Golf Club",
+      "location": {
+        "lat": 43.54017700952381,
+        "lng": -79.93858436190476
+      },
+      "holes": 18,
+      "allPar": 4,
+      "allParInferred": true,
+      "features": 0,
+      "teeBoxes": 0,
+      "warnings": [
+        "No golf=hole centerlines with a usable ref number were found - falling back to 18 holes, par 4, with no shape data.",
+        "Holes 1..18 have no OSM centerline - created as empty placeholders (par defaulted to 4)."
+      ]
+    },
+    "explanation": "Because holeLineByNumber ends up empty, holeLineList is empty, so nearestHoleNumber() returns null for every polygon and nearestHoleByCenterlineHalf() falls through to the same null. Every green, fairway, tee and bunker hits `if (!nearest) continue;` and is dropped. The 9 real polygons and 14 water bodies all vanish. You get a correctly-named, correctly-located, completely EMPTY 18-hole shell - and it is labelled 'Granite Ridge Golf Club', not 'Cobalt'."
+  },
+  "overpassQueriesRun": [
+    "[out:json][timeout:120];(nwr[\"name\"~\"Granite Ridge\",i](43.20,-80.40,43.80,-79.50);nwr[\"name\"~\"Granite\",i][\"leisure\"=\"golf_course\"](43.20,-80.40,43.80,-79.50););out tags center;",
+    "[out:json][timeout:120];way(209486388);out tags geom;",
+    "[out:json][timeout:160];(nwr[\"golf\"](43.5200,-79.9750,43.5620,-79.9150);nwr[\"leisure\"=\"golf_course\"](43.5200,-79.9750,43.5620,-79.9150);nwr[\"landuse\"=\"grass\"][\"name\"](43.5200,-79.9750,43.5620,-79.9150););out tags center;",
+    "[out:json][timeout:160];way(209486388);map_to_area->.a;(nwr[\"golf\"](area.a);nwr[\"leisure\"=\"golf_course\"](area.a););out tags center;",
+    "[out:json][timeout:180];(nwr[\"golf\"](43.5200,-79.9750,43.5620,-79.9150);nwr[\"leisure\"=\"golf_course\"](43.5200,-79.9750,43.5620,-79.9150););out tags geom;",
+    "[out:json][timeout:120];(nwr[\"name\"~\"Cobalt|Ruby\",i](43.50,-80.00,43.58,-79.88);nwr[\"golf\"](43.5000,-79.9900,43.5400,-79.9000););out tags center;",
+    "[out:json][timeout:180];way(209486388);map_to_area->.a;(nwr[\"golf\"](area.a);rel(2074814);rel(2074836);rel(2074926);way(154123469);way(154123473);way(154123474);nwr[\"golf\"](43.5320,-79.9545,43.5500,-79.9285););(._;>;);out tags geom;",
+    "[out:json][timeout:150];(way[\"landuse\"](43.5320,-79.9560,43.5520,-79.9280);way[\"natural\"=\"water\"](43.5320,-79.9560,43.5520,-79.9280);way[\"leisure\"](43.5320,-79.9560,43.5520,-79.9280););out tags center;"
+  ],
+  "liveApiCrossChecks": [
+    "https://api.openstreetmap.org/api/0.6/map.json?bbox=-79.9490,43.5350,-79.9325,43.5470  -> 4955 elements; only golf=hole ways present are Greystone's (refs 1,2,3,4,5,17,18 spilling into the bbox); the only Granite Ridge golf=hole objects are relations 2074814 and 2074836, both ref-less. Confirms Overpass is NOT stale.",
+    "https://api.openstreetmap.org/api/0.6/way/209486388/history.json",
+    "https://api.openstreetmap.org/api/0.6/changeset/172965415.json -> comment 'Add farmland' (Shrinks99, 2025-10-07)",
+    "https://api.openstreetmap.org/api/0.6/relation/2074814.json, /relation/2074836.json, /relation/2074926.json"
+  ],
+  "perHoleTable": {
+    "note": "No per-hole table can be produced: 0 of the facility's 36 holes (0 of Cobalt's 18) have a golf=hole centerline with a ref. The two legacy relations below are the entire hole-level dataset.",
+    "rows": [
+      {
+        "osmObject": "relation 2074814",
+        "ref": null,
+        "par": null,
+        "handicap": null,
+        "green": 154122656,
+        "fairway": 154122666,
+        "tees": [
+          154122696,
+          154122671
+        ],
+        "bunkersNearby": [
+          154122652,
+          154122685,
+          154122686
+        ],
+        "teeToGreenYds": [
+          246,
+          275
+        ],
+        "course": "unknown (Ruby or Cobalt)"
+      },
+      {
+        "osmObject": "relation 2074836",
+        "ref": null,
+        "par": null,
+        "handicap": null,
+        "green": 154123462,
+        "fairway": 154123466,
+        "tees": [
+          154123469,
+          154123473,
+          154123474
+        ],
+        "bunkersNearby": [],
+        "teeToGreenYds": [
+          385,
+          365,
+          337
+        ],
+        "course": "unknown (Ruby or Cobalt)"
+      }
+    ]
+  }
+}

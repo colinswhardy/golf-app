@@ -1,0 +1,443 @@
+{
+  "facility": "Mount Nemo Golf Club (formerly Indian Wells Golf Club)",
+  "address_realworld": "5377 Walkers Line, Burlington, ON L7M 0P9, Canada",
+  "audited_at_utc": "2026-08-06",
+  "overpass_timestamp_osm_base": "2026-08-06T18:12:03Z",
+  "found_in_osm": true,
+  "queries_run": [
+    {
+      "purpose": "name search for 'Nemo' across Burlington/Milton bbox",
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "ql": "[out:json][timeout:140];(nwr[\"name\"~\"Nemo\",i][\"leisure\"=\"golf_course\"](43.20,-80.10,43.65,-79.60);nwr[\"name\"~\"Nemo\",i][\"golf\"](43.20,-80.10,43.65,-79.60);nwr[\"name\"~\"Nemo\",i](43.20,-80.10,43.65,-79.60););out tags center;",
+      "result": "12 elements, NONE golf-related. No OSM object is named 'Mount Nemo Golf Club'."
+    },
+    {
+      "purpose": "enumerate all leisure=golf_course in Burlington/Milton",
+      "ql": "[out:json][timeout:140];(way[\"leisure\"=\"golf_course\"](43.30,-80.10,43.62,-79.68);relation[...];node[...];);out tags center;",
+      "result": "40 elements. Way 43937480 @43.42985,-79.87026 is UNNAMED but carries addr:housenumber=5377, addr:street=Walker's Line -> this is Mount Nemo GC."
+    },
+    {
+      "purpose": "all golf features in course bbox, with geometry",
+      "ql": "[out:json][timeout:150];(nwr[\"golf\"](43.4230,-79.8790,43.4368,-79.8615);nwr[\"leisure\"=\"golf_course\"](43.4230,-79.8790,43.4368,-79.8615););out geom;",
+      "result": "136 elements: 42 tee, 33 bunker, 27 fairway, 18 green, 8 water_hazard, 7 cartpath, 1 boundary. ZERO golf=hole."
+    },
+    {
+      "purpose": "wide search for any golf=hole centerline near the course",
+      "ql": "[out:json][timeout:150];(way[\"golf\"=\"hole\"](43.415,-79.890,43.445,-79.850);nwr[\"golf\"=\"hole\"](43.415,-79.890,43.445,-79.850););out tags geom;",
+      "result": "0 elements."
+    },
+    {
+      "purpose": "live API cross-check (mirror lag)",
+      "url": "https://api.openstreetmap.org/api/0.6/map.json?bbox=-79.8790,43.4230,-79.8615,43.4368",
+      "result": "6412 elements; same golf counter (tee 42, bunker 33, fairway 27, green 18, water_hazard 8, cartpath 7, 1 leisure=golf_course). live golf=hole: []. Confirms absence is real, not mirror lag."
+    },
+    {
+      "purpose": "Ontario-wide area name search",
+      "ql": "area[\"name\"=\"Ontario\"][\"admin_level\"=\"4\"]->.on;(nwr[\"name\"~\"Nemo\",i][\"leisure\"=\"golf_course\"](area.on);...)",
+      "result": "TIMED OUT (remark: 'Query timed out in \"query\" at line 1 after 197 seconds') - NOT a valid negative, disregarded. Superseded by the bbox name search above."
+    },
+    {
+      "purpose": "geocoder cross-check",
+      "url": "https://nominatim.openstreetmap.org/search?q=Mount+Nemo+Golf+Club",
+      "result": "[] - zero results for 'Mount Nemo Golf', 'Nemo Golf Club', 'Mount Nemo Golf Club Burlington'. Consistent with the boundary having no name tag."
+    }
+  ],
+  "boundary": {
+    "way_id": 43937480,
+    "type": "way",
+    "leisure": "golf_course",
+    "closed": true,
+    "nodes": 18,
+    "name_tag": null,
+    "tags": {
+      "addr:city": "Burlington",
+      "addr:housenumber": "5377",
+      "addr:street": "Walker's Line",
+      "leisure": "golf_course",
+      "sport": "golf",
+      "website": "https://indianwellsgolfclub.ca/"
+    },
+    "bbox_S_W_N_E": "43.424602,-79.876721,43.435099,-79.863792",
+    "center": {
+      "lat": 43.4298507,
+      "lon": -79.8702569
+    },
+    "last_edit": {
+      "version": 9,
+      "timestamp": "2024-06-25T03:20:15Z",
+      "changeset": 153136324,
+      "user": "b-jazz-bot"
+    },
+    "problems": [
+      "NO name tag -> parser's boundary lookup (leisure=golf_course AND name) fails; landuse=grass fallback also fails because every landuse=grass way here is a green/tee/fairway with no name either. Course imports as 'Imported Course' with location=null.",
+      "website tag still points at indianwellsgolfclub.ca; facility was renamed to Mount Nemo Golf Club c.2022 (correct site: mountnemogolfclub.ca).",
+      "Coarse 18-node polygon: golf=tee ways 953861292 and 953861293 fall OUTSIDE it."
+    ]
+  },
+  "hole_centerlines": {
+    "golf_hole_ways_found": 0,
+    "hole_way_ids": [],
+    "refs_present": "none",
+    "missing_refs": "1-18 (no golf=hole way exists anywhere on this site)",
+    "duplicate_refs": false,
+    "par_tagged": 0,
+    "handicap_tagged": 0,
+    "note": "Zero ref/par/handicap tags exist on ANY golf feature at this facility (checked keys ref, par, handicap, hole, name across all 135 golf-tagged ways: all zero)."
+  },
+  "polygon_features": {
+    "green": {
+      "count": 18,
+      "closed": 18,
+      "unclosed": 0,
+      "way_ids": [
+        953858688,
+        953858701,
+        953858710,
+        953858713,
+        953858716,
+        953858723,
+        953858732,
+        953858737,
+        953858743,
+        953858752,
+        953861290,
+        953861301,
+        953861309,
+        953861313,
+        953861320,
+        953861325,
+        953861331,
+        953861337
+      ]
+    },
+    "fairway": {
+      "count": 27,
+      "closed": 27,
+      "unclosed": 0,
+      "way_ids": [
+        953858692,
+        953858697,
+        953858702,
+        953858708,
+        953858711,
+        953858715,
+        953858717,
+        953858722,
+        953858729,
+        953858733,
+        953858735,
+        953858738,
+        953858742,
+        953858749,
+        953858750,
+        953861291,
+        953861296,
+        953861302,
+        953861312,
+        953861314,
+        953861316,
+        953861317,
+        953861318,
+        953861321,
+        953861324,
+        953861335,
+        953861338
+      ]
+    },
+    "tee": {
+      "count": 42,
+      "closed": 42,
+      "unclosed": 0,
+      "with_teebox_tag": 0,
+      "way_ids": [
+        953858686,
+        953858687,
+        953858695,
+        953858696,
+        953858703,
+        953858704,
+        953858705,
+        953858706,
+        953858707,
+        953858712,
+        953858714,
+        953858724,
+        953858725,
+        953858726,
+        953858727,
+        953858728,
+        953858734,
+        953858739,
+        953858740,
+        953858741,
+        953858747,
+        953858748,
+        953861286,
+        953861287,
+        953861288,
+        953861292,
+        953861293,
+        953861294,
+        953861295,
+        953861303,
+        953861304,
+        953861305,
+        953861310,
+        953861311,
+        953861315,
+        953861322,
+        953861323,
+        953861326,
+        953861327,
+        953861332,
+        953861333,
+        953861334
+      ]
+    },
+    "bunker": {
+      "count": 33,
+      "closed": 33,
+      "unclosed": 0,
+      "way_ids": [
+        953858689,
+        953858690,
+        953858691,
+        953858693,
+        953858694,
+        953858698,
+        953858699,
+        953858700,
+        953858709,
+        953858718,
+        953858719,
+        953858720,
+        953858721,
+        953858730,
+        953858731,
+        953858736,
+        953858744,
+        953858745,
+        953858746,
+        953858751,
+        953861289,
+        953861297,
+        953861298,
+        953861299,
+        953861300,
+        953861306,
+        953861307,
+        953861308,
+        953861319,
+        953861328,
+        953861329,
+        953861330,
+        953861336
+      ]
+    },
+    "water_hazard": {
+      "count": 8,
+      "closed": 8,
+      "unclosed": 0,
+      "way_ids": [
+        953863744,
+        953863745,
+        953863746,
+        953863747,
+        953863748,
+        953863749,
+        953863750,
+        953863751
+      ]
+    },
+    "rough": {
+      "count": 0
+    },
+    "lateral_water_hazard": {
+      "count": 0
+    },
+    "cartpath": {
+      "count": 7,
+      "closed": 0,
+      "unclosed": 7,
+      "way_ids": [
+        953863737,
+        953863738,
+        953863739,
+        953863740,
+        953863741,
+        953863742,
+        953863743
+      ],
+      "note": "open LineStrings (highway=service). Not imported by this parser anyway (cartpath is not in DIRECT_TAG_MAP); harmless."
+    },
+    "unclosed_importable_polygons": 0
+  },
+  "tag_structure_observed": {
+    "distinct_keys_on_golf_features": {
+      "golf": 135,
+      "landuse": 87,
+      "natural": 41,
+      "golf_cart": 7,
+      "highway": 7
+    },
+    "decoded": "landuse=grass on all 42 tees + 18 greens + 27 fairways (=87); natural=sand on 33 bunkers + natural=water on 8 water_hazards (=41). No name, ref, par, handicap, or teebox anywhere."
+  },
+  "greens_table_for_mapper": [
+    {
+      "way_id": 953858688,
+      "lat": 43.431096,
+      "lon": -79.875615
+    },
+    {
+      "way_id": 953858701,
+      "lat": 43.433984,
+      "lon": -79.872773
+    },
+    {
+      "way_id": 953858710,
+      "lat": 43.431204,
+      "lon": -79.870822
+    },
+    {
+      "way_id": 953858713,
+      "lat": 43.432763,
+      "lon": -79.869435
+    },
+    {
+      "way_id": 953858716,
+      "lat": 43.434496,
+      "lon": -79.872159
+    },
+    {
+      "way_id": 953858723,
+      "lat": 43.430104,
+      "lon": -79.873677
+    },
+    {
+      "way_id": 953858732,
+      "lat": 43.431704,
+      "lon": -79.872435
+    },
+    {
+      "way_id": 953858737,
+      "lat": 43.430733,
+      "lon": -79.868012
+    },
+    {
+      "way_id": 953858743,
+      "lat": 43.428524,
+      "lon": -79.870865
+    },
+    {
+      "way_id": 953858752,
+      "lat": 43.425588,
+      "lon": -79.869062
+    },
+    {
+      "way_id": 953861290,
+      "lat": 43.427198,
+      "lon": -79.867096
+    },
+    {
+      "way_id": 953861301,
+      "lat": 43.429448,
+      "lon": -79.864602
+    },
+    {
+      "way_id": 953861309,
+      "lat": 43.430049,
+      "lon": -79.866058
+    },
+    {
+      "way_id": 953861313,
+      "lat": 43.427215,
+      "lon": -79.868858
+    },
+    {
+      "way_id": 953861320,
+      "lat": 43.430789,
+      "lon": -79.867006
+    },
+    {
+      "way_id": 953861325,
+      "lat": 43.431694,
+      "lon": -79.86926
+    },
+    {
+      "way_id": 953861331,
+      "lat": 43.431172,
+      "lon": -79.867853
+    },
+    {
+      "way_id": 953861337,
+      "lat": 43.429295,
+      "lon": -79.871736
+    }
+  ],
+  "multi_course_analysis": {
+    "is_multi_course": false,
+    "conclusion": "Single 18-hole course. OSM has exactly 18 golf=green polygons and one leisure=golf_course polygon. The duplicate-ref trap does NOT apply here - there are no refs at all to collide.",
+    "id_series": {
+      "953858686-953858752": "changeset 106268528 by Rupert10, 2021-06-12T23:59Z, comment 'wells' - 10 greens",
+      "953861286-953861338": "changeset 106268720 by Rupert10, 2021-06-13T00:18Z - 8 greens",
+      "953863737-953863751": "changeset 106268939 by Rupert10, 2021-06-13T00:38Z, comment 'wells' - water hazards + cartpaths"
+    },
+    "why_id_series_is_not_a_nine_split": "The two green batches interleave geographically (batch1 extent lat 43.42559..43.43450 / lon -79.87562..-79.86801; batch2 extent lat 43.42720..43.43169 / lon -79.87174..-79.86460 sits INSIDE batch1). They are consecutive editing sessions, not front/back nine. Hole numbering CANNOT be recovered from OSM - a mapper must survey it."
+  },
+  "provenance": {
+    "all_golf_detail_mapped_by": "Rupert10, 2021-06-12/13, three changesets (106268528, 106268720, 106268939), comment 'wells' (i.e. Indian Wells)",
+    "note": "The mapper drew surfaces only and never drew hole centerlines; nothing has been touched since 2021 apart from a bot edit to the boundary in 2024."
+  },
+  "actual_parser_output": {
+    "how": "Converted the out-geom response to Overpass-turbo-style GeoJSON (136 features) and ran the real parseOverpassGeoJson via vite-node.",
+    "geojson_file": "/tmp/claude-0/-home-user-golf-app/bb146158-4a83-5bf4-a63d-cc08dcafb444/scratchpad/research/mt-nemo.geojson",
+    "runner": "/tmp/claude-0/-home-user-golf-app/bb146158-4a83-5bf4-a63d-cc08dcafb444/scratchpad/research/run.ts",
+    "name": "Imported Course",
+    "location": null,
+    "holes": 18,
+    "holes_with_inferred_par": 18,
+    "features_emitted": 0,
+    "tee_boxes_emitted": 0,
+    "warnings": [
+      "Couldn't find a course boundary feature - using a generic name and no location.",
+      "No golf=hole centerlines with a usable ref number were found - falling back to 18 holes, par 4, with no shape data.",
+      "Holes 1..18 have no OSM centerline - created as empty placeholders (par defaulted to 4)."
+    ],
+    "explanation": "With holeLineByNumber empty, holeLineList is empty, so nearestHoleNumber()/nearestHoleByCenterlineHalf() both return null and every golf polygon hits `if (!nearest) continue;`. All 128 importable polygons (18 greens, 27 fairways, 42 tees, 33 bunkers, 8 water hazards) are silently dropped. The import produces an empty 18-hole shell."
+  },
+  "external_reference_not_osm": {
+    "source": "public scorecard listings (golflink / teeoff / skygolf) - NOT verified in OSM",
+    "holes": 18,
+    "par": 71,
+    "front_nine_pars": [
+      5,
+      4,
+      4,
+      3,
+      4,
+      5,
+      3,
+      4,
+      4
+    ],
+    "back_nine_pars": [
+      4,
+      4,
+      4,
+      3,
+      4,
+      5,
+      4,
+      3,
+      4
+    ],
+    "tee_colours_advertised": [
+      "Brown 6216y",
+      "Blue 5855y",
+      "Orange 5003y",
+      "Green 3678y"
+    ],
+    "designer": "Rene Muylaert, 1973",
+    "use": "Useful as the par= and teebox= values a mapper should apply, but must be field-verified before tagging."
+  }
+}

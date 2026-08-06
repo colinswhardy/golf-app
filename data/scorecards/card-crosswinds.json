@@ -1,0 +1,333 @@
+{
+ "course": "Crosswinds Golf & Country Club",
+ "location": "6621 Guelph Line, Burlington, ON L7P 0A6, Canada",
+ "holeCount": 18,
+ "par": 72,
+ "measurement": "yards",
+ "scorecardVersion": "2024 printed card (crosswindsgolf.com), confirmed by Golf Canada ratings database",
+ "teeSets": [
+  {
+   "name": "Black",
+   "totalYards": 7175,
+   "outYards": 3777,
+   "inYards": 3398,
+   "par": 72,
+   "rating": 74.6,
+   "slope": 132
+  },
+  {
+   "name": "Blue",
+   "totalYards": 6505,
+   "outYards": 3369,
+   "inYards": 3136,
+   "par": 72,
+   "rating": 71.5,
+   "slope": 126
+  },
+  {
+   "name": "Blue/White",
+   "totalYards": 6200,
+   "outYards": 3156,
+   "inYards": 3044,
+   "par": 72,
+   "rating": 69.9,
+   "slope": 122,
+   "ratingWomen": 75.6,
+   "slopeWomen": 140
+  },
+  {
+   "name": "White",
+   "totalYards": 5940,
+   "outYards": 3053,
+   "inYards": 2887,
+   "par": 72,
+   "rating": 68.2,
+   "slope": 119,
+   "ratingWomen": 74.1,
+   "slopeWomen": 137
+  },
+  {
+   "name": "Green",
+   "totalYards": 5443,
+   "outYards": 2742,
+   "inYards": 2701,
+   "par": 72,
+   "rating": 65.9,
+   "slope": 112,
+   "ratingWomen": 71.0,
+   "slopeWomen": 128
+  },
+  {
+   "name": "Red",
+   "totalYards": 5065,
+   "outYards": 2573,
+   "inYards": 2492,
+   "par": 72,
+   "rating": 64.0,
+   "slope": 106,
+   "ratingWomen": 68.7,
+   "slopeWomen": 120
+  }
+ ],
+ "holes": [
+  {
+   "number": 1,
+   "par": 4,
+   "handicap": 13,
+   "handicapWomen": 15,
+   "yards": {
+    "Black": 292,
+    "Blue": 287,
+    "Blue/White": 287,
+    "White": 265,
+    "Green": 265,
+    "Red": 218
+   }
+  },
+  {
+   "number": 2,
+   "par": 5,
+   "handicap": 17,
+   "handicapWomen": 13,
+   "yards": {
+    "Black": 536,
+    "Blue": 488,
+    "Blue/White": 488,
+    "White": 457,
+    "Green": 457,
+    "Red": 411
+   }
+  },
+  {
+   "number": 3,
+   "par": 4,
+   "handicap": 7,
+   "handicapWomen": 7,
+   "yards": {
+    "Black": 449,
+    "Blue": 412,
+    "Blue/White": 371,
+    "White": 371,
+    "Green": 288,
+    "Red": 288
+   }
+  },
+  {
+   "number": 4,
+   "par": 5,
+   "handicap": 3,
+   "handicapWomen": 3,
+   "yards": {
+    "Black": 629,
+    "Blue": 592,
+    "Blue/White": 532,
+    "White": 532,
+    "Green": 486,
+    "Red": 486
+   }
+  },
+  {
+   "number": 5,
+   "par": 3,
+   "handicap": 11,
+   "handicapWomen": 17,
+   "yards": {
+    "Black": 171,
+    "Blue": 149,
+    "Blue/White": 149,
+    "White": 123,
+    "Green": 123,
+    "Red": 87
+   }
+  },
+  {
+   "number": 6,
+   "par": 4,
+   "handicap": 1,
+   "handicapWomen": 1,
+   "yards": {
+    "Black": 478,
+    "Blue": 454,
+    "Blue/White": 430,
+    "White": 430,
+    "Green": 336,
+    "Red": 336
+   }
+  },
+  {
+   "number": 7,
+   "par": 4,
+   "handicap": 9,
+   "handicapWomen": 11,
+   "yards": {
+    "Black": 494,
+    "Blue": 344,
+    "Blue/White": 344,
+    "White": 320,
+    "Green": 320,
+    "Red": 280
+   }
+  },
+  {
+   "number": 8,
+   "par": 3,
+   "handicap": 15,
+   "handicapWomen": 9,
+   "yards": {
+    "Black": 274,
+    "Blue": 224,
+    "Blue/White": 182,
+    "White": 182,
+    "Green": 134,
+    "Red": 134
+   }
+  },
+  {
+   "number": 9,
+   "par": 4,
+   "handicap": 5,
+   "handicapWomen": 5,
+   "yards": {
+    "Black": 454,
+    "Blue": 419,
+    "Blue/White": 373,
+    "White": 373,
+    "Green": 333,
+    "Red": 333
+   }
+  },
+  {
+   "number": 10,
+   "par": 4,
+   "handicap": 10,
+   "handicapWomen": 16,
+   "yards": {
+    "Black": 352,
+    "Blue": 341,
+    "Blue/White": 341,
+    "White": 338,
+    "Green": 266,
+    "Red": 238
+   }
+  },
+  {
+   "number": 11,
+   "par": 5,
+   "handicap": 6,
+   "handicapWomen": 4,
+   "yards": {
+    "Black": 524,
+    "Blue": 501,
+    "Blue/White": 501,
+    "White": 474,
+    "Green": 423,
+    "Red": 423
+   }
+  },
+  {
+   "number": 12,
+   "par": 4,
+   "handicap": 2,
+   "handicapWomen": 2,
+   "yards": {
+    "Black": 471,
+    "Blue": 440,
+    "Blue/White": 408,
+    "White": 408,
+    "Green": 345,
+    "Red": 345
+   }
+  },
+  {
+   "number": 13,
+   "par": 3,
+   "handicap": 16,
+   "handicapWomen": 18,
+   "yards": {
+    "Black": 200,
+    "Blue": 161,
+    "Blue/White": 161,
+    "White": 147,
+    "Green": 147,
+    "Red": 106
+   }
+  },
+  {
+   "number": 14,
+   "par": 4,
+   "handicap": 18,
+   "handicapWomen": 6,
+   "yards": {
+    "Black": 415,
+    "Blue": 386,
+    "Blue/White": 386,
+    "White": 342,
+    "Green": 342,
+    "Red": 311
+   }
+  },
+  {
+   "number": 15,
+   "par": 5,
+   "handicap": 8,
+   "handicapWomen": 8,
+   "yards": {
+    "Black": 468,
+    "Blue": 439,
+    "Blue/White": 439,
+    "White": 411,
+    "Green": 411,
+    "Red": 372
+   }
+  },
+  {
+   "number": 16,
+   "par": 4,
+   "handicap": 12,
+   "handicapWomen": 12,
+   "yards": {
+    "Black": 341,
+    "Blue": 319,
+    "Blue/White": 319,
+    "White": 300,
+    "Green": 300,
+    "Red": 279
+   }
+  },
+  {
+   "number": 17,
+   "par": 3,
+   "handicap": 14,
+   "handicapWomen": 14,
+   "yards": {
+    "Black": 195,
+    "Blue": 168,
+    "Blue/White": 168,
+    "White": 146,
+    "Green": 146,
+    "Red": 116
+   }
+  },
+  {
+   "number": 18,
+   "par": 4,
+   "handicap": 4,
+   "handicapWomen": 10,
+   "yards": {
+    "Black": 432,
+    "Blue": 381,
+    "Blue/White": 321,
+    "White": 321,
+    "Green": 321,
+    "Red": 302
+   }
+  }
+ ],
+ "sources": [
+  "https://crosswindsgolf.com/scorecard/",
+  "https://crosswindsgolf.com/wp-content/uploads/2024/06/Crosswinds-Golf-Scorecard-2024.pdf",
+  "https://www.golfcanada.ca/golf-facility/crosswinds-golf-country-club-en/",
+  "https://www.mscorecard.com/mscorecard/showcourse.php?cid=1120774567940"
+ ],
+ "notes": "Single 18-hole course (no multiple nines) - facility has one course only, Golf Canada course id 21066 / facility 20962. Six tee sets: Black, Blue, Blue/White (combo), White, Green, Red. 'rating'/'slope' are the men's course/slope ratings printed on the card and held by Golf Canada; 'ratingWomen'/'slopeWomen' are Golf Canada's women's ratings for the same tees (no women's rating exists for Black or Blue). The card prints two stroke-index rows: Men's HDCP (stored as 'handicap') and Ladies' HDCP (stored as 'handicapWomen'). DISCREPANCY: Golf Canada's per-hole yardages for the GREEN tee are wrong - they duplicate the White tee on 17 of 18 holes and total 5868. The operator's printed card and mScorecard both give Green as 2742/2701 = 5443, which is also consistent with Golf Canada's own Green rating of 65.9/112. Green 5443 is used here. DISCREPANCY: the official PDF contains a hidden older text layer (and several aggregators, e.g. GolfLink, still publish it) with a longer, differently-rated card: Black 7240 (76.1/140), Blue 6576 (72.5/133), Blue/White 6282 (70.6/127), White 6010 (69.0/124), Green 5478 (66.6/119), Red 5092 (69.2/120). That set is superseded - it is not what renders on the current card and does not match Golf Canada. Yardages are measured to the centre of the green. Hole 8 is a long par 3 (274 from Black) and hole 7 is a par 4 of 494 from Black."
+}

@@ -1,0 +1,1816 @@
+{
+ "course": "Victoria Park Valley Golf Club",
+ "location": "7660 Maltby Rd. East, Puslinch, Ontario N0B 2J0, Canada (Guelph area)",
+ "holesTotal": 27,
+ "type": "Executive length, 27 holes, three nines: Valley, Pines, Lakes",
+ "opened": 2012,
+ "cardSource": "Official club scorecard image, victoriaparkgolf.com (uploaded 2018/02)",
+ "teeSets": [
+  {
+   "name": "Blue",
+   "colour": "blue",
+   "totalYards": 3950,
+   "par": 62,
+   "rating": 59.7,
+   "slope": 97,
+   "ratingLadies": 62.4,
+   "slopeLadies": 107
+  },
+  {
+   "name": "White",
+   "colour": "white",
+   "totalYards": 3618,
+   "par": 62,
+   "rating": 58.9,
+   "slope": 92,
+   "ratingLadies": 60.3,
+   "slopeLadies": 101
+  },
+  {
+   "name": "Red",
+   "colour": "red",
+   "totalYards": 3098,
+   "par": 62,
+   "rating": 56.0,
+   "slope": 79,
+   "ratingLadies": 57.6,
+   "slopeLadies": 92
+  }
+ ],
+ "holes": [
+  {
+   "number": 1,
+   "nine": "Lakes",
+   "nineHole": 1,
+   "par": 3,
+   "handicap": 8,
+   "handicapMen": 8,
+   "handicapLadies": 7,
+   "yards": {
+    "Blue": 148,
+    "White": 130,
+    "Red": 108
+   },
+   "handicap18Derived": 15,
+   "handicap18DerivedLadies": 13
+  },
+  {
+   "number": 2,
+   "nine": "Lakes",
+   "nineHole": 2,
+   "par": 4,
+   "handicap": 3,
+   "handicapMen": 3,
+   "handicapLadies": 2,
+   "yards": {
+    "Blue": 282,
+    "White": 262,
+    "Red": 210
+   },
+   "handicap18Derived": 5,
+   "handicap18DerivedLadies": 3
+  },
+  {
+   "number": 3,
+   "nine": "Lakes",
+   "nineHole": 3,
+   "par": 4,
+   "handicap": 2,
+   "handicapMen": 2,
+   "handicapLadies": 3,
+   "yards": {
+    "Blue": 335,
+    "White": 291,
+    "Red": 218
+   },
+   "handicap18Derived": 3,
+   "handicap18DerivedLadies": 5
+  },
+  {
+   "number": 4,
+   "nine": "Lakes",
+   "nineHole": 4,
+   "par": 3,
+   "handicap": 7,
+   "handicapMen": 7,
+   "handicapLadies": 8,
+   "yards": {
+    "Blue": 115,
+    "White": 106,
+    "Red": 82
+   },
+   "handicap18Derived": 13,
+   "handicap18DerivedLadies": 15
+  },
+  {
+   "number": 5,
+   "nine": "Lakes",
+   "nineHole": 5,
+   "par": 3,
+   "handicap": 5,
+   "handicapMen": 5,
+   "handicapLadies": 9,
+   "yards": {
+    "Blue": 157,
+    "White": 147,
+    "Red": 104
+   },
+   "handicap18Derived": 9,
+   "handicap18DerivedLadies": 17
+  },
+  {
+   "number": 6,
+   "nine": "Lakes",
+   "nineHole": 6,
+   "par": 3,
+   "handicap": 9,
+   "handicapMen": 9,
+   "handicapLadies": 5,
+   "yards": {
+    "Blue": 138,
+    "White": 128,
+    "Red": 118
+   },
+   "handicap18Derived": 17,
+   "handicap18DerivedLadies": 9
+  },
+  {
+   "number": 7,
+   "nine": "Lakes",
+   "nineHole": 7,
+   "par": 3,
+   "handicap": 6,
+   "handicapMen": 6,
+   "handicapLadies": 6,
+   "yards": {
+    "Blue": 132,
+    "White": 119,
+    "Red": 101
+   },
+   "handicap18Derived": 11,
+   "handicap18DerivedLadies": 11
+  },
+  {
+   "number": 8,
+   "nine": "Lakes",
+   "nineHole": 8,
+   "par": 5,
+   "handicap": 1,
+   "handicapMen": 1,
+   "handicapLadies": 1,
+   "yards": {
+    "Blue": 512,
+    "White": 460,
+    "Red": 419
+   },
+   "handicap18Derived": 1,
+   "handicap18DerivedLadies": 1
+  },
+  {
+   "number": 9,
+   "nine": "Lakes",
+   "nineHole": 9,
+   "par": 3,
+   "handicap": 4,
+   "handicapMen": 4,
+   "handicapLadies": 4,
+   "yards": {
+    "Blue": 154,
+    "White": 145,
+    "Red": 135
+   },
+   "handicap18Derived": 7,
+   "handicap18DerivedLadies": 7
+  },
+  {
+   "number": 10,
+   "nine": "Pines",
+   "nineHole": 1,
+   "par": 3,
+   "handicap": 9,
+   "handicapMen": 9,
+   "handicapLadies": 9,
+   "yards": {
+    "Blue": 128,
+    "White": 118,
+    "Red": 107
+   },
+   "handicap18Derived": 18,
+   "handicap18DerivedLadies": 18
+  },
+  {
+   "number": 11,
+   "nine": "Pines",
+   "nineHole": 2,
+   "par": 3,
+   "handicap": 6,
+   "handicapMen": 6,
+   "handicapLadies": 7,
+   "yards": {
+    "Blue": 154,
+    "White": 140,
+    "Red": 113
+   },
+   "handicap18Derived": 12,
+   "handicap18DerivedLadies": 14
+  },
+  {
+   "number": 12,
+   "nine": "Pines",
+   "nineHole": 3,
+   "par": 3,
+   "handicap": 8,
+   "handicapMen": 8,
+   "handicapLadies": 6,
+   "yards": {
+    "Blue": 127,
+    "White": 117,
+    "Red": 106
+   },
+   "handicap18Derived": 16,
+   "handicap18DerivedLadies": 12
+  },
+  {
+   "number": 13,
+   "nine": "Pines",
+   "nineHole": 4,
+   "par": 4,
+   "handicap": 3,
+   "handicapMen": 3,
+   "handicapLadies": 4,
+   "yards": {
+    "Blue": 353,
+    "White": 314,
+    "Red": 273
+   },
+   "handicap18Derived": 6,
+   "handicap18DerivedLadies": 8
+  },
+  {
+   "number": 14,
+   "nine": "Pines",
+   "nineHole": 5,
+   "par": 3,
+   "handicap": 7,
+   "handicapMen": 7,
+   "handicapLadies": 8,
+   "yards": {
+    "Blue": 139,
+    "White": 126,
+    "Red": 113
+   },
+   "handicap18Derived": 14,
+   "handicap18DerivedLadies": 16
+  },
+  {
+   "number": 15,
+   "nine": "Pines",
+   "nineHole": 6,
+   "par": 4,
+   "handicap": 4,
+   "handicapMen": 4,
+   "handicapLadies": 1,
+   "yards": {
+    "Blue": 296,
+    "White": 281,
+    "Red": 254
+   },
+   "handicap18Derived": 8,
+   "handicap18DerivedLadies": 2
+  },
+  {
+   "number": 16,
+   "nine": "Pines",
+   "nineHole": 7,
+   "par": 4,
+   "handicap": 1,
+   "handicapMen": 1,
+   "handicapLadies": 3,
+   "yards": {
+    "Blue": 339,
+    "White": 328,
+    "Red": 262
+   },
+   "handicap18Derived": 2,
+   "handicap18DerivedLadies": 6
+  },
+  {
+   "number": 17,
+   "nine": "Pines",
+   "nineHole": 8,
+   "par": 3,
+   "handicap": 5,
+   "handicapMen": 5,
+   "handicapLadies": 5,
+   "yards": {
+    "Blue": 159,
+    "White": 146,
+    "Red": 133
+   },
+   "handicap18Derived": 10,
+   "handicap18DerivedLadies": 10
+  },
+  {
+   "number": 18,
+   "nine": "Pines",
+   "nineHole": 9,
+   "par": 4,
+   "handicap": 2,
+   "handicapMen": 2,
+   "handicapLadies": 2,
+   "yards": {
+    "Blue": 282,
+    "White": 260,
+    "Red": 242
+   },
+   "handicap18Derived": 4,
+   "handicap18DerivedLadies": 4
+  }
+ ],
+ "defaultCombination": "Lakes/Pines",
+ "nines": [
+  {
+   "name": "Valley",
+   "holes9": 9,
+   "par": 31,
+   "teeSets": [
+    {
+     "name": "Blue",
+     "colour": "blue",
+     "totalYards": 2017,
+     "par": 31,
+     "rating": null,
+     "slope": null,
+     "ratingNote": "Course/slope rating is published only for the 18-hole nine-combinations, not for a single nine."
+    },
+    {
+     "name": "White",
+     "colour": "white",
+     "totalYards": 1898,
+     "par": 31,
+     "rating": null,
+     "slope": null,
+     "ratingNote": "Course/slope rating is published only for the 18-hole nine-combinations, not for a single nine."
+    },
+    {
+     "name": "Red",
+     "colour": "red",
+     "totalYards": 1577,
+     "par": 31,
+     "rating": null,
+     "slope": null,
+     "ratingNote": "Course/slope rating is published only for the 18-hole nine-combinations, not for a single nine."
+    }
+   ],
+   "holes": [
+    {
+     "number": 1,
+     "nine": "Valley",
+     "nineHole": 1,
+     "par": 4,
+     "handicap": 2,
+     "handicapMen": 2,
+     "handicapLadies": 4,
+     "yards": {
+      "Blue": 289,
+      "White": 278,
+      "Red": 211
+     }
+    },
+    {
+     "number": 2,
+     "nine": "Valley",
+     "nineHole": 2,
+     "par": 3,
+     "handicap": 9,
+     "handicapMen": 9,
+     "handicapLadies": 7,
+     "yards": {
+      "Blue": 135,
+      "White": 129,
+      "Red": 123
+     }
+    },
+    {
+     "number": 3,
+     "nine": "Valley",
+     "nineHole": 3,
+     "par": 3,
+     "handicap": 8,
+     "handicapMen": 8,
+     "handicapLadies": 6,
+     "yards": {
+      "Blue": 146,
+      "White": 136,
+      "Red": 119
+     }
+    },
+    {
+     "number": 4,
+     "nine": "Valley",
+     "nineHole": 4,
+     "par": 4,
+     "handicap": 5,
+     "handicapMen": 5,
+     "handicapLadies": 2,
+     "yards": {
+      "Blue": 298,
+      "White": 290,
+      "Red": 250
+     }
+    },
+    {
+     "number": 5,
+     "nine": "Valley",
+     "nineHole": 5,
+     "par": 3,
+     "handicap": 7,
+     "handicapMen": 7,
+     "handicapLadies": 5,
+     "yards": {
+      "Blue": 161,
+      "White": 154,
+      "Red": 135
+     }
+    },
+    {
+     "number": 6,
+     "nine": "Valley",
+     "nineHole": 6,
+     "par": 3,
+     "handicap": 6,
+     "handicapMen": 6,
+     "handicapLadies": 8,
+     "yards": {
+      "Blue": 173,
+      "White": 163,
+      "Red": 122
+     }
+    },
+    {
+     "number": 7,
+     "nine": "Valley",
+     "nineHole": 7,
+     "par": 4,
+     "handicap": 1,
+     "handicapMen": 1,
+     "handicapLadies": 1,
+     "yards": {
+      "Blue": 302,
+      "White": 288,
+      "Red": 240
+     }
+    },
+    {
+     "number": 8,
+     "nine": "Valley",
+     "nineHole": 8,
+     "par": 3,
+     "handicap": 4,
+     "handicapMen": 4,
+     "handicapLadies": 9,
+     "yards": {
+      "Blue": 181,
+      "White": 143,
+      "Red": 108
+     }
+    },
+    {
+     "number": 9,
+     "nine": "Valley",
+     "nineHole": 9,
+     "par": 4,
+     "handicap": 3,
+     "handicapMen": 3,
+     "handicapLadies": 3,
+     "yards": {
+      "Blue": 332,
+      "White": 317,
+      "Red": 269
+     }
+    }
+   ]
+  },
+  {
+   "name": "Pines",
+   "holes9": 9,
+   "par": 31,
+   "teeSets": [
+    {
+     "name": "Blue",
+     "colour": "blue",
+     "totalYards": 1977,
+     "par": 31,
+     "rating": null,
+     "slope": null,
+     "ratingNote": "Course/slope rating is published only for the 18-hole nine-combinations, not for a single nine."
+    },
+    {
+     "name": "White",
+     "colour": "white",
+     "totalYards": 1830,
+     "par": 31,
+     "rating": null,
+     "slope": null,
+     "ratingNote": "Course/slope rating is published only for the 18-hole nine-combinations, not for a single nine."
+    },
+    {
+     "name": "Red",
+     "colour": "red",
+     "totalYards": 1603,
+     "par": 31,
+     "rating": null,
+     "slope": null,
+     "ratingNote": "Course/slope rating is published only for the 18-hole nine-combinations, not for a single nine."
+    }
+   ],
+   "holes": [
+    {
+     "number": 1,
+     "nine": "Pines",
+     "nineHole": 1,
+     "par": 3,
+     "handicap": 9,
+     "handicapMen": 9,
+     "handicapLadies": 9,
+     "yards": {
+      "Blue": 128,
+      "White": 118,
+      "Red": 107
+     }
+    },
+    {
+     "number": 2,
+     "nine": "Pines",
+     "nineHole": 2,
+     "par": 3,
+     "handicap": 6,
+     "handicapMen": 6,
+     "handicapLadies": 7,
+     "yards": {
+      "Blue": 154,
+      "White": 140,
+      "Red": 113
+     }
+    },
+    {
+     "number": 3,
+     "nine": "Pines",
+     "nineHole": 3,
+     "par": 3,
+     "handicap": 8,
+     "handicapMen": 8,
+     "handicapLadies": 6,
+     "yards": {
+      "Blue": 127,
+      "White": 117,
+      "Red": 106
+     }
+    },
+    {
+     "number": 4,
+     "nine": "Pines",
+     "nineHole": 4,
+     "par": 4,
+     "handicap": 3,
+     "handicapMen": 3,
+     "handicapLadies": 4,
+     "yards": {
+      "Blue": 353,
+      "White": 314,
+      "Red": 273
+     }
+    },
+    {
+     "number": 5,
+     "nine": "Pines",
+     "nineHole": 5,
+     "par": 3,
+     "handicap": 7,
+     "handicapMen": 7,
+     "handicapLadies": 8,
+     "yards": {
+      "Blue": 139,
+      "White": 126,
+      "Red": 113
+     }
+    },
+    {
+     "number": 6,
+     "nine": "Pines",
+     "nineHole": 6,
+     "par": 4,
+     "handicap": 4,
+     "handicapMen": 4,
+     "handicapLadies": 1,
+     "yards": {
+      "Blue": 296,
+      "White": 281,
+      "Red": 254
+     }
+    },
+    {
+     "number": 7,
+     "nine": "Pines",
+     "nineHole": 7,
+     "par": 4,
+     "handicap": 1,
+     "handicapMen": 1,
+     "handicapLadies": 3,
+     "yards": {
+      "Blue": 339,
+      "White": 328,
+      "Red": 262
+     }
+    },
+    {
+     "number": 8,
+     "nine": "Pines",
+     "nineHole": 8,
+     "par": 3,
+     "handicap": 5,
+     "handicapMen": 5,
+     "handicapLadies": 5,
+     "yards": {
+      "Blue": 159,
+      "White": 146,
+      "Red": 133
+     }
+    },
+    {
+     "number": 9,
+     "nine": "Pines",
+     "nineHole": 9,
+     "par": 4,
+     "handicap": 2,
+     "handicapMen": 2,
+     "handicapLadies": 2,
+     "yards": {
+      "Blue": 282,
+      "White": 260,
+      "Red": 242
+     }
+    }
+   ]
+  },
+  {
+   "name": "Lakes",
+   "holes9": 9,
+   "par": 31,
+   "teeSets": [
+    {
+     "name": "Blue",
+     "colour": "blue",
+     "totalYards": 1973,
+     "par": 31,
+     "rating": null,
+     "slope": null,
+     "ratingNote": "Course/slope rating is published only for the 18-hole nine-combinations, not for a single nine."
+    },
+    {
+     "name": "White",
+     "colour": "white",
+     "totalYards": 1788,
+     "par": 31,
+     "rating": null,
+     "slope": null,
+     "ratingNote": "Course/slope rating is published only for the 18-hole nine-combinations, not for a single nine."
+    },
+    {
+     "name": "Red",
+     "colour": "red",
+     "totalYards": 1495,
+     "par": 31,
+     "rating": null,
+     "slope": null,
+     "ratingNote": "Course/slope rating is published only for the 18-hole nine-combinations, not for a single nine."
+    }
+   ],
+   "holes": [
+    {
+     "number": 1,
+     "nine": "Lakes",
+     "nineHole": 1,
+     "par": 3,
+     "handicap": 8,
+     "handicapMen": 8,
+     "handicapLadies": 7,
+     "yards": {
+      "Blue": 148,
+      "White": 130,
+      "Red": 108
+     }
+    },
+    {
+     "number": 2,
+     "nine": "Lakes",
+     "nineHole": 2,
+     "par": 4,
+     "handicap": 3,
+     "handicapMen": 3,
+     "handicapLadies": 2,
+     "yards": {
+      "Blue": 282,
+      "White": 262,
+      "Red": 210
+     }
+    },
+    {
+     "number": 3,
+     "nine": "Lakes",
+     "nineHole": 3,
+     "par": 4,
+     "handicap": 2,
+     "handicapMen": 2,
+     "handicapLadies": 3,
+     "yards": {
+      "Blue": 335,
+      "White": 291,
+      "Red": 218
+     }
+    },
+    {
+     "number": 4,
+     "nine": "Lakes",
+     "nineHole": 4,
+     "par": 3,
+     "handicap": 7,
+     "handicapMen": 7,
+     "handicapLadies": 8,
+     "yards": {
+      "Blue": 115,
+      "White": 106,
+      "Red": 82
+     }
+    },
+    {
+     "number": 5,
+     "nine": "Lakes",
+     "nineHole": 5,
+     "par": 3,
+     "handicap": 5,
+     "handicapMen": 5,
+     "handicapLadies": 9,
+     "yards": {
+      "Blue": 157,
+      "White": 147,
+      "Red": 104
+     }
+    },
+    {
+     "number": 6,
+     "nine": "Lakes",
+     "nineHole": 6,
+     "par": 3,
+     "handicap": 9,
+     "handicapMen": 9,
+     "handicapLadies": 5,
+     "yards": {
+      "Blue": 138,
+      "White": 128,
+      "Red": 118
+     }
+    },
+    {
+     "number": 7,
+     "nine": "Lakes",
+     "nineHole": 7,
+     "par": 3,
+     "handicap": 6,
+     "handicapMen": 6,
+     "handicapLadies": 6,
+     "yards": {
+      "Blue": 132,
+      "White": 119,
+      "Red": 101
+     }
+    },
+    {
+     "number": 8,
+     "nine": "Lakes",
+     "nineHole": 8,
+     "par": 5,
+     "handicap": 1,
+     "handicapMen": 1,
+     "handicapLadies": 1,
+     "yards": {
+      "Blue": 512,
+      "White": 460,
+      "Red": 419
+     }
+    },
+    {
+     "number": 9,
+     "nine": "Lakes",
+     "nineHole": 9,
+     "par": 3,
+     "handicap": 4,
+     "handicapMen": 4,
+     "handicapLadies": 4,
+     "yards": {
+      "Blue": 154,
+      "White": 145,
+      "Red": 135
+     }
+    }
+   ]
+  }
+ ],
+ "combinations": [
+  {
+   "name": "Lakes/Pines",
+   "frontNine": "Lakes",
+   "backNine": "Pines",
+   "par": 62,
+   "teeSets": [
+    {
+     "name": "Blue",
+     "colour": "blue",
+     "totalYards": 3950,
+     "par": 62,
+     "rating": 59.7,
+     "slope": 97,
+     "ratingLadies": 62.4,
+     "slopeLadies": 107
+    },
+    {
+     "name": "White",
+     "colour": "white",
+     "totalYards": 3618,
+     "par": 62,
+     "rating": 58.9,
+     "slope": 92,
+     "ratingLadies": 60.3,
+     "slopeLadies": 101
+    },
+    {
+     "name": "Red",
+     "colour": "red",
+     "totalYards": 3098,
+     "par": 62,
+     "rating": 56.0,
+     "slope": 79,
+     "ratingLadies": 57.6,
+     "slopeLadies": 92
+    }
+   ],
+   "holes": [
+    {
+     "number": 1,
+     "nine": "Lakes",
+     "nineHole": 1,
+     "par": 3,
+     "handicap": 8,
+     "handicapMen": 8,
+     "handicapLadies": 7,
+     "yards": {
+      "Blue": 148,
+      "White": 130,
+      "Red": 108
+     },
+     "handicap18Derived": 15,
+     "handicap18DerivedLadies": 13
+    },
+    {
+     "number": 2,
+     "nine": "Lakes",
+     "nineHole": 2,
+     "par": 4,
+     "handicap": 3,
+     "handicapMen": 3,
+     "handicapLadies": 2,
+     "yards": {
+      "Blue": 282,
+      "White": 262,
+      "Red": 210
+     },
+     "handicap18Derived": 5,
+     "handicap18DerivedLadies": 3
+    },
+    {
+     "number": 3,
+     "nine": "Lakes",
+     "nineHole": 3,
+     "par": 4,
+     "handicap": 2,
+     "handicapMen": 2,
+     "handicapLadies": 3,
+     "yards": {
+      "Blue": 335,
+      "White": 291,
+      "Red": 218
+     },
+     "handicap18Derived": 3,
+     "handicap18DerivedLadies": 5
+    },
+    {
+     "number": 4,
+     "nine": "Lakes",
+     "nineHole": 4,
+     "par": 3,
+     "handicap": 7,
+     "handicapMen": 7,
+     "handicapLadies": 8,
+     "yards": {
+      "Blue": 115,
+      "White": 106,
+      "Red": 82
+     },
+     "handicap18Derived": 13,
+     "handicap18DerivedLadies": 15
+    },
+    {
+     "number": 5,
+     "nine": "Lakes",
+     "nineHole": 5,
+     "par": 3,
+     "handicap": 5,
+     "handicapMen": 5,
+     "handicapLadies": 9,
+     "yards": {
+      "Blue": 157,
+      "White": 147,
+      "Red": 104
+     },
+     "handicap18Derived": 9,
+     "handicap18DerivedLadies": 17
+    },
+    {
+     "number": 6,
+     "nine": "Lakes",
+     "nineHole": 6,
+     "par": 3,
+     "handicap": 9,
+     "handicapMen": 9,
+     "handicapLadies": 5,
+     "yards": {
+      "Blue": 138,
+      "White": 128,
+      "Red": 118
+     },
+     "handicap18Derived": 17,
+     "handicap18DerivedLadies": 9
+    },
+    {
+     "number": 7,
+     "nine": "Lakes",
+     "nineHole": 7,
+     "par": 3,
+     "handicap": 6,
+     "handicapMen": 6,
+     "handicapLadies": 6,
+     "yards": {
+      "Blue": 132,
+      "White": 119,
+      "Red": 101
+     },
+     "handicap18Derived": 11,
+     "handicap18DerivedLadies": 11
+    },
+    {
+     "number": 8,
+     "nine": "Lakes",
+     "nineHole": 8,
+     "par": 5,
+     "handicap": 1,
+     "handicapMen": 1,
+     "handicapLadies": 1,
+     "yards": {
+      "Blue": 512,
+      "White": 460,
+      "Red": 419
+     },
+     "handicap18Derived": 1,
+     "handicap18DerivedLadies": 1
+    },
+    {
+     "number": 9,
+     "nine": "Lakes",
+     "nineHole": 9,
+     "par": 3,
+     "handicap": 4,
+     "handicapMen": 4,
+     "handicapLadies": 4,
+     "yards": {
+      "Blue": 154,
+      "White": 145,
+      "Red": 135
+     },
+     "handicap18Derived": 7,
+     "handicap18DerivedLadies": 7
+    },
+    {
+     "number": 10,
+     "nine": "Pines",
+     "nineHole": 1,
+     "par": 3,
+     "handicap": 9,
+     "handicapMen": 9,
+     "handicapLadies": 9,
+     "yards": {
+      "Blue": 128,
+      "White": 118,
+      "Red": 107
+     },
+     "handicap18Derived": 18,
+     "handicap18DerivedLadies": 18
+    },
+    {
+     "number": 11,
+     "nine": "Pines",
+     "nineHole": 2,
+     "par": 3,
+     "handicap": 6,
+     "handicapMen": 6,
+     "handicapLadies": 7,
+     "yards": {
+      "Blue": 154,
+      "White": 140,
+      "Red": 113
+     },
+     "handicap18Derived": 12,
+     "handicap18DerivedLadies": 14
+    },
+    {
+     "number": 12,
+     "nine": "Pines",
+     "nineHole": 3,
+     "par": 3,
+     "handicap": 8,
+     "handicapMen": 8,
+     "handicapLadies": 6,
+     "yards": {
+      "Blue": 127,
+      "White": 117,
+      "Red": 106
+     },
+     "handicap18Derived": 16,
+     "handicap18DerivedLadies": 12
+    },
+    {
+     "number": 13,
+     "nine": "Pines",
+     "nineHole": 4,
+     "par": 4,
+     "handicap": 3,
+     "handicapMen": 3,
+     "handicapLadies": 4,
+     "yards": {
+      "Blue": 353,
+      "White": 314,
+      "Red": 273
+     },
+     "handicap18Derived": 6,
+     "handicap18DerivedLadies": 8
+    },
+    {
+     "number": 14,
+     "nine": "Pines",
+     "nineHole": 5,
+     "par": 3,
+     "handicap": 7,
+     "handicapMen": 7,
+     "handicapLadies": 8,
+     "yards": {
+      "Blue": 139,
+      "White": 126,
+      "Red": 113
+     },
+     "handicap18Derived": 14,
+     "handicap18DerivedLadies": 16
+    },
+    {
+     "number": 15,
+     "nine": "Pines",
+     "nineHole": 6,
+     "par": 4,
+     "handicap": 4,
+     "handicapMen": 4,
+     "handicapLadies": 1,
+     "yards": {
+      "Blue": 296,
+      "White": 281,
+      "Red": 254
+     },
+     "handicap18Derived": 8,
+     "handicap18DerivedLadies": 2
+    },
+    {
+     "number": 16,
+     "nine": "Pines",
+     "nineHole": 7,
+     "par": 4,
+     "handicap": 1,
+     "handicapMen": 1,
+     "handicapLadies": 3,
+     "yards": {
+      "Blue": 339,
+      "White": 328,
+      "Red": 262
+     },
+     "handicap18Derived": 2,
+     "handicap18DerivedLadies": 6
+    },
+    {
+     "number": 17,
+     "nine": "Pines",
+     "nineHole": 8,
+     "par": 3,
+     "handicap": 5,
+     "handicapMen": 5,
+     "handicapLadies": 5,
+     "yards": {
+      "Blue": 159,
+      "White": 146,
+      "Red": 133
+     },
+     "handicap18Derived": 10,
+     "handicap18DerivedLadies": 10
+    },
+    {
+     "number": 18,
+     "nine": "Pines",
+     "nineHole": 9,
+     "par": 4,
+     "handicap": 2,
+     "handicapMen": 2,
+     "handicapLadies": 2,
+     "yards": {
+      "Blue": 282,
+      "White": 260,
+      "Red": 242
+     },
+     "handicap18Derived": 4,
+     "handicap18DerivedLadies": 4
+    }
+   ]
+  },
+  {
+   "name": "Lakes/Valley",
+   "frontNine": "Lakes",
+   "backNine": "Valley",
+   "par": 62,
+   "teeSets": [
+    {
+     "name": "Blue",
+     "colour": "blue",
+     "totalYards": 3990,
+     "par": 62,
+     "rating": 59.7,
+     "slope": 98,
+     "ratingLadies": 62.6,
+     "slopeLadies": 105
+    },
+    {
+     "name": "White",
+     "colour": "white",
+     "totalYards": 3686,
+     "par": 62,
+     "rating": 59.1,
+     "slope": 92,
+     "ratingLadies": 60.6,
+     "slopeLadies": 99
+    },
+    {
+     "name": "Red",
+     "colour": "red",
+     "totalYards": 3072,
+     "par": 62,
+     "rating": 55.9,
+     "slope": 79,
+     "ratingLadies": 57.5,
+     "slopeLadies": 91
+    }
+   ],
+   "holes": [
+    {
+     "number": 1,
+     "nine": "Lakes",
+     "nineHole": 1,
+     "par": 3,
+     "handicap": 8,
+     "handicapMen": 8,
+     "handicapLadies": 7,
+     "yards": {
+      "Blue": 148,
+      "White": 130,
+      "Red": 108
+     },
+     "handicap18Derived": 15,
+     "handicap18DerivedLadies": 13
+    },
+    {
+     "number": 2,
+     "nine": "Lakes",
+     "nineHole": 2,
+     "par": 4,
+     "handicap": 3,
+     "handicapMen": 3,
+     "handicapLadies": 2,
+     "yards": {
+      "Blue": 282,
+      "White": 262,
+      "Red": 210
+     },
+     "handicap18Derived": 5,
+     "handicap18DerivedLadies": 3
+    },
+    {
+     "number": 3,
+     "nine": "Lakes",
+     "nineHole": 3,
+     "par": 4,
+     "handicap": 2,
+     "handicapMen": 2,
+     "handicapLadies": 3,
+     "yards": {
+      "Blue": 335,
+      "White": 291,
+      "Red": 218
+     },
+     "handicap18Derived": 3,
+     "handicap18DerivedLadies": 5
+    },
+    {
+     "number": 4,
+     "nine": "Lakes",
+     "nineHole": 4,
+     "par": 3,
+     "handicap": 7,
+     "handicapMen": 7,
+     "handicapLadies": 8,
+     "yards": {
+      "Blue": 115,
+      "White": 106,
+      "Red": 82
+     },
+     "handicap18Derived": 13,
+     "handicap18DerivedLadies": 15
+    },
+    {
+     "number": 5,
+     "nine": "Lakes",
+     "nineHole": 5,
+     "par": 3,
+     "handicap": 5,
+     "handicapMen": 5,
+     "handicapLadies": 9,
+     "yards": {
+      "Blue": 157,
+      "White": 147,
+      "Red": 104
+     },
+     "handicap18Derived": 9,
+     "handicap18DerivedLadies": 17
+    },
+    {
+     "number": 6,
+     "nine": "Lakes",
+     "nineHole": 6,
+     "par": 3,
+     "handicap": 9,
+     "handicapMen": 9,
+     "handicapLadies": 5,
+     "yards": {
+      "Blue": 138,
+      "White": 128,
+      "Red": 118
+     },
+     "handicap18Derived": 17,
+     "handicap18DerivedLadies": 9
+    },
+    {
+     "number": 7,
+     "nine": "Lakes",
+     "nineHole": 7,
+     "par": 3,
+     "handicap": 6,
+     "handicapMen": 6,
+     "handicapLadies": 6,
+     "yards": {
+      "Blue": 132,
+      "White": 119,
+      "Red": 101
+     },
+     "handicap18Derived": 11,
+     "handicap18DerivedLadies": 11
+    },
+    {
+     "number": 8,
+     "nine": "Lakes",
+     "nineHole": 8,
+     "par": 5,
+     "handicap": 1,
+     "handicapMen": 1,
+     "handicapLadies": 1,
+     "yards": {
+      "Blue": 512,
+      "White": 460,
+      "Red": 419
+     },
+     "handicap18Derived": 1,
+     "handicap18DerivedLadies": 1
+    },
+    {
+     "number": 9,
+     "nine": "Lakes",
+     "nineHole": 9,
+     "par": 3,
+     "handicap": 4,
+     "handicapMen": 4,
+     "handicapLadies": 4,
+     "yards": {
+      "Blue": 154,
+      "White": 145,
+      "Red": 135
+     },
+     "handicap18Derived": 7,
+     "handicap18DerivedLadies": 7
+    },
+    {
+     "number": 10,
+     "nine": "Valley",
+     "nineHole": 1,
+     "par": 4,
+     "handicap": 2,
+     "handicapMen": 2,
+     "handicapLadies": 4,
+     "yards": {
+      "Blue": 289,
+      "White": 278,
+      "Red": 211
+     },
+     "handicap18Derived": 4,
+     "handicap18DerivedLadies": 8
+    },
+    {
+     "number": 11,
+     "nine": "Valley",
+     "nineHole": 2,
+     "par": 3,
+     "handicap": 9,
+     "handicapMen": 9,
+     "handicapLadies": 7,
+     "yards": {
+      "Blue": 135,
+      "White": 129,
+      "Red": 123
+     },
+     "handicap18Derived": 18,
+     "handicap18DerivedLadies": 14
+    },
+    {
+     "number": 12,
+     "nine": "Valley",
+     "nineHole": 3,
+     "par": 3,
+     "handicap": 8,
+     "handicapMen": 8,
+     "handicapLadies": 6,
+     "yards": {
+      "Blue": 146,
+      "White": 136,
+      "Red": 119
+     },
+     "handicap18Derived": 16,
+     "handicap18DerivedLadies": 12
+    },
+    {
+     "number": 13,
+     "nine": "Valley",
+     "nineHole": 4,
+     "par": 4,
+     "handicap": 5,
+     "handicapMen": 5,
+     "handicapLadies": 2,
+     "yards": {
+      "Blue": 298,
+      "White": 290,
+      "Red": 250
+     },
+     "handicap18Derived": 10,
+     "handicap18DerivedLadies": 4
+    },
+    {
+     "number": 14,
+     "nine": "Valley",
+     "nineHole": 5,
+     "par": 3,
+     "handicap": 7,
+     "handicapMen": 7,
+     "handicapLadies": 5,
+     "yards": {
+      "Blue": 161,
+      "White": 154,
+      "Red": 135
+     },
+     "handicap18Derived": 14,
+     "handicap18DerivedLadies": 10
+    },
+    {
+     "number": 15,
+     "nine": "Valley",
+     "nineHole": 6,
+     "par": 3,
+     "handicap": 6,
+     "handicapMen": 6,
+     "handicapLadies": 8,
+     "yards": {
+      "Blue": 173,
+      "White": 163,
+      "Red": 122
+     },
+     "handicap18Derived": 12,
+     "handicap18DerivedLadies": 16
+    },
+    {
+     "number": 16,
+     "nine": "Valley",
+     "nineHole": 7,
+     "par": 4,
+     "handicap": 1,
+     "handicapMen": 1,
+     "handicapLadies": 1,
+     "yards": {
+      "Blue": 302,
+      "White": 288,
+      "Red": 240
+     },
+     "handicap18Derived": 2,
+     "handicap18DerivedLadies": 2
+    },
+    {
+     "number": 17,
+     "nine": "Valley",
+     "nineHole": 8,
+     "par": 3,
+     "handicap": 4,
+     "handicapMen": 4,
+     "handicapLadies": 9,
+     "yards": {
+      "Blue": 181,
+      "White": 143,
+      "Red": 108
+     },
+     "handicap18Derived": 8,
+     "handicap18DerivedLadies": 18
+    },
+    {
+     "number": 18,
+     "nine": "Valley",
+     "nineHole": 9,
+     "par": 4,
+     "handicap": 3,
+     "handicapMen": 3,
+     "handicapLadies": 3,
+     "yards": {
+      "Blue": 332,
+      "White": 317,
+      "Red": 269
+     },
+     "handicap18Derived": 6,
+     "handicap18DerivedLadies": 6
+    }
+   ]
+  },
+  {
+   "name": "Pines/Valley",
+   "frontNine": "Pines",
+   "backNine": "Valley",
+   "par": 62,
+   "teeSets": [
+    {
+     "name": "Blue",
+     "colour": "blue",
+     "totalYards": 3994,
+     "par": 62,
+     "rating": 59.6,
+     "slope": 96,
+     "ratingLadies": 62.4,
+     "slopeLadies": 103
+    },
+    {
+     "name": "White",
+     "colour": "white",
+     "totalYards": 3728,
+     "par": 62,
+     "rating": 58.8,
+     "slope": 94,
+     "ratingLadies": 60.9,
+     "slopeLadies": 100
+    },
+    {
+     "name": "Red",
+     "colour": "red",
+     "totalYards": 3180,
+     "par": 62,
+     "rating": 57.5,
+     "slope": 82,
+     "ratingLadies": 58.3,
+     "slopeLadies": 95
+    }
+   ],
+   "holes": [
+    {
+     "number": 1,
+     "nine": "Pines",
+     "nineHole": 1,
+     "par": 3,
+     "handicap": 9,
+     "handicapMen": 9,
+     "handicapLadies": 9,
+     "yards": {
+      "Blue": 128,
+      "White": 118,
+      "Red": 107
+     },
+     "handicap18Derived": 17,
+     "handicap18DerivedLadies": 17
+    },
+    {
+     "number": 2,
+     "nine": "Pines",
+     "nineHole": 2,
+     "par": 3,
+     "handicap": 6,
+     "handicapMen": 6,
+     "handicapLadies": 7,
+     "yards": {
+      "Blue": 154,
+      "White": 140,
+      "Red": 113
+     },
+     "handicap18Derived": 11,
+     "handicap18DerivedLadies": 13
+    },
+    {
+     "number": 3,
+     "nine": "Pines",
+     "nineHole": 3,
+     "par": 3,
+     "handicap": 8,
+     "handicapMen": 8,
+     "handicapLadies": 6,
+     "yards": {
+      "Blue": 127,
+      "White": 117,
+      "Red": 106
+     },
+     "handicap18Derived": 15,
+     "handicap18DerivedLadies": 11
+    },
+    {
+     "number": 4,
+     "nine": "Pines",
+     "nineHole": 4,
+     "par": 4,
+     "handicap": 3,
+     "handicapMen": 3,
+     "handicapLadies": 4,
+     "yards": {
+      "Blue": 353,
+      "White": 314,
+      "Red": 273
+     },
+     "handicap18Derived": 5,
+     "handicap18DerivedLadies": 7
+    },
+    {
+     "number": 5,
+     "nine": "Pines",
+     "nineHole": 5,
+     "par": 3,
+     "handicap": 7,
+     "handicapMen": 7,
+     "handicapLadies": 8,
+     "yards": {
+      "Blue": 139,
+      "White": 126,
+      "Red": 113
+     },
+     "handicap18Derived": 13,
+     "handicap18DerivedLadies": 15
+    },
+    {
+     "number": 6,
+     "nine": "Pines",
+     "nineHole": 6,
+     "par": 4,
+     "handicap": 4,
+     "handicapMen": 4,
+     "handicapLadies": 1,
+     "yards": {
+      "Blue": 296,
+      "White": 281,
+      "Red": 254
+     },
+     "handicap18Derived": 7,
+     "handicap18DerivedLadies": 1
+    },
+    {
+     "number": 7,
+     "nine": "Pines",
+     "nineHole": 7,
+     "par": 4,
+     "handicap": 1,
+     "handicapMen": 1,
+     "handicapLadies": 3,
+     "yards": {
+      "Blue": 339,
+      "White": 328,
+      "Red": 262
+     },
+     "handicap18Derived": 1,
+     "handicap18DerivedLadies": 5
+    },
+    {
+     "number": 8,
+     "nine": "Pines",
+     "nineHole": 8,
+     "par": 3,
+     "handicap": 5,
+     "handicapMen": 5,
+     "handicapLadies": 5,
+     "yards": {
+      "Blue": 159,
+      "White": 146,
+      "Red": 133
+     },
+     "handicap18Derived": 9,
+     "handicap18DerivedLadies": 9
+    },
+    {
+     "number": 9,
+     "nine": "Pines",
+     "nineHole": 9,
+     "par": 4,
+     "handicap": 2,
+     "handicapMen": 2,
+     "handicapLadies": 2,
+     "yards": {
+      "Blue": 282,
+      "White": 260,
+      "Red": 242
+     },
+     "handicap18Derived": 3,
+     "handicap18DerivedLadies": 3
+    },
+    {
+     "number": 10,
+     "nine": "Valley",
+     "nineHole": 1,
+     "par": 4,
+     "handicap": 2,
+     "handicapMen": 2,
+     "handicapLadies": 4,
+     "yards": {
+      "Blue": 289,
+      "White": 278,
+      "Red": 211
+     },
+     "handicap18Derived": 4,
+     "handicap18DerivedLadies": 8
+    },
+    {
+     "number": 11,
+     "nine": "Valley",
+     "nineHole": 2,
+     "par": 3,
+     "handicap": 9,
+     "handicapMen": 9,
+     "handicapLadies": 7,
+     "yards": {
+      "Blue": 135,
+      "White": 129,
+      "Red": 123
+     },
+     "handicap18Derived": 18,
+     "handicap18DerivedLadies": 14
+    },
+    {
+     "number": 12,
+     "nine": "Valley",
+     "nineHole": 3,
+     "par": 3,
+     "handicap": 8,
+     "handicapMen": 8,
+     "handicapLadies": 6,
+     "yards": {
+      "Blue": 146,
+      "White": 136,
+      "Red": 119
+     },
+     "handicap18Derived": 16,
+     "handicap18DerivedLadies": 12
+    },
+    {
+     "number": 13,
+     "nine": "Valley",
+     "nineHole": 4,
+     "par": 4,
+     "handicap": 5,
+     "handicapMen": 5,
+     "handicapLadies": 2,
+     "yards": {
+      "Blue": 298,
+      "White": 290,
+      "Red": 250
+     },
+     "handicap18Derived": 10,
+     "handicap18DerivedLadies": 4
+    },
+    {
+     "number": 14,
+     "nine": "Valley",
+     "nineHole": 5,
+     "par": 3,
+     "handicap": 7,
+     "handicapMen": 7,
+     "handicapLadies": 5,
+     "yards": {
+      "Blue": 161,
+      "White": 154,
+      "Red": 135
+     },
+     "handicap18Derived": 14,
+     "handicap18DerivedLadies": 10
+    },
+    {
+     "number": 15,
+     "nine": "Valley",
+     "nineHole": 6,
+     "par": 3,
+     "handicap": 6,
+     "handicapMen": 6,
+     "handicapLadies": 8,
+     "yards": {
+      "Blue": 173,
+      "White": 163,
+      "Red": 122
+     },
+     "handicap18Derived": 12,
+     "handicap18DerivedLadies": 16
+    },
+    {
+     "number": 16,
+     "nine": "Valley",
+     "nineHole": 7,
+     "par": 4,
+     "handicap": 1,
+     "handicapMen": 1,
+     "handicapLadies": 1,
+     "yards": {
+      "Blue": 302,
+      "White": 288,
+      "Red": 240
+     },
+     "handicap18Derived": 2,
+     "handicap18DerivedLadies": 2
+    },
+    {
+     "number": 17,
+     "nine": "Valley",
+     "nineHole": 8,
+     "par": 3,
+     "handicap": 4,
+     "handicapMen": 4,
+     "handicapLadies": 9,
+     "yards": {
+      "Blue": 181,
+      "White": 143,
+      "Red": 108
+     },
+     "handicap18Derived": 8,
+     "handicap18DerivedLadies": 18
+    },
+    {
+     "number": 18,
+     "nine": "Valley",
+     "nineHole": 9,
+     "par": 4,
+     "handicap": 3,
+     "handicapMen": 3,
+     "handicapLadies": 3,
+     "yards": {
+      "Blue": 332,
+      "White": 317,
+      "Red": 269
+     },
+     "handicap18Derived": 6,
+     "handicap18DerivedLadies": 6
+    }
+   ]
+  }
+ ],
+ "sources": [
+  "https://victoriaparkgolf.com/about-guelph-golf-course/victoria-park-valley-guelph/scorecard-1/",
+  "https://victoriaparkgolf.com/wp-content/uploads/2018/02/Scorecard-1.jpg",
+  "https://victoriaparkgolf.com/about-guelph-golf-course/victoria-park-valley-guelph/",
+  "https://www.golfpass.com/travel-advisor/courses/34674-victoria-park-valley-golf-club-lakes-course",
+  "https://www.golfpass.com/travel-advisor/courses/34675-victoria-park-valley-golf-club-pines-course",
+  "https://www.golfpass.com/travel-advisor/courses/34676-victoria-park-valley-golf-club-valley-course",
+  "https://www.golfify.io/courses/victoria-park-valley-golf-club-valley",
+  "https://www.mscorecard.com/mscorecard/showcourse.php?cid=1342751927311505"
+ ],
+ "notes": "PRIMARY SOURCE: the operator's own scorecard scan at victoriaparkgolf.com (https://victoriaparkgolf.com/wp-content/uploads/2018/02/Scorecard-1.jpg), which prints all three nines (The Lakes, The Pines, The Valley) side by side plus the slope/rating block. Every yardage below was read off that scan and checksummed against the printed OUT totals (all 9 tee-set totals reconcile exactly). TEE SETS: only three - Blue, White, Red. There is no black/gold/championship tee. PAR: each nine is par 31, so every 18-hole combination is par 62. This is an EXECUTIVE-LENGTH course (Blue tees ~3,950-3,994 yards for 18); do not confuse it with a full-length card. STROKE INDEX: the club card prints 'H.C. STRKS M/L' as a 1-9 index within each nine, men/ladies. The 'handicap' field on each hole is the men's 1-9 index; 'handicapLadies' is the ladies' 1-9 index. 'handicap18Derived' is NOT printed on the club card - it is the standard odd-front / even-back expansion of the 9-hole indices, included only for convenience. GolfPass independently publishes exactly this expansion for the Lakes and Pines nines, which corroborates the derivation, but treat it as derived. RATINGS: the card gives slope/rating only for the three 18-hole combinations (Lakes/Pines, Lakes/Valley, Pines/Valley), never for a single nine, so per-nine rating/slope are null. Card prints them as Slope/Rating; they are stored here as separate 'slope' and 'rating' fields, men's on 'rating'/'slope' and women's on 'ratingLadies'/'slopeLadies'. Top-level 'teeSets'/'holes' mirror the Lakes/Pines combination purely to satisfy the requested flat shape; the authoritative per-nine data is under 'nines' and all three combos under 'combinations'. CROSS-CHECKS: Lakes nine - GolfPass Lakes page matches all 27 yardages, par and (expanded) handicaps, and matches the Lakes/Pines slope/rating for all three tees; mScorecard also matches the Lakes yardages. Pines nine - GolfPass Pines page matches all 27 yardages, par and handicaps, and reports 59.6/96, 58.8/94, 57.5/82, i.e. the card's Pines/Valley men's numbers. Valley nine - golfify.io matches all 27 yardages, par, and BOTH the men's and ladies' 1-9 stroke indices exactly. No numeric disagreement was found between the official card and any cross-check. KNOWN BAD SOURCES: mScorecard's entry titled 'Victoria Park Valley Golf Club - Lakes/Pines' is wrong - it repeats the Lakes nine twice as both front and back (total 3946 rather than 3950) and carries no stroke indices. GolfPass's 'Valley Course' page shows a hole table that is actually the LAKES nine. Both are conflation errors; the club's own card is authoritative. DISAMBIGUATION: this is Victoria Park VALLEY (7660 Maltby Rd. E, Puslinch), built 2012 to replace the former Victoria Park West. It is a different facility from Victoria Park EAST (1096 Victoria Rd. S), which shares the victoriaparkgolf.com website - do not mix their scorecards. CURRENCY: the scan was published in 2018 and is the newest card the operator has posted; yardages could have shifted slightly since, and the ratings predate any recent re-rating."
+}

@@ -1,0 +1,459 @@
+{
+ "course": "Innerkip Highlands Golf Club",
+ "location": "805940 Oxford Road 29, Innerkip, Ontario N0J 1M0, Canada",
+ "holeCount": 18,
+ "par": 72,
+ "cardVersion": "Club's published card, image filename '2021_Scorecard' (current card on innerkiphighlands.com as of Aug 2026)",
+ "teeSets": [
+  {
+   "name": "Blue",
+   "totalYards": 6432,
+   "par": 72,
+   "rating": 70.2,
+   "slope": 130,
+   "mensRating": 70.2,
+   "mensSlope": 130,
+   "ladiesRating": null,
+   "ladiesSlope": null,
+   "suggestedHandicap": "0-7",
+   "outYards": 3201,
+   "inYards": 3231
+  },
+  {
+   "name": "Orange",
+   "totalYards": 6140,
+   "par": 72,
+   "rating": 69.0,
+   "slope": 127,
+   "mensRating": 69.0,
+   "mensSlope": 127,
+   "ladiesRating": 74.9,
+   "ladiesSlope": 134,
+   "suggestedHandicap": "5-14",
+   "outYards": 3056,
+   "inYards": 3084
+  },
+  {
+   "name": "White",
+   "totalYards": 5839,
+   "par": 72,
+   "rating": 67.4,
+   "slope": 122,
+   "mensRating": 67.4,
+   "mensSlope": 122,
+   "ladiesRating": 73.7,
+   "ladiesSlope": 131,
+   "suggestedHandicap": "10-24",
+   "outYards": 2883,
+   "inYards": 2956
+  },
+  {
+   "name": "Yellow",
+   "totalYards": 5218,
+   "par": 72,
+   "rating": 65.1,
+   "slope": 111,
+   "mensRating": 65.1,
+   "mensSlope": 111,
+   "ladiesRating": 70.6,
+   "ladiesSlope": 123,
+   "suggestedHandicap": "15-30",
+   "outYards": 2504,
+   "inYards": 2714
+  },
+  {
+   "name": "Red",
+   "totalYards": 4834,
+   "par": 72,
+   "rating": 63.3,
+   "slope": 105,
+   "mensRating": 63.3,
+   "mensSlope": 105,
+   "ladiesRating": 67.8,
+   "ladiesSlope": 118,
+   "suggestedHandicap": "22+",
+   "outYards": 2360,
+   "inYards": 2474
+  }
+ ],
+ "holes": [
+  {
+   "number": 1,
+   "par": 4,
+   "handicap": 7,
+   "yards": {
+    "Blue": 403,
+    "Orange": 397,
+    "White": 339,
+    "Yellow": 336,
+    "Red": 304
+   }
+  },
+  {
+   "number": 2,
+   "par": 3,
+   "handicap": 17,
+   "yards": {
+    "Blue": 146,
+    "Orange": 142,
+    "White": 135,
+    "Yellow": 131,
+    "Red": 126
+   }
+  },
+  {
+   "number": 3,
+   "par": 4,
+   "handicap": 11,
+   "yards": {
+    "Blue": 400,
+    "Orange": 385,
+    "White": 367,
+    "Yellow": 238,
+    "Red": 280
+   }
+  },
+  {
+   "number": 4,
+   "par": 5,
+   "handicap": 13,
+   "yards": {
+    "Blue": 458,
+    "Orange": 454,
+    "White": 432,
+    "Yellow": 429,
+    "Red": 396
+   }
+  },
+  {
+   "number": 5,
+   "par": 4,
+   "handicap": 1,
+   "yards": {
+    "Blue": 350,
+    "Orange": 308,
+    "White": 305,
+    "Yellow": 252,
+    "Red": 247
+   }
+  },
+  {
+   "number": 6,
+   "par": 3,
+   "handicap": 15,
+   "yards": {
+    "Blue": 179,
+    "Orange": 140,
+    "White": 137,
+    "Yellow": 134,
+    "Red": 118
+   }
+  },
+  {
+   "number": 7,
+   "par": 4,
+   "handicap": 3,
+   "yards": {
+    "Blue": 379,
+    "Orange": 352,
+    "White": 347,
+    "Yellow": 260,
+    "Red": 254
+   }
+  },
+  {
+   "number": 8,
+   "par": 4,
+   "handicap": 9,
+   "yards": {
+    "Blue": 376,
+    "Orange": 373,
+    "White": 335,
+    "Yellow": 331,
+    "Red": 246
+   }
+  },
+  {
+   "number": 9,
+   "par": 5,
+   "handicap": 5,
+   "yards": {
+    "Blue": 510,
+    "Orange": 505,
+    "White": 486,
+    "Yellow": 393,
+    "Red": 389
+   }
+  },
+  {
+   "number": 10,
+   "par": 5,
+   "handicap": 12,
+   "yards": {
+    "Blue": 507,
+    "Orange": 503,
+    "White": 477,
+    "Yellow": 473,
+    "Red": 386
+   }
+  },
+  {
+   "number": 11,
+   "par": 4,
+   "handicap": 8,
+   "yards": {
+    "Blue": 358,
+    "Orange": 353,
+    "White": 337,
+    "Yellow": 334,
+    "Red": 259
+   }
+  },
+  {
+   "number": 12,
+   "par": 3,
+   "handicap": 18,
+   "yards": {
+    "Blue": 186,
+    "Orange": 164,
+    "White": 161,
+    "Yellow": 139,
+    "Red": 135
+   }
+  },
+  {
+   "number": 13,
+   "par": 4,
+   "handicap": 10,
+   "yards": {
+    "Blue": 335,
+    "Orange": 325,
+    "White": 312,
+    "Yellow": 300,
+    "Red": 263
+   }
+  },
+  {
+   "number": 14,
+   "par": 4,
+   "handicap": 4,
+   "yards": {
+    "Blue": 395,
+    "Orange": 372,
+    "White": 368,
+    "Yellow": 294,
+    "Red": 289
+   }
+  },
+  {
+   "number": 15,
+   "par": 5,
+   "handicap": 14,
+   "yards": {
+    "Blue": 506,
+    "Orange": 479,
+    "White": 437,
+    "Yellow": 404,
+    "Red": 394
+   }
+  },
+  {
+   "number": 16,
+   "par": 4,
+   "handicap": 2,
+   "yards": {
+    "Blue": 398,
+    "Orange": 375,
+    "White": 371,
+    "Yellow": 310,
+    "Red": 307
+   }
+  },
+  {
+   "number": 17,
+   "par": 3,
+   "handicap": 16,
+   "yards": {
+    "Blue": 183,
+    "Orange": 155,
+    "White": 151,
+    "Yellow": 123,
+    "Red": 120
+   }
+  },
+  {
+   "number": 18,
+   "par": 4,
+   "handicap": 6,
+   "yards": {
+    "Blue": 363,
+    "Orange": 358,
+    "White": 342,
+    "Yellow": 337,
+    "Red": 321
+   }
+  }
+ ],
+ "crossCheck": {
+  "golfCanadaRatedYardages": {
+   "description": "Golf Canada's course-rating record for this facility. Tee names, par per hole, stroke index and every rating/slope match the club card; the per-hole yardages are the rating team's measured values and run slightly shorter than the printed card.",
+   "totalYards": {
+    "Blue": 6355,
+    "Orange": 6094,
+    "White": 5801,
+    "Yellow": 5266,
+    "Red": 4810
+   },
+   "yardsByHole": {
+    "Blue": [
+     399,
+     144,
+     377,
+     450,
+     339,
+     174,
+     373,
+     374,
+     511,
+     503,
+     356,
+     180,
+     336,
+     385,
+     505,
+     393,
+     179,
+     377
+    ],
+    "Orange": [
+     393,
+     139,
+     360,
+     443,
+     298,
+     147,
+     352,
+     367,
+     502,
+     493,
+     349,
+     161,
+     331,
+     368,
+     498,
+     373,
+     155,
+     365
+    ],
+    "White": [
+     336,
+     134,
+     351,
+     426,
+     286,
+     143,
+     341,
+     336,
+     482,
+     464,
+     335,
+     153,
+     326,
+     359,
+     474,
+     364,
+     144,
+     347
+    ],
+    "Yellow": [
+     325,
+     129,
+     280,
+     419,
+     247,
+     139,
+     256,
+     330,
+     396,
+     459,
+     324,
+     135,
+     321,
+     296,
+     439,
+     309,
+     123,
+     339
+    ],
+    "Red": [
+     300,
+     121,
+     285,
+     390,
+     241,
+     112,
+     248,
+     248,
+     391,
+     386,
+     259,
+     135,
+     263,
+     289,
+     394,
+     307,
+     120,
+     321
+    ]
+   }
+  },
+  "golfCanadaRatings": {
+   "mens": {
+    "Blue": [
+     70.2,
+     130
+    ],
+    "Orange": [
+     69.0,
+     127
+    ],
+    "White": [
+     67.4,
+     122
+    ],
+    "Yellow": [
+     65.1,
+     111
+    ],
+    "Red": [
+     63.3,
+     105
+    ]
+   },
+   "womens": {
+    "White": [
+     73.7,
+     131
+    ],
+    "Yellow": [
+     70.6,
+     123
+    ],
+    "Red": [
+     67.8,
+     118
+    ]
+   }
+  }
+ },
+ "sources": [
+  "https://www.innerkiphighlands.com/golf/scorecard",
+  "https://www.innerkiphighlands.com/images/2021_Scorecard_Pg2.jpg",
+  "https://www.innerkiphighlands.com/images/2021_Scorecard_Pg1.jpg",
+  "https://www.golfcanada.ca/golf-facility/innerkip-highlands-golf-club-en/",
+  "https://offcourse.co/courses/scorecard/innerkip-highlands-golf-club",
+  "https://www.golfify.io/courses/innerkip-highlands-golf-club",
+  "https://web.archive.org/web/20180925101643if_/http://innerkiphighlands.com/userContent/images/Scorecard.jpg"
+ ],
+ "notes": "PRIMARY SOURCE: the club's own scorecard image published at innerkiphighlands.com/golf/scorecard (/images/2021_Scorecard_Pg1.jpg = course map, Pg2.jpg = the card). All five tee rows were transcribed and every row sums exactly to the printed OUT / IN / TOTAL, par sums 36/36/72, and the stroke index is a clean permutation of 1-18 with all odd numbers on the front nine and all even on the back. Single 18-hole course - no second course or nine to conflate. CROSS-CHECK: Golf Canada's facility record independently confirms the same five tee names (Blue/Orange/White/Yellow/Red), the identical par for all 18 holes, the identical stroke index (for Blue/Orange/White and all women's tees), and every course rating and slope printed on the card. DISAGREEMENT 1 - yardage basis: Golf Canada's per-hole yardages are its rating-measured values and are systematically a little shorter (Blue 6355 vs the card's 6432). Kept the club's printed numbers as the scorecard values; Golf Canada's are preserved under crossCheck.golfCanadaRatedYardages. DISAGREEMENT 2 - stale aggregators: Offcourse, Golfify, GolfPass and GolfLink all publish Blue 6417 / OUT 3186 with hole 3 at 385. That is the club's PREVIOUS card (archived 2018 copy confirms Blue 6417, OUT 3186, hole 3 = 385, Men's Blue 70.0/125). The club lengthened hole 3 to 400 and reworked 13/15 in the current card. Offcourse and Golfify additionally invent 'Blue/White' and 'White/Red' combo tees that do not exist on any club card, and Golfify's Blue row scrambles holes 3 and 4. These aggregators were not treated as corroboration. CAVEAT - hole 3 Yellow: the card prints 238, which is shorter than Red's 280 on the same hole and looks like a possible transposition of the previous card's 283. It is recorded as printed because the card's own Yellow OUT total (2504) only balances with 238; Golf Canada lists 280 for Yellow on hole 3. CAVEAT - Red men's rating: not printed on the club card (Red is shown only as a ladies' tee, 67.8/118). The men's Red 63.3/105 in teeSets comes from Golf Canada only. Golf Canada in turn has no women's Orange tee, so the ladies' Orange 74.9/134 comes from the club card only. Card also states: all yardages measured to centre of green; fairway markers Gold 250 / Blue 200 / White 150 / Red 100; pin positions Blue back, White middle, Red front."
+}

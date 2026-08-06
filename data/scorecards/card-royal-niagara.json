@@ -1,0 +1,864 @@
+{
+ "course": "Royal Niagara Golf Club",
+ "location": "1 Niagara-on-the-Green Blvd, Niagara-on-the-Lake, Ontario L0S 1J0, Canada",
+ "operator": "Kaneff Golf",
+ "architect": "Ted Baker",
+ "holes27": true,
+ "handicapScale": "1-9 within each nine, exactly as printed on the club card. The club does NOT publish a 1-18 stroke index for the 18-hole combinations.",
+ "nines": [
+  {
+   "name": "Escarpment",
+   "par": 36,
+   "teeSets": [
+    {
+     "name": "Black",
+     "totalYards": 3533,
+     "par": 36
+    },
+    {
+     "name": "Blue",
+     "totalYards": 3304,
+     "par": 36
+    },
+    {
+     "name": "White",
+     "totalYards": 3068,
+     "par": 36
+    },
+    {
+     "name": "Red",
+     "totalYards": 2729,
+     "par": 36
+    },
+    {
+     "name": "Green",
+     "totalYards": 2175,
+     "par": 36
+    }
+   ],
+   "holes": [
+    {
+     "number": 1,
+     "par": 4,
+     "handicap": 9,
+     "yards": {
+      "Black": 403,
+      "Blue": 371,
+      "White": 343,
+      "Red": 309,
+      "Green": 255
+     }
+    },
+    {
+     "number": 2,
+     "par": 4,
+     "handicap": 8,
+     "yards": {
+      "Black": 400,
+      "Blue": 380,
+      "White": 352,
+      "Red": 278,
+      "Green": 185
+     }
+    },
+    {
+     "number": 3,
+     "par": 4,
+     "handicap": 4,
+     "yards": {
+      "Black": 456,
+      "Blue": 429,
+      "White": 405,
+      "Red": 344,
+      "Green": 300
+     }
+    },
+    {
+     "number": 4,
+     "par": 5,
+     "handicap": 1,
+     "yards": {
+      "Black": 541,
+      "Blue": 515,
+      "White": 492,
+      "Red": 442,
+      "Green": 360
+     }
+    },
+    {
+     "number": 5,
+     "par": 3,
+     "handicap": 7,
+     "yards": {
+      "Black": 193,
+      "Blue": 162,
+      "White": 134,
+      "Red": 125,
+      "Green": 100
+     }
+    },
+    {
+     "number": 6,
+     "par": 4,
+     "handicap": 3,
+     "yards": {
+      "Black": 413,
+      "Blue": 398,
+      "White": 372,
+      "Red": 348,
+      "Green": 260
+     }
+    },
+    {
+     "number": 7,
+     "par": 3,
+     "handicap": 5,
+     "yards": {
+      "Black": 209,
+      "Blue": 187,
+      "White": 160,
+      "Red": 142,
+      "Green": 90
+     }
+    },
+    {
+     "number": 8,
+     "par": 5,
+     "handicap": 2,
+     "yards": {
+      "Black": 575,
+      "Blue": 538,
+      "White": 513,
+      "Red": 472,
+      "Green": 400
+     }
+    },
+    {
+     "number": 9,
+     "par": 4,
+     "handicap": 6,
+     "yards": {
+      "Black": 343,
+      "Blue": 324,
+      "White": 297,
+      "Red": 269,
+      "Green": 225
+     }
+    }
+   ]
+  },
+  {
+   "name": "Iron Bridge",
+   "par": 36,
+   "teeSets": [
+    {
+     "name": "Black",
+     "totalYards": 3519,
+     "par": 36
+    },
+    {
+     "name": "Blue",
+     "totalYards": 3231,
+     "par": 36
+    },
+    {
+     "name": "White",
+     "totalYards": 3026,
+     "par": 36
+    },
+    {
+     "name": "Red",
+     "totalYards": 2629,
+     "par": 36
+    },
+    {
+     "name": "Green",
+     "totalYards": 2188,
+     "par": 36
+    }
+   ],
+   "holes": [
+    {
+     "number": 1,
+     "par": 5,
+     "handicap": 2,
+     "yards": {
+      "Black": 522,
+      "Blue": 502,
+      "White": 474,
+      "Red": 450,
+      "Green": 355
+     }
+    },
+    {
+     "number": 2,
+     "par": 4,
+     "handicap": 5,
+     "yards": {
+      "Black": 423,
+      "Blue": 403,
+      "White": 380,
+      "Red": 356,
+      "Green": 268
+     }
+    },
+    {
+     "number": 3,
+     "par": 4,
+     "handicap": 4,
+     "yards": {
+      "Black": 410,
+      "Blue": 373,
+      "White": 345,
+      "Red": 299,
+      "Green": 200
+     }
+    },
+    {
+     "number": 4,
+     "par": 4,
+     "handicap": 6,
+     "yards": {
+      "Black": 383,
+      "Blue": 351,
+      "White": 343,
+      "Red": 217,
+      "Green": 217
+     }
+    },
+    {
+     "number": 5,
+     "par": 3,
+     "handicap": 8,
+     "yards": {
+      "Black": 190,
+      "Blue": 168,
+      "White": 141,
+      "Red": 113,
+      "Green": 70
+     }
+    },
+    {
+     "number": 6,
+     "par": 5,
+     "handicap": 1,
+     "yards": {
+      "Black": 562,
+      "Blue": 534,
+      "White": 507,
+      "Red": 450,
+      "Green": 410
+     }
+    },
+    {
+     "number": 7,
+     "par": 4,
+     "handicap": 3,
+     "yards": {
+      "Black": 400,
+      "Blue": 367,
+      "White": 353,
+      "Red": 311,
+      "Green": 273
+     }
+    },
+    {
+     "number": 8,
+     "par": 3,
+     "handicap": 9,
+     "yards": {
+      "Black": 190,
+      "Blue": 142,
+      "White": 122,
+      "Red": 100,
+      "Green": 100
+     }
+    },
+    {
+     "number": 9,
+     "par": 4,
+     "handicap": 7,
+     "yards": {
+      "Black": 439,
+      "Blue": 391,
+      "White": 361,
+      "Red": 333,
+      "Green": 295
+     }
+    }
+   ]
+  },
+  {
+   "name": "Old Canal",
+   "par": 36,
+   "teeSets": [
+    {
+     "name": "Black",
+     "totalYards": 3451,
+     "par": 36
+    },
+    {
+     "name": "Blue",
+     "totalYards": 3211,
+     "par": 36
+    },
+    {
+     "name": "White",
+     "totalYards": 3012,
+     "par": 36
+    },
+    {
+     "name": "Red",
+     "totalYards": 2678,
+     "par": 36
+    },
+    {
+     "name": "Green",
+     "totalYards": 2275,
+     "par": 36
+    }
+   ],
+   "holes": [
+    {
+     "number": 1,
+     "par": 4,
+     "handicap": 6,
+     "yards": {
+      "Black": 382,
+      "Blue": 363,
+      "White": 340,
+      "Red": 312,
+      "Green": 235
+     }
+    },
+    {
+     "number": 2,
+     "par": 5,
+     "handicap": 3,
+     "yards": {
+      "Black": 521,
+      "Blue": 505,
+      "White": 482,
+      "Red": 439,
+      "Green": 360
+     }
+    },
+    {
+     "number": 3,
+     "par": 4,
+     "handicap": 5,
+     "yards": {
+      "Black": 413,
+      "Blue": 385,
+      "White": 356,
+      "Red": 292,
+      "Green": 225
+     }
+    },
+    {
+     "number": 4,
+     "par": 4,
+     "handicap": 8,
+     "yards": {
+      "Black": 426,
+      "Blue": 400,
+      "White": 374,
+      "Red": 334,
+      "Green": 275
+     }
+    },
+    {
+     "number": 5,
+     "par": 3,
+     "handicap": 7,
+     "yards": {
+      "Black": 218,
+      "Blue": 177,
+      "White": 154,
+      "Red": 133,
+      "Green": 133
+     }
+    },
+    {
+     "number": 6,
+     "par": 5,
+     "handicap": 1,
+     "yards": {
+      "Black": 576,
+      "Blue": 538,
+      "White": 519,
+      "Red": 432,
+      "Green": 385
+     }
+    },
+    {
+     "number": 7,
+     "par": 3,
+     "handicap": 9,
+     "yards": {
+      "Black": 171,
+      "Blue": 148,
+      "White": 127,
+      "Red": 107,
+      "Green": 107
+     }
+    },
+    {
+     "number": 8,
+     "par": 4,
+     "handicap": 2,
+     "yards": {
+      "Black": 443,
+      "Blue": 415,
+      "White": 390,
+      "Red": 364,
+      "Green": 290
+     }
+    },
+    {
+     "number": 9,
+     "par": 4,
+     "handicap": 4,
+     "yards": {
+      "Black": 301,
+      "Blue": 280,
+      "White": 270,
+      "Red": 265,
+      "Green": 265
+     }
+    }
+   ]
+  }
+ ],
+ "combinations": [
+  {
+   "name": "Escarpment / Iron Bridge",
+   "frontNine": "Escarpment",
+   "backNine": "Iron Bridge",
+   "par": 72,
+   "teeSets": [
+    {
+     "name": "Black",
+     "totalYards": 7052,
+     "par": 72,
+     "rating": 74.4,
+     "slope": 138
+    },
+    {
+     "name": "Blue",
+     "totalYards": 6535,
+     "par": 72,
+     "rating": 71.6,
+     "slope": 138
+    },
+    {
+     "name": "White",
+     "totalYards": 6094,
+     "par": 72,
+     "rating": 69.5,
+     "slope": 135
+    },
+    {
+     "name": "Red",
+     "totalYards": 5358,
+     "par": 72,
+     "rating": 66.6,
+     "slope": 122
+    },
+    {
+     "name": "Green",
+     "totalYards": 4363,
+     "par": 72
+    }
+   ]
+  },
+  {
+   "name": "Iron Bridge / Old Canal",
+   "frontNine": "Iron Bridge",
+   "backNine": "Old Canal",
+   "par": 72,
+   "teeSets": [
+    {
+     "name": "Black",
+     "totalYards": 6970,
+     "par": 72,
+     "rating": 75.0,
+     "slope": 143
+    },
+    {
+     "name": "Blue",
+     "totalYards": 6442,
+     "par": 72,
+     "rating": 42.1,
+     "slope": 139
+    },
+    {
+     "name": "White",
+     "totalYards": 6038,
+     "par": 72,
+     "rating": 70.1,
+     "slope": 135
+    },
+    {
+     "name": "Red",
+     "totalYards": 5307,
+     "par": 72,
+     "rating": 67.4,
+     "slope": 121
+    },
+    {
+     "name": "Green",
+     "totalYards": 4463,
+     "par": 72
+    }
+   ]
+  },
+  {
+   "name": "Old Canal / Escarpment",
+   "frontNine": "Old Canal",
+   "backNine": "Escarpment",
+   "par": 72,
+   "teeSets": [
+    {
+     "name": "Black",
+     "totalYards": 6984,
+     "par": 72,
+     "rating": 74.4,
+     "slope": 140
+    },
+    {
+     "name": "Blue",
+     "totalYards": 6515,
+     "par": 72,
+     "rating": 71.5,
+     "slope": 137
+    },
+    {
+     "name": "White",
+     "totalYards": 6080,
+     "par": 72,
+     "rating": 69.4,
+     "slope": 133
+    },
+    {
+     "name": "Red",
+     "totalYards": 5407,
+     "par": 72,
+     "rating": 66.6,
+     "slope": 121
+    },
+    {
+     "name": "Green",
+     "totalYards": 4450,
+     "par": 72
+    }
+   ]
+  }
+ ],
+ "defaultCombination": "Escarpment / Iron Bridge",
+ "teeSets": [
+  {
+   "name": "Black",
+   "totalYards": 7052,
+   "par": 72,
+   "rating": 74.4,
+   "slope": 138
+  },
+  {
+   "name": "Blue",
+   "totalYards": 6535,
+   "par": 72,
+   "rating": 71.6,
+   "slope": 138
+  },
+  {
+   "name": "White",
+   "totalYards": 6094,
+   "par": 72,
+   "rating": 69.5,
+   "slope": 135
+  },
+  {
+   "name": "Red",
+   "totalYards": 5358,
+   "par": 72,
+   "rating": 66.6,
+   "slope": 122
+  },
+  {
+   "name": "Green",
+   "totalYards": 4363,
+   "par": 72
+  }
+ ],
+ "holes": [
+  {
+   "number": 1,
+   "nine": "Escarpment",
+   "nineHole": 1,
+   "par": 4,
+   "handicap": 9,
+   "yards": {
+    "Black": 403,
+    "Blue": 371,
+    "White": 343,
+    "Red": 309,
+    "Green": 255
+   }
+  },
+  {
+   "number": 2,
+   "nine": "Escarpment",
+   "nineHole": 2,
+   "par": 4,
+   "handicap": 8,
+   "yards": {
+    "Black": 400,
+    "Blue": 380,
+    "White": 352,
+    "Red": 278,
+    "Green": 185
+   }
+  },
+  {
+   "number": 3,
+   "nine": "Escarpment",
+   "nineHole": 3,
+   "par": 4,
+   "handicap": 4,
+   "yards": {
+    "Black": 456,
+    "Blue": 429,
+    "White": 405,
+    "Red": 344,
+    "Green": 300
+   }
+  },
+  {
+   "number": 4,
+   "nine": "Escarpment",
+   "nineHole": 4,
+   "par": 5,
+   "handicap": 1,
+   "yards": {
+    "Black": 541,
+    "Blue": 515,
+    "White": 492,
+    "Red": 442,
+    "Green": 360
+   }
+  },
+  {
+   "number": 5,
+   "nine": "Escarpment",
+   "nineHole": 5,
+   "par": 3,
+   "handicap": 7,
+   "yards": {
+    "Black": 193,
+    "Blue": 162,
+    "White": 134,
+    "Red": 125,
+    "Green": 100
+   }
+  },
+  {
+   "number": 6,
+   "nine": "Escarpment",
+   "nineHole": 6,
+   "par": 4,
+   "handicap": 3,
+   "yards": {
+    "Black": 413,
+    "Blue": 398,
+    "White": 372,
+    "Red": 348,
+    "Green": 260
+   }
+  },
+  {
+   "number": 7,
+   "nine": "Escarpment",
+   "nineHole": 7,
+   "par": 3,
+   "handicap": 5,
+   "yards": {
+    "Black": 209,
+    "Blue": 187,
+    "White": 160,
+    "Red": 142,
+    "Green": 90
+   }
+  },
+  {
+   "number": 8,
+   "nine": "Escarpment",
+   "nineHole": 8,
+   "par": 5,
+   "handicap": 2,
+   "yards": {
+    "Black": 575,
+    "Blue": 538,
+    "White": 513,
+    "Red": 472,
+    "Green": 400
+   }
+  },
+  {
+   "number": 9,
+   "nine": "Escarpment",
+   "nineHole": 9,
+   "par": 4,
+   "handicap": 6,
+   "yards": {
+    "Black": 343,
+    "Blue": 324,
+    "White": 297,
+    "Red": 269,
+    "Green": 225
+   }
+  },
+  {
+   "number": 10,
+   "nine": "Iron Bridge",
+   "nineHole": 1,
+   "par": 5,
+   "handicap": 2,
+   "yards": {
+    "Black": 522,
+    "Blue": 502,
+    "White": 474,
+    "Red": 450,
+    "Green": 355
+   }
+  },
+  {
+   "number": 11,
+   "nine": "Iron Bridge",
+   "nineHole": 2,
+   "par": 4,
+   "handicap": 5,
+   "yards": {
+    "Black": 423,
+    "Blue": 403,
+    "White": 380,
+    "Red": 356,
+    "Green": 268
+   }
+  },
+  {
+   "number": 12,
+   "nine": "Iron Bridge",
+   "nineHole": 3,
+   "par": 4,
+   "handicap": 4,
+   "yards": {
+    "Black": 410,
+    "Blue": 373,
+    "White": 345,
+    "Red": 299,
+    "Green": 200
+   }
+  },
+  {
+   "number": 13,
+   "nine": "Iron Bridge",
+   "nineHole": 4,
+   "par": 4,
+   "handicap": 6,
+   "yards": {
+    "Black": 383,
+    "Blue": 351,
+    "White": 343,
+    "Red": 217,
+    "Green": 217
+   }
+  },
+  {
+   "number": 14,
+   "nine": "Iron Bridge",
+   "nineHole": 5,
+   "par": 3,
+   "handicap": 8,
+   "yards": {
+    "Black": 190,
+    "Blue": 168,
+    "White": 141,
+    "Red": 113,
+    "Green": 70
+   }
+  },
+  {
+   "number": 15,
+   "nine": "Iron Bridge",
+   "nineHole": 6,
+   "par": 5,
+   "handicap": 1,
+   "yards": {
+    "Black": 562,
+    "Blue": 534,
+    "White": 507,
+    "Red": 450,
+    "Green": 410
+   }
+  },
+  {
+   "number": 16,
+   "nine": "Iron Bridge",
+   "nineHole": 7,
+   "par": 4,
+   "handicap": 3,
+   "yards": {
+    "Black": 400,
+    "Blue": 367,
+    "White": 353,
+    "Red": 311,
+    "Green": 273
+   }
+  },
+  {
+   "number": 17,
+   "nine": "Iron Bridge",
+   "nineHole": 8,
+   "par": 3,
+   "handicap": 9,
+   "yards": {
+    "Black": 190,
+    "Blue": 142,
+    "White": 122,
+    "Red": 100,
+    "Green": 100
+   }
+  },
+  {
+   "number": 18,
+   "nine": "Iron Bridge",
+   "nineHole": 9,
+   "par": 4,
+   "handicap": 7,
+   "yards": {
+    "Black": 439,
+    "Blue": 391,
+    "White": 361,
+    "Red": 333,
+    "Green": 295
+   }
+  }
+ ],
+ "sources": [
+  "https://kaneffgolf.com/wp-content/uploads/Scorecards_RoyalNiagaraGolfClub.pdf",
+  "https://web.archive.org/web/20240724192346if_/https://kaneffgolf.com/wp-content/uploads/Scorecards_RoyalNiagaraGolfClub.pdf",
+  "https://web.archive.org/web/20220517082343if_/https://kaneffgolf.com/wp-content/uploads/Scorecards_RoyalNiagaraGolfClub.pdf",
+  "https://kaneffgolf.com/golf/courses/royal-niagara/",
+  "https://www.golfify.io/courses/royal-niagara-golf-club-escarpment",
+  "https://www.golfify.io/courses/royal-niagara-golf-club-iron-bridge",
+  "https://www.golfify.io/courses/royal-niagara-golf-club-old-canal",
+  "https://www.offcourse.co/courses/scorecard/royal-niagara-golf-club",
+  "https://www.mscorecard.com/mscorecard/showcourse.php?cid=1314566692267",
+  "https://www.golfcanada.ca/golf-facility/royal-niagara-golf-club-en/",
+  "https://course.bluegolf.com/bluegolf/course/course/royalniagaragc/detailedscorecard.htm",
+  "https://course.bluegolf.com/bluegolf/course/course/royalniagaraiboc/detailedscorecard.htm",
+  "https://course.bluegolf.com/bluegolf/course/course/royalniagaraescoc/detailedscorecard.htm"
+ ],
+ "notes": "PRIMARY SOURCE: the operator's own scorecard PDF (Kaneff Golf / Royal Niagara, Scorecards_RoyalNiagaraGolfClub.pdf). The live URL is bot-gated (SiteGround captcha, HTTP 202), so it was read via the Wayback Machine. Two archived revisions (2022-05-17 and 2023-03-29, the latter still current as of the 2024-07 site snapshot) are byte-different files but carry IDENTICAL scorecard numbers, so the card below is stable. All five tee rows and all three OUT totals were re-derived from the per-hole values and match the printed totals exactly.\n\nNINE IDENTIFICATION: the card prints the three nines side by side, left to right, as ESCARPMENT (grey), IRON BRIDGE (gold), OLD CANAL (black), each with its own holes 1-9. The course map on page 1 uses the same colour key. Par/stroke-index patterns for all three nines are independently confirmed by Golfify, Offcourse and BlueGolf.\n\nSTROKE INDEX: printed 1-9 per nine. Escarpment 9-8-4-1-7-3-5-2-6; Iron Bridge 2-5-4-6-8-1-3-9-7; Old Canal 6-3-5-8-7-1-9-2-4. NOTE: offcourse.co swaps the Escarpment and Old Canal index rows on its 'Old Canal to Escarpment' card (it shows Old Canal with the Escarpment row and vice-versa); Golfify and the official card agree with each other, so the official assignment above is used. BlueGolf's handicap row is a placeholder (literally 1,2,3...18) and carries no information.\n\nDISCREPANCY - OLD CANAL HOLE 9: the official card has it at 301/280/270/265/265 (Black/Blue/White/Red/Green), giving Old Canal OUT totals 3451/3211/3012/2678/2275. Every aggregator (Golfify, Offcourse, mScorecard, BlueGolf) still carries an older, longer 9th of roughly 413/376/357/326, i.e. Old Canal 3563 Black. Golf Canada's facility listing (Iron Bridge-Old Canal 7082, Old Canal-Escarpment 7096, Escarpment-Iron Bridge 7052) is arithmetically consistent with that OLDER Old Canal, so it is stale too. The hole appears to have been shortened. The official card is used here; if you want the pre-change figures, add 112 yards (Black) to Old Canal hole 9.\n\nCOMBINATION RATINGS: taken verbatim from the ratings table on the card. Two printing defects there: (1) the first column is headed only 'ESCARPMENT COURSE' - from the other two headings and from the fact that only three 18-hole pairings exist, it must mean Escarpment + Iron Bridge; (2) the Blue rating for Iron Bridge/Old Canal is printed as '42.1/139', which is impossible and is almost certainly a typo for 72.1 (Black is 75.0, White 70.1). It is stored as printed - do NOT use 42.1 for handicap maths. Green tees are marked TBA (unrated) for all three combinations. Combination totalYards below are computed by summing the two nines, not printed on the card. offcourse.co lists an older, lower set of ratings (e.g. Black 73/141 for Escarpment/Iron Bridge) that predates the current card; the card's values are preferred.\n\nESCARPMENT/IRON BRIDGE TOTALS from the current card: Black 7052, Blue 6535, White 6094, Red 5358, Green 4363. Iron Bridge/Old Canal: Black 6970, Blue 6442, White 6038, Red 5307, Green 4463. Old Canal/Escarpment: Black 6984, Blue 6515, White 6080, Red 5407, Green 4450. All par 72.\n\nThe 'teeSets'/'holes' keys at the top level are a flattened 1-18 view of the default combination (Escarpment 1-9 then Iron Bridge 10-18) provided for convenience; 'handicap' there is still the club's per-nine 1-9 value, deliberately not converted to a 1-18 index because the club does not publish one."
+}
