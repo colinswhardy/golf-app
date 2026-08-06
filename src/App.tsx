@@ -5,6 +5,7 @@ import { CoursesPage } from "./pages/CoursesPage";
 import { RoundMapPage } from "./pages/RoundMapPage";
 import { ReviewRoundsPage } from "./pages/ReviewRoundsPage";
 import { DataImportsPage } from "./pages/DataImportsPage";
+import { ScorecardsPage } from "./pages/ScorecardsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { CourseEditorPage } from "./pages/CourseEditorPage";
 import { StatsPage } from "./pages/StatsPage";
@@ -71,6 +72,7 @@ export default function App() {
           <Route path="/round/:courseId" element={<RoundMapPage />} />
           <Route path="/rounds" element={<ReviewRoundsPage />} />
           <Route path="/imports" element={<DataImportsPage />} />
+          <Route path="/scorecards" element={<ScorecardsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/course-editor" element={<CourseEditorPage />} />
           <Route path="/course-editor/:courseId" element={<CourseEditorPage />} />

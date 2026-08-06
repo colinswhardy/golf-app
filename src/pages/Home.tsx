@@ -225,6 +225,13 @@ export function Home() {
             </span>
             <Icon.chevron size={16} />
           </Link>
+          <Link to="/scorecards" className="list-row">
+            <span className="row">
+              <Icon.list size={18} />
+              <span>Scorecards</span>
+            </span>
+            <Icon.chevron size={16} />
+          </Link>
           <Link to="/course-editor" className="list-row">
             <span className="row">
               <Icon.edit size={18} />
