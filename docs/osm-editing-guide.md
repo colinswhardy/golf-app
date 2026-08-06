@@ -101,6 +101,25 @@ course imports as "Imported Course" with no location. Note the course still take
 name, and there's no rename in the app — `courseRepo.ts:39` derives name and slug from the parsed
 boundary.
 
+### Naming the courses at a multi-course facility
+
+Tag every `golf=hole` way with **`golf:course:name=<course>`** — e.g. `golf:course:name=Pines`.
+Each nine keeps its own `ref=1..9`; the tag is what stops three `ref=1`s colliding. The importer
+then takes one course at a time (`parseOverpassGeoJson(fc, { courseName: "Pines" })`), and a bundled
+entry gets a `courseName` alongside its `slug`, so one export file can supply three courses.
+
+A note on why, because the OSM wiki disagrees. The wiki's *preferred* model is a `type=golf`
+relation per course with the `golf=hole` ways as members, and it calls the per-hole tag the lesser
+alternative. We cannot use the relation: it carries no geometry of its own, and Overpass Turbo's
+**Export → GeoJSON only materialises relations that do** (multipolygons, boundaries), so relation
+membership never survives into the file this app imports. Supporting it would mean moving the whole
+pipeline off GeoJSON onto raw Overpass JSON. Tagging both is possible, but then the app follows the
+tag and the relation can silently drift out of step with it.
+
+Without the tag, an export covering more than one course still imports — but the parser now
+**warns** that hole numbers appeared more than once and names the courses it found, instead of
+silently handing you a Frankenstein course.
+
 ### Careful with the word "Creek" in a boundary name
 
 `importOverpass.ts:28` treats any feature whose `name` matches `/creek|stream|drain/i` as a water

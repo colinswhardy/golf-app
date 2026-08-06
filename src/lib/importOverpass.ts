@@ -85,7 +85,36 @@ function distanceYardsBetween(a: LatLng, b: LatLng): number {
   return turf.distance([a.lng, a.lat], [b.lng, b.lat], { units: "yards" });
 }
 
-export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCourse {
+/** OSM tag naming which course a hole belongs to at a multi-course facility.
+ *
+ * The wiki's PREFERRED model is a `type=golf` relation per course with the golf=hole ways as
+ * members. That cannot be used here: a type=golf relation carries no geometry of its own, and
+ * Overpass Turbo's Export -> GeoJSON only materialises relations that do (multipolygons,
+ * boundaries), so relation membership never reaches this parser. The wiki's documented
+ * alternative — the same tag on each hole — survives the export intact, so that is what we read.
+ * See docs/osm-editing-guide.md. */
+const COURSE_NAME_TAG = "golf:course:name";
+
+/** Distinct `golf:course:name` values across a file's golf=hole ways, in first-seen order.
+ * Empty when the facility has a single unnamed course, which is the common case. */
+export function detectCourseNames(fc: GeoJSON.FeatureCollection): string[] {
+  const seen: string[] = [];
+  for (const f of fc.features) {
+    const props = f.properties as any;
+    if (props?.golf !== "hole" || f.geometry.type !== "LineString") continue;
+    const name = props?.[COURSE_NAME_TAG];
+    if (typeof name === "string" && name.trim() && !seen.includes(name.trim())) seen.push(name.trim());
+  }
+  return seen;
+}
+
+export interface ParseOptions {
+  /** Keep only holes whose `golf:course:name` matches, so one nine of a 27-hole facility imports
+   * as its own course. Omit to take every hole, which is correct for a single-course file. */
+  courseName?: string;
+}
+
+export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection, opts?: ParseOptions): ParsedCourse {
   const warnings: string[] = [];
   const features = fc.features;
 
@@ -99,19 +128,71 @@ export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCours
   if (!boundary) warnings.push("Couldn't find a course boundary feature — using a generic name and no location.");
 
   // --- 2. Hole centerlines (golf=hole) ---
-  const holeLines = features.filter((f) => (f.properties as any)?.golf === "hole" && f.geometry.type === "LineString");
+  const allHoleLines = features.filter((f) => (f.properties as any)?.golf === "hole" && f.geometry.type === "LineString");
+
+  // At a multi-course facility each course numbers its holes from 1, so keying the Map on `ref`
+  // alone silently overwrites: three nines all tagged ref=1..9 collapse into 9 holes assembled
+  // from all three. Filtering to one course's holes first is what makes each nine importable as
+  // its own course. Filtering the holes is NOT sufficient on its own, though: every green, tee
+  // and bunker on the property is assigned to its nearest surviving centerline, so the other
+  // nines' polygons would be force-attached to this one's holes. Ownership is therefore decided
+  // against the FULL set of centerlines (see ownsFeature below) and only then filtered.
+  const wanted = opts?.courseName?.trim();
+  const holeLines = wanted
+    ? allHoleLines.filter((f) => ((f.properties as any)?.[COURSE_NAME_TAG] ?? "").trim() === wanted)
+    : allHoleLines;
+  if (wanted && holeLines.length === 0) {
+    warnings.push(
+      `No golf=hole ways carry ${COURSE_NAME_TAG}="${wanted}" — check the tag spelling, or that the export covers that course.`
+    );
+  }
 
   const holeLineByNumber = new Map<number, GeoJSON.Feature<GeoJSON.LineString>>();
+  const seenRefs = new Set<number>();
+  const collidingRefs = new Set<number>();
   let maxHoleNumber = 0;
   for (const f of holeLines) {
     const ref = parseInt((f.properties as any)?.ref, 10);
     if (!Number.isFinite(ref)) continue;
+    if (seenRefs.has(ref)) collidingRefs.add(ref);
+    seenRefs.add(ref);
     holeLineByNumber.set(ref, f as GeoJSON.Feature<GeoJSON.LineString>);
     maxHoleNumber = Math.max(maxHoleNumber, ref);
+  }
+  if (collidingRefs.size > 0) {
+    // Previously silent, and the resulting course looked plausible — a back nine belonging to a
+    // different course entirely, with no warning anywhere. Always worth surfacing.
+    const names = detectCourseNames(fc);
+    warnings.push(
+      `${collidingRefs.size} hole number(s) appear more than once (${[...collidingRefs].sort((a, b) => a - b).join(", ")}) — ` +
+        `later ways overwrote earlier ones, so some holes may belong to a different course. ` +
+        (names.length > 1
+          ? `This export contains ${names.length} courses (${names.join(", ")}) — import one at a time.`
+          : `Export one course at a time, or tag each hole with ${COURSE_NAME_TAG}.`)
+    );
   }
   if (maxHoleNumber === 0) {
     warnings.push("No golf=hole centerlines with a usable ref number were found — falling back to 18 holes, par 4, with no shape data.");
     maxHoleNumber = 18;
+  }
+
+  // Which course a polygon belongs to is decided by its nearest centerline among ALL of them, not
+  // just the selected course's — otherwise a Pines green, with every Pines line filtered out,
+  // simply attaches to the closest Lakes hole instead. Using the full set means the neighbouring
+  // course's own line wins and the feature is dropped. No-op when no course filter is in play.
+  const ownershipLines = allHoleLines.map((f) => ({
+    line: f as GeoJSON.Feature<GeoJSON.LineString>,
+    course: (((f.properties as any)?.[COURSE_NAME_TAG] ?? "") as string).trim()
+  }));
+  function ownsFeature(centroid: LatLng): boolean {
+    if (!wanted) return true;
+    let best: { course: string; d: number } | null = null;
+    const pt = turf.point([centroid.lng, centroid.lat]);
+    for (const o of ownershipLines) {
+      const d = turf.pointToLineDistance(pt, o.line, { units: "meters" });
+      if (!best || d < best.d) best = { course: o.course, d };
+    }
+    return best === null || best.course === wanted;
   }
 
   // --- 2b. Auto-correct backward-drawn centerlines: some OSM ways for golf=hole are digitized
@@ -215,6 +296,7 @@ export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCours
     if (golfTag) {
       if (f.geometry.type !== "Polygon") continue;
       const centroid = centroidLatLng(f.geometry);
+      if (!ownsFeature(centroid)) continue;
       const centroidPt = turf.point([centroid.lng, centroid.lat]);
       const nearest =
         golfTag === "green"
@@ -251,6 +333,7 @@ export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCours
     if (!hazardGeometry) continue;
 
     const centroid = centroidLatLng(hazardGeometry);
+    if (!ownsFeature(centroid)) continue;
     const nearest = nearestHoleNumber(turf.point([centroid.lng, centroid.lat]));
     if (!nearest) continue;
     if (nearest.distanceMeters > 100) lowConfidenceCount++;
@@ -284,6 +367,7 @@ export function parseOverpassGeoJson(fc: GeoJSON.FeatureCollection): ParsedCours
   for (const f of features) {
     if ((f.properties as any)?.golf !== "tee" || f.geometry.type !== "Polygon") continue;
     const centroid = centroidLatLng(f.geometry);
+    if (!ownsFeature(centroid)) continue;
     const nearest = nearestHoleByCenterlineHalf(centroid, "start");
     if (!nearest) continue;
     const teebox = (f.properties as any)?.teebox as string | undefined;

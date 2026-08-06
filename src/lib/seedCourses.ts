@@ -9,12 +9,16 @@ import { saveImportedCourse } from "./courseRepo";
 // add an entry here (slug = filename), commit+push — it'll auto-seed into everyone's
 // Dexie on next load.
 //
+// `courseName` is optional and only needed at a MULTI-COURSE facility: it selects one course's
+// holes by their `golf:course:name` tag, so each nine of a 27-hole site bundles as its own entry
+// (three entries, one file, three different courseName values). Omit it for a single-course file.
+//
 // `name` is the DISPLAY name and is authoritative — it's passed to saveImportedCourse,
 // overriding whatever the OSM boundary polygon is called. For Tarandowah and Innerkip the
 // two happen to be identical; for Ussher's Creek they are not, because Legends of the
 // Niagara maps all 45 of its holes under a single `leisure=golf_course` polygon named for
 // the facility rather than the individual course (see docs/osm-editing-guide.md).
-const BUNDLED_COURSES = [
+const BUNDLED_COURSES: { name: string; slug: string; file: string; courseName?: string }[] = [
   { name: "Tarandowah Golfers Club", slug: "tarandowah", file: "courses/tarandowah.geojson" },
   { name: "Innerkip Highlands Golf Club", slug: "innerkip-highlands", file: "courses/innerkip-highlands.geojson" },
   { name: "Ussher's Creek", slug: "usshers-creek", file: "courses/usshers-creek.geojson" },
@@ -71,7 +75,7 @@ async function seedBundledCoursesOnce(): Promise<void> {
       const res = await fetch(`${import.meta.env.BASE_URL}${entry.file}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const geojson = await res.json();
-      const parsed = parseOverpassGeoJson(geojson);
+      const parsed = parseOverpassGeoJson(geojson, entry.courseName ? { courseName: entry.courseName } : undefined);
       const ids = await saveImportedCourse(parsed, { slug: entry.slug, name: entry.name });
       await db.courses.update(ids.courseId, { isFeatured: true });
     } catch (e) {
