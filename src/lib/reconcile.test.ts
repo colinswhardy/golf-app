@@ -291,6 +291,42 @@ describe("reconcile — Appendix A", () => {
     expect(flags[0].detail).toContain("6"); // 4 + 2 + 0
   });
 
+  // Case 10 — the headline behaviour: an approach shot's distance is measured from where it was
+  // struck to where the FIRST putt started, not to the pin and not to the next hole's tee. Nothing
+  // is scanned between the approach and the next tee, so the whole chain rests on frozenPutts[0].
+  it("approach closes onto the first putt, not the pin", () => {
+    const laps = [lap(0, pt(0, 0), 0), lap(300, pt(0, 240), 1)];
+    const taps = [tap(-5, "driver"), tap(295, "56")];
+    const firstPutt = greenPutt("rh1", pt(0, 330), pt(0, 352), 3);
+    const secondPutt = greenPutt("rh1", pt(0, 352), pt(0, 355), 4);
+    const r = run({ laps, taps, holes: [{ ...HOLE1, score: 4 }], existingShots: [firstPutt, secondPutt] });
+
+    const approach = r.shots.find((s) => s.shotNumber === 2);
+    expect(approach?.endPoint).toEqual(firstPutt.startPoint);
+    // ...and specifically NOT the pin, which sits a full putt beyond it.
+    expect(approach?.endPoint).not.toEqual(HOLE1.pin);
+  });
+
+  // Case 11 — saveGreenMarks writes a hole's putts in one tight loop, so they share a millisecond
+  // and `recordedAt` ties; Dexie then returns them in UUID order, which is arbitrary. Feeding them
+  // in reverse models the losing half of that coin flip. Ordering must come from shotNumber, which
+  // the writer assigns explicitly — otherwise the approach chains to the SECOND putt and its
+  // recorded distance is inflated by the length of the first.
+  it("approach still closes onto the first putt when the putt rows arrive out of order", () => {
+    const laps = [lap(0, pt(0, 0), 0), lap(300, pt(0, 240), 1)];
+    const taps = [tap(-5, "driver"), tap(295, "56")];
+    const firstPutt = greenPutt("rh1", pt(0, 330), pt(0, 352), 3);
+    const secondPutt = greenPutt("rh1", pt(0, 352), pt(0, 355), 4);
+    const r = run({ laps, taps, holes: [{ ...HOLE1, score: 4 }], existingShots: [secondPutt, firstPutt] });
+
+    const approach = r.shots.find((s) => s.shotNumber === 2);
+    expect(approach?.endPoint).toEqual(firstPutt.startPoint);
+    // The putts must also keep their own order in the persisted output — the tap-in should never
+    // be renumbered ahead of the long first putt.
+    const putts = r.shots.filter((s) => s.swingType === "putt");
+    expect(putts.map((s) => s.startPoint)).toEqual([firstPutt.startPoint, secondPutt.startPoint]);
+  });
+
   // Case 9
   it("chip-in: pin marked, zero putts — last swing holes out at the pin", () => {
     const laps = [lap(0, pt(0, 0), 0), lap(300, pt(0, 330), 1)];

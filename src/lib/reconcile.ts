@@ -471,7 +471,16 @@ export function reconcile(input: ReconcileInput): ReconcileResult {
     const holeFrozen = frozen
       .filter((s) => s.roundHoleId === hole.roundHoleId)
       .sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
-    const frozenPutts = holeFrozen.filter((s) => s.swingType === "putt");
+    // Putts order by shotNumber, NOT by recordedAt. saveGreenMarks writes a hole's putts in one
+    // tight loop (roundRepo.ts), so they routinely share a millisecond; `recordedAt` then ties and
+    // the stable sort falls back to the order Dexie happened to return them in, which is UUID
+    // order. That matters more than it looks: the LAST swing of the hole is closed onto
+    // frozenPutts[0].startPoint below, so a tie could chain the approach to the second putt and
+    // inflate its recorded distance by the length of the first one. shotNumber is assigned
+    // explicitly and sequentially by the writer, so it's the ordering that was always intended.
+    const frozenPutts = holeFrozen
+      .filter((s) => s.swingType === "putt")
+      .sort((a, b) => a.shotNumber - b.shotNumber);
     const frozenPenalties = holeFrozen.filter((s) => s.penaltyType !== null);
     const frozenSwings = holeFrozen.filter((s) => s.swingType !== "putt" && s.penaltyType === null);
 
