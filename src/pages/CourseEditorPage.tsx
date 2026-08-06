@@ -8,6 +8,7 @@ import { createTeeBox, deleteHoleFeature, getFeaturesForHole, getHolesForVersion
 import { AppBar, EmptyState, Icon, Page } from "../components/ui";
 import { SATELLITE_STYLE } from "../components/CourseMap";
 import { applyTouchDragOffset } from "../lib/mapTouch";
+import { distanceYards } from "../lib/geo";
 import type { LatLng, TeeBox } from "../types/domain";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -77,6 +78,11 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   const [selectedTeeBoxId, setSelectedTeeBoxId] = useState<string | null>(null);
   const [draftLocation, setDraftLocation] = useState<LatLng | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  // Manual tee-box creation: `addingTee` swaps the bottom bar over to a name field, so a new tee
+  // is named before it exists rather than being created as "Tee" and renamed later (there is no
+  // rename). Once placed it's an ordinary tee box — same drag + Save path as any imported one.
+  const [addingTee, setAddingTee] = useState(false);
+  const [newTeeName, setNewTeeName] = useState("");
 
   // --- Hazard drawing states ---
   const [drawingMode, setDrawingMode] = useState<"none" | "point" | "line" | "area">("none");
@@ -106,6 +112,8 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
     setWaypointDirty(false);
     setDraftGreen(currentHole?.greenPoint ?? null);
     setGreenDirty(false);
+    setAddingTee(false);
+    setNewTeeName("");
   }, [currentHole?.id, teeBoxes?.length]);
   useEffect(() => {
     setDraftLocation(selectedTeeBox?.location ?? null);
@@ -324,6 +332,15 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
   // polygon centroid. Dragging it stages a green-location override (saved via "Save green"), which
   // the round map then uses as the aim target — including for holes that have no green polygon. ---
   const greenPos = draftGreen ?? greenCentroid;
+  // Live tee→green yardage for the bottom bar. Keyed off draftLocation rather than the persisted
+  // tee position so it tracks the marker mid-drag (the drag handler updates draftLocation on every
+  // tick), which is what makes it usable for judging whether a hand-placed tee is in the right
+  // spot. Null when the hole has no green at all — those holes exist, so the readout must not
+  // silently render a distance to nothing.
+  const teeToGreenYards = useMemo(
+    () => (draftLocation && greenPos ? Math.round(distanceYards(draftLocation, greenPos)) : null),
+    [draftLocation?.lat, draftLocation?.lng, greenPos?.lat, greenPos?.lng]
+  );
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !greenPos) {
@@ -477,16 +494,24 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
     setStatus(null);
   }
 
-  // Creates a tee box at the current map center for a hole that has none (the OSM import left some
-  // holes with no tee, which makes them unplayable on the round map). Named "Tee" to match the
-  // import's generic fallback name; drag + Save afterward to fine-tune, same as any other tee.
+  // Creates a tee box at the current map centre under a name typed by hand. Two cases it serves:
+  // a hole the import left with no tee at all (unplayable on the round map without one), and
+  // adding the real tee sets to a course whose OSM `golf=tee` polygons carry no `teebox` colour
+  // tag — Legends of the Niagara has none on any of its 175 tees, so every tee there imports as a
+  // generic "Tee". Dropping at the map centre (not the green, not the hole's first vertex) keeps
+  // it in view for the drag that follows; the tee is selected immediately so the distance-to-green
+  // readout is live while positioning it.
   async function handleAddTeeBox() {
     const map = mapRef.current;
     if (!map || !currentHole) return;
+    const name = newTeeName.trim();
+    if (!name) return;
     const c = map.getCenter();
-    const tee = await createTeeBox(currentHole.id, "Tee", { lat: c.lat, lng: c.lng });
+    const tee = await createTeeBox(currentHole.id, name, { lat: c.lat, lng: c.lng });
     setSelectedTeeBoxId(tee.id);
-    setStatus("Added a tee box — drag it into place, then Save.");
+    setAddingTee(false);
+    setNewTeeName("");
+    setStatus(`Added "${name}" — drag it onto the tee, then Save.`);
   }
 
   async function handleSaveGreen() {
@@ -631,8 +656,8 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
           }}
         >
           <span className="small danger">No tee boxes on this hole.</span>
-          <button className="btn btn--sm" onClick={handleAddTeeBox}>
-            Add at map centre
+          <button className="btn btn--sm" onClick={() => setAddingTee(true)}>
+            Add a tee box
           </button>
         </div>
       )}
@@ -763,20 +788,74 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
       )}
 
       <div className="round-bar">
-        <div className="grow" style={{ minWidth: 0 }}>
-          <div className="small dim truncate">
-            {selectedTeeBox ? `Dragging "${selectedTeeBox.name}" — red dot is the green` : "Edit the green, waypoints or hazards"}
-          </div>
-          {status && <div className="tiny accent mt-1">{status}</div>}
-        </div>
-        <div className="row" style={{ gap: 8 }}>
-          <button className="btn btn--sm btn--ghost" onClick={handleClear} disabled={!isDirty}>
-            Clear
-          </button>
-          <button className="btn btn--sm btn--primary" onClick={handleSave} disabled={!isDirty}>
-            Save
-          </button>
-        </div>
+        {addingTee ? (
+          <>
+            <div className="grow" style={{ minWidth: 0 }}>
+              <input
+                className="field grow"
+                style={{ padding: "7px 10px" }}
+                type="text"
+                autoFocus
+                value={newTeeName}
+                onChange={(e) => setNewTeeName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddTeeBox();
+                  if (e.key === "Escape") {
+                    setAddingTee(false);
+                    setNewTeeName("");
+                  }
+                }}
+                placeholder="Tee name — e.g. Blue"
+                aria-label="New tee box name"
+              />
+            </div>
+            <div className="row" style={{ gap: 8 }}>
+              <button
+                className="btn btn--sm btn--ghost"
+                onClick={() => {
+                  setAddingTee(false);
+                  setNewTeeName("");
+                }}
+              >
+                Cancel
+              </button>
+              <button className="btn btn--sm btn--primary" onClick={handleAddTeeBox} disabled={!newTeeName.trim()}>
+                Place
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grow" style={{ minWidth: 0 }}>
+              <div className="small dim truncate">
+                {selectedTeeBox ? (
+                  <>
+                    {`Dragging "${selectedTeeBox.name}" — `}
+                    {teeToGreenYards === null ? (
+                      "no green on this hole"
+                    ) : (
+                      <span className="accent bold">{teeToGreenYards} yds to green</span>
+                    )}
+                  </>
+                ) : (
+                  "Edit the green, waypoints or hazards"
+                )}
+              </div>
+              {status && <div className="tiny accent mt-1">{status}</div>}
+            </div>
+            <div className="row" style={{ gap: 8 }}>
+              <button className="btn btn--sm btn--ghost" onClick={() => setAddingTee(true)} disabled={!currentHole}>
+                + Tee
+              </button>
+              <button className="btn btn--sm btn--ghost" onClick={handleClear} disabled={!isDirty}>
+                Clear
+              </button>
+              <button className="btn btn--sm btn--primary" onClick={handleSave} disabled={!isDirty}>
+                Save
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

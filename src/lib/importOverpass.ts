@@ -13,12 +13,17 @@ const DIRECT_TAG_MAP: Record<string, FeatureType> = {
   lateral_water_hazard: "hazard"
 };
 
-/** Version of this parser's OUTPUT. Bump whenever a parser fix/feature means already-imported
- * courses should be re-imported (additively — a new CourseVersion; never a wipe). Compared
- * against Course.importerVersion by seedCourses.
+/** Version of this parser's OUTPUT. Bump whenever a parser fix/feature — or a refreshed bundled
+ * .geojson — means already-imported courses should be re-imported (additively — a new
+ * CourseVersion; never a wipe). Compared against Course.importerVersion by seedCourses, which is
+ * the ONLY re-seed trigger: swapping a file in public/courses/ without bumping this does nothing
+ * for anyone who already has the course. The bump re-imports every bundled course, not just the
+ * changed one; that's additive and harmless, just slightly wasteful.
  * v4: hole centerlines persisted as HoleFeature rows (real ones from golf=hole, synthetic
- * straight tee→green lines where OSM has none), needed for target-line defaults. */
-export const IMPORTER_VERSION = 4;
+ * straight tee→green lines where OSM has none), needed for target-line defaults.
+ * v5: refreshed Ussher's Creek export — holes 10/11/12 now have real OSM centerlines
+ * (ways 1547744712-14), so they import as real holes instead of par-4 placeholders. */
+export const IMPORTER_VERSION = 5;
 
 const GREENSIDE_BUNKER_THRESHOLD_YARDS = 30;
 // Streams/creeks/drains are usually mapped as centerlines, not polygons — buffered to a thin

@@ -122,11 +122,12 @@ one boundary polygon per export.
 - **Legends of the Niagara** (`way/179197053`) — 45 holes across three courses sharing one boundary
   and one set of `ref` numbers. Pre-filtered exports live in `data/imports/`:
   - `usshers-creek.geojson` — hole ways `989365752`, `1089972014`, `1089976788`, `1090265431`,
-    `1090284087`, `1090347545`, `1090347555`, `1090358375`, `1090361089`, `1092167835`,
-    `1092175409`, `1092181642`, `1092202045`, `1092210084`, `1092214551`.
-    **Holes 10, 11 and 12 are not mapped in OSM at all** — they import as empty par-4 placeholders.
-    Tracing those three centerlines (`golf=hole` + `ref` + `par`) is the single highest-value edit
-    available on this course.
+    `1090284087`, `1090347545`, `1090347555`, `1090358375`, `1090361089`, `1547744712`,
+    `1547744713`, `1547744714`, `1092167835`, `1092175409`, `1092181642`, `1092202045`,
+    `1092210084`, `1092214551`. Complete as of 2026-08-06: 18 holes, par 72, ~7,120 yds, one green
+    each, and the import raises no warnings. Holes 10/11/12 were unmapped until ways
+    `1547744712`–`14` were traced; if you add more centerlines, add their IDs here too or they
+    won't be in the export.
   - `legends-battlefield.geojson` — hole ways `1394241064`–`1394241065` and `1394241080`–`1394241095`.
     Complete: 18 holes, par 72, full stroke index, one green per hole.
   - The third course is the 9-hole short course (ways `1446413132`–`1446413140`, par 30), not

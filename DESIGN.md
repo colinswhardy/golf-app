@@ -692,6 +692,16 @@ Turbo + a re-import for a one-tee-box fix.
   building real edit-history tracking for a personal single-user admin tool wasn't worth the
   schema/complexity cost; the existing Data Imports flow remains the path to a genuine from-scratch
   re-import if a full reset is ever needed.
+- **Re-imports supersede hand-made tee edits, by design.** A re-import (Data Imports upload, or a
+  bundled re-seed triggered by an `IMPORTER_VERSION` bump) writes a new `CourseVersion` with fresh
+  `Hole` rows, and tee boxes hang off `holeId` — so moved and hand-added tee boxes stay attached to
+  the *old* version and the app, which reads `getLatestCourseVersion`, sees only what the upload
+  contained. That's the wanted behaviour (uploaded tee data is authoritative) and it keeps
+  historical rounds resolving against the geometry they were played on, but it does mean editor
+  work is lost from the live course on the next import — so do the OSM/import work first, then the
+  hand-editing. Pinned by `courseRepo.test.ts` ("re-importing supersedes manually added tee
+  boxes"), since a future change to key tee boxes on something version-stable would silently break
+  it.
 - Home's 4th tile (previously blank) now links here.
 - **Editing green location, waypoints, and creating tees** (all persisted on the `Hole`, so they
   reload whenever the course is next played — see `courseRepo.updateHoleGreenPoint` /
@@ -708,10 +718,20 @@ Turbo + a re-import for a one-tee-box fix.
     dots), "Save waypoints" writes `Hole.waypoints`. Rebuilt from the saved list on every hole
     change (gated on a `mapReady` state so it doesn't run before the map's "load"). Consumed by the
     round map via `initialWaypoints` (see §8).
-  - **Tee creation** — a hole with zero tee boxes shows "+ Add tee box (map center)" (bottom-center,
-    so it clears the left green/waypoint panel), which `createTeeBox`s a "Tee" at the map center;
-    drag + Save to place it. This is what makes the no-tee holes (12/13) playable at all, since the
-    round map can't render without a `fallbackOrigin`.
+  - **Tee creation** — "+ Tee" in the bottom bar swaps that bar for a name field (Enter or "Place"
+    commits, Escape or "Cancel" backs out); `createTeeBox`s under the typed name at the map centre,
+    selects it, and hands straight over to the ordinary drag + Save path. Available on *every*
+    hole, not just tee-less ones: names are the point, because OSM `golf=tee` polygons frequently
+    carry no `teebox` colour tag — none of Legends of the Niagara's 175 do — so every tee there
+    imports as an indistinguishable "Tee" and the tee-set names have to be supplied by hand. A hole
+    with zero tee boxes additionally keeps its bottom-centre "No tee boxes on this hole → Add a tee
+    box" prompt, which opens the same named flow; that's what makes no-tee holes playable at all,
+    since the round map can't render without a `fallbackOrigin`.
+  - **Live tee→green yardage** — the bottom bar reads `Dragging "<name>" — N yds to green` while a
+    tee is selected, computed from `draftLocation` (not the persisted coordinate) so it updates on
+    every drag tick. That's what makes hand-placing a tee verifiable rather than guesswork: the
+    green marker shows where you're aiming and the number tells you whether the tee is on the right
+    box. Renders "no green on this hole" rather than a bogus distance when the hole has no green.
   - The camera recenter falls back to the green (`greenPos`) when a hole has no selected tee, so the
     editor doesn't strand you off-hole on exactly the holes most in need of fixing. (Holes with
     *neither* tee nor green — 12/13 before editing — still open at the map's default center; pan to
