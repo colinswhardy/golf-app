@@ -22,8 +22,9 @@ const DIRECT_TAG_MAP: Record<string, FeatureType> = {
  * v4: hole centerlines persisted as HoleFeature rows (real ones from golf=hole, synthetic
  * straight tee→green lines where OSM has none), needed for target-line defaults.
  * v5: refreshed Ussher's Creek export — holes 10/11/12 now have real OSM centerlines
- * (ways 1547744712-14), so they import as real holes instead of par-4 placeholders. */
-export const IMPORTER_VERSION = 5;
+ * (ways 1547744712-14), so they import as real holes instead of par-4 placeholders.
+ * v6: four new bundled courses (Crosswinds, Savannah, Brora, Victoria Park East). */
+export const IMPORTER_VERSION = 6;
 
 const GREENSIDE_BUNKER_THRESHOLD_YARDS = 30;
 // Streams/creeks/drains are usually mapped as centerlines, not polygons — buffered to a thin

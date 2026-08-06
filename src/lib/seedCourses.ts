@@ -17,7 +17,15 @@ import { saveImportedCourse } from "./courseRepo";
 const BUNDLED_COURSES = [
   { name: "Tarandowah Golfers Club", slug: "tarandowah", file: "courses/tarandowah.geojson" },
   { name: "Innerkip Highlands Golf Club", slug: "innerkip-highlands", file: "courses/innerkip-highlands.geojson" },
-  { name: "Ussher's Creek", slug: "usshers-creek", file: "courses/usshers-creek.geojson" }
+  { name: "Ussher's Creek", slug: "usshers-creek", file: "courses/usshers-creek.geojson" },
+  { name: "Crosswinds Golf & Country Club", slug: "crosswinds", file: "courses/crosswinds.geojson" },
+  { name: "Savannah Golf Links", slug: "savannah", file: "courses/savannah.geojson" },
+  { name: "Brora Golf Club", slug: "brora", file: "courses/brora.geojson" },
+  // Victoria Park East's OSM boundary (way 39872928) carries no name tag, so the parser can find
+  // no boundary at all: the course would otherwise import as "Imported Course" with a null
+  // location. The name override fixes the name; the location stays null until someone adds
+  // name= to that way. See data/osm-survey/osm-victoria-park-east.json.
+  { name: "Victoria Park East Golf Club", slug: "victoria-park-east", file: "courses/victoria-park-east.geojson" }
 ];
 
 // Single-flight guard: App.tsx calls seedBundledCourses() from a fire-and-forget mount
