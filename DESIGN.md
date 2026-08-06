@@ -898,6 +898,36 @@ Battlefield 18 next to it. Ad-hoc uploads through Data Imports pass no override 
 OSM name as before. For Tarandowah and Innerkip the entry name and the parsed name are identical, so
 the override is a no-op there.
 
+## Visual Language — the black-instrument re-skin
+
+The design system was re-skinned to match Colin's fitness dashboard (screenshot, Aug 2026; earlier
+directions live in two artifacts — a warm brown/orange mockup from 25 Jul, superseded by the
+black-instrument skin the shipped app now wears).
+
+What the reference actually is, and what carried over:
+
+- **True black page** (`--bg: #000000`), cards lifted only a few points (`--surface-1: #0d0d0f`)
+  and separated by white-alpha hairlines rather than by tint. The old surfaces carried a green
+  undertone and the shell a green radial bloom; both are gone. Depth now comes from surface steps
+  and hairlines, which is why `--shadow-glow` lost its coloured bloom too.
+- **White-alpha text ladder** (0.95 / 0.6 / 0.42) instead of three tinted greys. The contrast gap
+  between steps is what makes the big numerals read as instruments.
+- **Uppercase, letter-spaced eyebrows** over large tabular numerals with a small dim unit suffix —
+  the app's `.section__title` and `.stat__value` already had this shape, so it needed no change.
+- **Green kept, deliberately.** The dashboard leads with blue and spends green only on positive
+  deltas (the ▲ beside resting HR). Here green stays the primary accent: this is the golf app, and
+  keeping it was the explicit ask. Everything else — shell, cards, type, hairlines — is the
+  dashboard's.
+- **Data-viz series tokens added** (`--data-1` blue, `--data-2` lavender, plus `--track`), lifted
+  from the dashboard's bars and weight trend line. Charts should reach for these rather than
+  `--accent`, so the accent keeps meaning "interactive/positive" instead of "a series".
+- `--warn` retuned to the dashboard's amber (`#e8a33d`, its "off pace" pill) and `--info` to its
+  bar blue.
+
+Because the system is token-first, this was almost entirely a `:root` retune plus neutralising a
+handful of hardcoded green-tinted glass values. Map-page chrome could not be verified locally —
+there's no `VITE_MAPBOX_TOKEN` in the dev container, so the map surfaces render as a token notice.
+
 ## Open Items / Risks
 
 - **Trackman import deferred out of v1.** No usable CSV export in hand yet (only a web session

@@ -7,37 +7,50 @@
    ========================================================================== */
 
 :root {
-  /* --- Surfaces: near-black with a faint green undertone, lifting in steps --- */
-  --bg: #070a09;
-  --bg-elev: #0c110e;
-  --surface-1: #101815;
-  --surface-2: #16211c;
-  --surface-3: #1e2c25;
+  /* --- Surfaces: the fitness dashboard's black-instrument shell. True black page, cards
+     lifted only a few points and held apart by hairlines rather than by tint — the earlier
+     green-undertoned surfaces read as "themed", this reads as an instrument. --- */
+  --bg: #000000;
+  --bg-elev: #08080a;
+  --surface-1: #0d0d0f;
+  --surface-2: #131316;
+  --surface-3: #1b1b1f;
 
-  /* --- Lines --- */
-  --line: rgba(255, 255, 255, 0.07);
-  --line-strong: rgba(255, 255, 255, 0.13);
+  /* --- Lines: white alpha, not solid greys, so a hairline reads the same over any surface --- */
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.16);
 
-  /* --- Text --- */
-  --text: #e9f1ec;
-  --text-dim: #93a89b;
-  --text-faint: #62786c;
+  /* --- Text: a three-step white-alpha ladder. Metrics sit at full strength, labels drop to
+     0.6, supporting text to 0.42 — the contrast gap is what makes the big numerals read. --- */
+  --text: rgba(255, 255, 255, 0.95);
+  --text-dim: rgba(255, 255, 255, 0.6);
+  --text-faint: rgba(255, 255, 255, 0.42);
 
-  /* --- Accent: mint. Bright enough to read in sunlight, cool enough to feel
-     engineered rather than "golf club green". --- */
+  /* --- Accent: mint, kept. The dashboard leads with blue and spends green on positive deltas
+     (the ▲ beside resting HR); here green stays primary because this is the golf app and
+     Colin asked for it to survive the re-skin. Bright enough to read in sunlight. --- */
   --accent: #3ddc97;
-  --accent-soft: rgba(61, 220, 151, 0.14);
-  --accent-line: rgba(61, 220, 151, 0.32);
-  --accent-glow: rgba(61, 220, 151, 0.28);
+  --accent-soft: rgba(61, 220, 151, 0.13);
+  --accent-line: rgba(61, 220, 151, 0.3);
+  --accent-glow: rgba(61, 220, 151, 0.22);
   --accent-ink: #04150d;
 
-  /* --- Signal colours --- */
-  --warn: #ffc043;
-  --warn-soft: rgba(255, 192, 67, 0.14);
+  /* --- Signal colours. --warn retuned to the dashboard's amber (its "off pace" pill). --- */
+  --warn: #e8a33d;
+  --warn-soft: rgba(232, 163, 61, 0.13);
   --danger: #ff6b6b;
   --danger-soft: rgba(255, 107, 107, 0.13);
-  --info: #61b3ff;
-  --info-soft: rgba(97, 179, 255, 0.13);
+  --info: #2f9fd4;
+  --info-soft: rgba(47, 159, 212, 0.13);
+
+  /* --- Data-viz series, lifted straight off the dashboard: blue for the primary bar series,
+     lavender for a trend line over a fading area fill. Charts should reach for these rather
+     than for --accent, so the accent keeps meaning "interactive/positive" and not "a series". */
+  --data-1: #2f9fd4;
+  --data-2: #8b8ce8;
+  --data-1-soft: rgba(47, 159, 212, 0.18);
+  --data-2-soft: rgba(139, 140, 232, 0.18);
+  --track: rgba(255, 255, 255, 0.07);
 
   /* --- Radius --- */
   --r-sm: 8px;
@@ -50,7 +63,7 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
-  --shadow-glow: 0 0 0 1px var(--accent-line), 0 8px 28px rgba(61, 220, 151, 0.16);
+  --shadow-glow: 0 0 0 1px var(--accent-line), 0 8px 28px rgba(0, 0, 0, 0.6);
 
   /* --- Motion --- */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -148,9 +161,9 @@ button:disabled {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(1100px 620px at 50% -10%, rgba(61, 220, 151, 0.07), transparent 70%),
-    var(--bg);
+  /* Flat black, no bloom: the fitness dashboard holds depth with hairlines and surface
+     steps, not a tinted wash. A coloured glow here also fought the map pages. */
+  background: var(--bg);
 }
 
 .app-main {
@@ -254,7 +267,7 @@ button:disabled {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  background: rgba(10, 15, 12, 0.86);
+  background: rgba(0, 0, 0, 0.86);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   border-top: 1px solid var(--line);
@@ -716,7 +729,7 @@ textarea.field {
 .badge--warn {
   background: var(--warn-soft);
   color: var(--warn);
-  border-color: rgba(255, 192, 67, 0.3);
+  border-color: rgba(232, 163, 61, 0.3);
 }
 .badge--danger {
   background: var(--danger-soft);
@@ -726,7 +739,7 @@ textarea.field {
 .badge--info {
   background: var(--info-soft);
   color: var(--info);
-  border-color: rgba(97, 179, 255, 0.3);
+  border-color: rgba(47, 159, 212, 0.3);
 }
 
 .list-row {
@@ -782,7 +795,7 @@ textarea.field {
 }
 
 .note--warn {
-  border-color: rgba(255, 192, 67, 0.3);
+  border-color: rgba(232, 163, 61, 0.3);
   background: var(--warn-soft);
   color: #f0d9a4;
 }
@@ -811,7 +824,7 @@ textarea.field {
 }
 
 .glass {
-  background: rgba(8, 13, 10, 0.62);
+  background: rgba(0, 0, 0, 0.62);
   backdrop-filter: blur(16px) saturate(150%);
   -webkit-backdrop-filter: blur(16px) saturate(150%);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -997,7 +1010,7 @@ textarea.field {
   justify-content: space-between;
   gap: 10px;
   padding: 11px 14px calc(11px + var(--safe-b));
-  background: rgba(8, 13, 10, 0.8);
+  background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(18px) saturate(150%);
   -webkit-backdrop-filter: blur(18px) saturate(150%);
   border-top: 1px solid var(--line);
@@ -1329,7 +1342,7 @@ textarea.field {
   left: 50%;
   transform: translateX(-50%);
   white-space: nowrap;
-  background: rgba(8, 13, 10, 0.82);
+  background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.12);
