@@ -702,6 +702,17 @@ Turbo + a re-import for a one-tee-box fix.
   hand-editing. Pinned by `courseRepo.test.ts` ("re-importing supersedes manually added tee
   boxes"), since a future change to key tee boxes on something version-stable would silently break
   it.
+- **Mirrors the play view's visual language.** The editor draws the same tee->green aim line
+  (identical paint to `CourseMap`'s) and the same live yardage, both driven off `draftLocation`
+  rather than the persisted tee so the line and the number track the marker mid-drag and can never
+  disagree. Point: a tee should be positioned against the picture it will actually be used in.
+  Styling is *copied*, not shared — `CourseMap` is what you depend on mid-round with no signal, and
+  a regression there costs far more than this duplication, which is the same trade already made for
+  `ReviewMap` (§11). The two must be kept in step by hand.
+- **One deliberate divergence: course polygons ARE drawn here.** In play they are deliberately never
+  rendered (§22). In the editor greens/fairways/bunkers/rough are drawn as translucent fills keyed
+  by `featureType`, because you cannot fix mis-mapped geometry you cannot see. Everything else —
+  imagery, aim line, yardage, dots — matches play.
 - Home's 4th tile (previously blank) now links here.
 - **Course deletion** (`courseRepo.deleteCourse`) lives on the editor's course list, not on
   `CoursesPage` — that page is the pre-round play path, where a stray tap on a destructive control

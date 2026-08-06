@@ -189,6 +189,67 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
 
     map.on("load", () => {
       setMapReady(true);
+
+      // --- Play-view visual layer -------------------------------------------------------------
+      // The editor now shows the same picture you actually play against, so a tee can be judged
+      // against the view it will be used in rather than against a bare marker. Styling is copied
+      // from CourseMap rather than shared: CourseMap is what you depend on mid-round with no
+      // signal, and a regression there costs far more than this duplication (the same trade
+      // DESIGN.md §11/§18 already accepted for ReviewMap). Keep the two in step by hand.
+      //
+      // Course polygons ARE drawn here, unlike in play (CourseMap renders none — DESIGN.md §22).
+      // That divergence is the point: you cannot fix mis-mapped geometry you cannot see.
+      map.addSource("course-surfaces", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({
+        id: "course-surfaces-fill",
+        type: "fill",
+        source: "course-surfaces",
+        paint: {
+          "fill-color": [
+            "match",
+            ["get", "featureType"],
+            "green", "#3ddc97",
+            "fairway", "#2f9fd4",
+            "bunker_greenside", "#e8a33d",
+            "bunker_fairway", "#e8a33d",
+            "rough", "#8b8ce8",
+            "#8b8ce8"
+          ],
+          "fill-opacity": 0.16
+        }
+      });
+      map.addLayer({
+        id: "course-surfaces-outline",
+        type: "line",
+        source: "course-surfaces",
+        paint: {
+          "line-color": [
+            "match",
+            ["get", "featureType"],
+            "green", "#3ddc97",
+            "fairway", "#2f9fd4",
+            "bunker_greenside", "#e8a33d",
+            "bunker_fairway", "#e8a33d",
+            "rough", "#8b8ce8",
+            "#8b8ce8"
+          ],
+          "line-width": 1.2,
+          "line-opacity": 0.55
+        }
+      });
+
+      // Tee -> green aim line. Same paint as CourseMap's so the two read identically.
+      map.addSource("aim-line", {
+        type: "geojson",
+        data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } }
+      });
+      map.addLayer({
+        id: "aim-line",
+        type: "line",
+        source: "aim-line",
+        paint: { "line-color": "#ffc043", "line-width": 3, "line-dasharray": [2, 1] }
+      });
+
       // Add existing-hazards source & layers
       map.addSource("existing-hazards", {
         type: "geojson",
@@ -280,6 +341,27 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
       }))
     });
   }, [holeFeatures]);
+
+  // --- Render this hole's mapped surfaces (green/fairway/bunkers/rough) ---
+  // Polygons only: `centerline` features are LineStrings and a fill layer would silently render
+  // nothing useful for them, so they're filtered out rather than passed through.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const source = map.getSource("course-surfaces") as mapboxgl.GeoJSONSource | undefined;
+    if (!source) return;
+    const surfaces = (holeFeatures ?? []).filter(
+      (f) => f.featureType !== "hazard" && f.featureType !== "centerline" && f.geometry.type === "Polygon"
+    );
+    source.setData({
+      type: "FeatureCollection",
+      features: surfaces.map((f) => ({
+        type: "Feature",
+        properties: { featureType: f.featureType },
+        geometry: f.geometry
+      }))
+    });
+  }, [holeFeatures, mapReady]);
 
   // --- Render draw preview ---
   useEffect(() => {
@@ -379,6 +461,27 @@ function CourseEditorWorkspace({ courseId }: { courseId: string }) {
     () => (draftLocation && greenPos ? Math.round(distanceYards(draftLocation, greenPos)) : null),
     [draftLocation?.lat, draftLocation?.lng, greenPos?.lat, greenPos?.lng]
   );
+
+  // --- Tee -> green aim line ---
+  // Driven off draftLocation (not the persisted tee) so it tracks the marker mid-drag, exactly as
+  // the bottom bar's yardage does — the line and the number must never disagree.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const source = map.getSource("aim-line") as mapboxgl.GeoJSONSource | undefined;
+    if (!source) return;
+    const from = draftLocation;
+    const to = greenPos;
+    source.setData({
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "LineString",
+        coordinates: from && to ? [[from.lng, from.lat], [to.lng, to.lat]] : []
+      }
+    });
+  }, [draftLocation?.lat, draftLocation?.lng, greenPos?.lat, greenPos?.lng, mapReady]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !greenPos) {
