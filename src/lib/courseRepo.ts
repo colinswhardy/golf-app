@@ -31,19 +31,26 @@ async function queueOutbox(table: string, op: "upsert" | "delete", payload: unkn
  * key), not display name: if a course with the same slug already exists, this adds a new version
  * under it (copy-on-write, DESIGN.md §7) rather than duplicating the course. Strictly additive —
  * existing versions/holes/features are never touched, so historical rounds keep resolving.
+ *
+ * `opts.name` overrides the display name derived from the OSM boundary polygon. Needed because a
+ * multi-course facility has ONE `leisure=golf_course` polygon covering every course on site, so
+ * each course parses out under the facility's name (e.g. both Legends of the Niagara 18s would
+ * import as "Legends of the Niagara"). Bundled courses always pass it; ad-hoc uploads through Data
+ * Imports don't, and keep taking the OSM name as before.
  */
 export async function saveImportedCourse(
   parsed: ParsedCourse,
-  opts?: { slug?: string }
+  opts?: { slug?: string; name?: string }
 ): Promise<{ courseId: string; courseVersionId: string }> {
-  const slug = opts?.slug ?? slugify(parsed.name);
+  const name = opts?.name ?? parsed.name;
+  const slug = opts?.slug ?? slugify(name);
   return db.transaction("rw", [db.courses, db.courseVersions, db.holes, db.holeFeatures, db.teeBoxes, db.outbox], async () => {
     let course = await db.courses.where("slug").equals(slug).first();
 
     if (!course) {
       course = {
         id: uuid(),
-        name: parsed.name,
+        name,
         slug,
         importerVersion: IMPORTER_VERSION,
         location: parsed.location,
@@ -55,7 +62,7 @@ export async function saveImportedCourse(
     } else {
       // Re-import: record which importer produced the new latest version. Name/location refresh
       // too (OSM data may have been corrected), but nothing under old versions is modified.
-      course = { ...course, importerVersion: IMPORTER_VERSION, name: parsed.name, location: parsed.location ?? course.location, updatedAt: now() };
+      course = { ...course, importerVersion: IMPORTER_VERSION, name, location: parsed.location ?? course.location, updatedAt: now() };
       await db.courses.put(course);
       await queueOutbox("courses", "upsert", course);
     }

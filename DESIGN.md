@@ -854,10 +854,19 @@ static bundle guarantees that; a database sync would just add a failure mode ("d
 left home") for data that doesn't need to be dynamic. Supabase remains the right tool for *round*
 data (scores/shots), which is genuinely per-session and needs to survive a phone loss — see §1.
 
-**Adding a new bundled course**: drop the `.geojson` in `public/courses/`, add `{name, file}` to
-`BUNDLED_COURSES` in `seedCourses.ts`, commit+push — it auto-seeds into everyone's Dexie on next
+**Adding a new bundled course**: drop the `.geojson` in `public/courses/`, add `{name, slug, file}`
+to `BUNDLED_COURSES` in `seedCourses.ts`, commit+push — it auto-seeds into everyone's Dexie on next
 load. The in-app Data Imports upload flow (`DataImportsPage.tsx`) still exists independently for
 ad-hoc/one-off imports that don't warrant a code change.
+
+The entry's `name` is the **display name and is authoritative** — `seedCourses` passes it to
+`saveImportedCourse({ slug, name })`, which overrides the name derived from the OSM boundary
+polygon. This exists because a multi-course facility maps every course on site under a *single*
+`leisure=golf_course` polygon named for the facility, so the parsed name is the facility's, not the
+course's: Ussher's Creek would otherwise import as "Legends of the Niagara", as would the
+Battlefield 18 next to it. Ad-hoc uploads through Data Imports pass no override and keep taking the
+OSM name as before. For Tarandowah and Innerkip the entry name and the parsed name are identical, so
+the override is a no-op there.
 
 ## Open Items / Risks
 

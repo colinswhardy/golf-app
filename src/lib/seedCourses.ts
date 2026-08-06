@@ -8,9 +8,16 @@ import { saveImportedCourse } from "./courseRepo";
 // these are copies. To add a course this way: drop the .geojson in public/courses/,
 // add an entry here (slug = filename), commit+push — it'll auto-seed into everyone's
 // Dexie on next load.
+//
+// `name` is the DISPLAY name and is authoritative — it's passed to saveImportedCourse,
+// overriding whatever the OSM boundary polygon is called. For Tarandowah and Innerkip the
+// two happen to be identical; for Ussher's Creek they are not, because Legends of the
+// Niagara maps all 45 of its holes under a single `leisure=golf_course` polygon named for
+// the facility rather than the individual course (see docs/osm-editing-guide.md).
 const BUNDLED_COURSES = [
   { name: "Tarandowah Golfers Club", slug: "tarandowah", file: "courses/tarandowah.geojson" },
-  { name: "Innerkip Highlands Golf Club", slug: "innerkip-highlands", file: "courses/innerkip-highlands.geojson" }
+  { name: "Innerkip Highlands Golf Club", slug: "innerkip-highlands", file: "courses/innerkip-highlands.geojson" },
+  { name: "Ussher's Creek", slug: "usshers-creek", file: "courses/usshers-creek.geojson" }
 ];
 
 // Single-flight guard: App.tsx calls seedBundledCourses() from a fire-and-forget mount
@@ -57,7 +64,7 @@ async function seedBundledCoursesOnce(): Promise<void> {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const geojson = await res.json();
       const parsed = parseOverpassGeoJson(geojson);
-      const ids = await saveImportedCourse(parsed, { slug: entry.slug });
+      const ids = await saveImportedCourse(parsed, { slug: entry.slug, name: entry.name });
       await db.courses.update(ids.courseId, { isFeatured: true });
     } catch (e) {
       console.error(`Failed to seed bundled course "${entry.name}":`, e);
