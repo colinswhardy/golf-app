@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import * as turf from "@turf/turf";
 import { db } from "../lib/db";
@@ -21,8 +21,7 @@ import {
   saveGreenMarks,
   saveHoleResult,
   setRoundHoleFairwayResult,
-  setRoundHolePinLocation,
-  startRound
+  setRoundHolePinLocation
 } from "../lib/roundRepo";
 import {
   addReviewFlag,
@@ -33,7 +32,8 @@ import {
   recordWatchLap,
   setReviewFlagStatus
 } from "../lib/captureRepo";
-import { armScanning, isNfcSupported } from "../lib/nfc";
+import { isNfcSupported } from "../lib/nfc";
+import { isNfcSessionActive, onNfcError, onNfcStateChange, onNfcTag, startNfcSession, stopNfcSession } from "../lib/nfcSession";
 import { ALL_LIES, LIE_LABELS, detectLie } from "../lib/lie";
 import { classifyFairwayResult } from "../lib/fairway";
 import { CourseMap, type DispersionEllipseSpec } from "../components/CourseMap";
@@ -42,13 +42,12 @@ import { HoleScoreSheet, ScorecardSheet, ShotSheet } from "../components/RoundSh
 import { Icon, relativeToParLabel } from "../components/ui";
 import { bearingDegrees, distanceMeters, distanceYards, fromDownrangeOffline } from "../lib/geo";
 import { getClubDispersion } from "../lib/dispersion";
-import { isGpsEnabled, isSimulationEnabled } from "../lib/settings";
+import { getTeePreference, isGpsEnabled, isSimulationEnabled } from "../lib/settings";
 import type { Club, FairwayResult, LatLng, Lie, Round, RoundHole } from "../types/domain";
 
 const GREENSIDE_BUNKER_MAX_YARDS = 40;
 const FAR_FROM_HOLE_METERS = 300;
 const GREEN_HALF_DEPTH_YARDS = 15;
-const TEE_PREFERENCE_KEY = "caddyshot_tee_preference";
 const AUTO_LAYUP_MIN_HOLE_YARDS = 300;
 const AUTO_LAYUP_DOWNRANGE_YARDS = 275;
 const TAP_MOVE_TOLERANCE_PX = 10;
@@ -186,6 +185,7 @@ function getHoleOrdinal(n: number): string {
 
 export function RoundMapPage() {
   const { courseId } = useParams();
+  const navigate = useNavigate();
   const isDemo = courseId === "demo" || !courseId;
 
   const courseVersion = useLiveQuery(() => (isDemo ? undefined : getLatestCourseVersion(courseId!)), [courseId]);
@@ -201,18 +201,18 @@ export function RoundMapPage() {
   // round state below depends on it. ---
   const courseFirstHole = holes?.length ? Math.min(...holes.map((h) => h.number)) : 1;
   const courseLastHole = holes?.length ? Math.max(...holes.map((h) => h.number)) : 18;
-  const courseHasBackNine = courseLastHole >= 18;
-  const [pendingRange, setPendingRange] = useState<"full" | "front" | "back">("full");
   const [round, setRound] = useState<Round | null>(null);
 
-  const activeRange = useMemo(() => {
-    if (round) {
-      return { start: round.startHole ?? courseFirstHole, end: round.endHole ?? courseLastHole };
-    }
-    if (pendingRange === "front") return { start: courseFirstHole, end: Math.min(9, courseLastHole) };
-    if (pendingRange === "back") return { start: 10, end: courseLastHole };
-    return { start: courseFirstHole, end: courseLastHole };
-  }, [round, pendingRange, courseFirstHole, courseLastHole]);
+  // The range is fixed when the round is created on the setup screen; this screen only ever
+  // replays what was stored. Rounds recorded before nines existed carry no range and get the
+  // whole course, which is what they were.
+  const activeRange = useMemo(
+    () => ({
+      start: round?.startHole ?? courseFirstHole,
+      end: round?.endHole ?? courseLastHole
+    }),
+    [round, courseFirstHole, courseLastHole]
+  );
 
   const firstHole = activeRange.start;
   const maxHoleNumber = activeRange.end;
@@ -284,48 +284,55 @@ export function RoundMapPage() {
   }
   useEffect(() => () => (toastTimerRef.current ? clearTimeout(toastTimerRef.current) : undefined), []);
 
-  const [nfcActive, setNfcActive] = useState(false);
-  const nfcStopRef = useRef<(() => void) | null>(null);
-  // Arms continuous tag scanning for the round. Must be called from a user gesture (Start round,
-  // or the NFC chip after a mid-round reload). Every read = one ClubTap row + a toast —
-  // deliberately NO sheet, NO confirmation: tap the bag, keep walking.
-  async function armNfc(roundId: string) {
-    if (!isNfcSupported() || nfcStopRef.current) return;
-    try {
-      nfcStopRef.current = await armScanning(
-        async (serial, at) => {
-          const clubId = await clubIdForSerial(serial);
-          if (!clubId) {
-            showToast("Unpaired tag");
-            return;
-          }
-          const fix = lastPositionRef.current;
-          await recordClubTap({
-            roundId,
-            // Ref, not the render-time value: this callback is armed once at round start and
-            // would otherwise pin every tap of the round to the first hole's id.
-            roundHoleId: roundHoleIdRef.current,
-            clubId,
-            serialNumber: serial,
-            at,
-            point: fix?.point ?? null,
-            accuracyM: fix?.accuracyM ?? null
-          });
-          showToast(clubsRef.current.find((c) => c.id === clubId)?.name ?? "Club logged");
-        },
-        (msg) => showToast(`NFC: ${msg}`)
-      );
-      setNfcActive(true);
-    } catch {
+  // The reader itself is armed on the setup screen and lives in lib/nfcSession, outside React —
+  // this screen only subscribes to it. Every read = one ClubTap row + a toast; deliberately NO
+  // sheet, NO confirmation: tap the bag, keep walking.
+  const [nfcActive, setNfcActive] = useState(isNfcSessionActive);
+  const roundIdRef = useRef<string | null>(null);
+  roundIdRef.current = round?.id ?? null;
+
+  useEffect(() => {
+    const offState = onNfcStateChange(setNfcActive);
+    const offError = onNfcError((msg) => showToast(`NFC: ${msg}`));
+    const offTag = onNfcTag(async (serial, at) => {
+      // Refs throughout: this subscription outlives any single render, and reading the
+      // render-time values would pin every tap of the round to the hole it was set up on.
+      const roundId = roundIdRef.current;
+      if (!roundId) return;
+      const clubId = await clubIdForSerial(serial);
+      if (!clubId) {
+        showToast("Unpaired tag");
+        return;
+      }
+      const fix = lastPositionRef.current;
+      await recordClubTap({
+        roundId,
+        roundHoleId: roundHoleIdRef.current,
+        clubId,
+        serialNumber: serial,
+        at,
+        point: fix?.point ?? null,
+        accuracyM: fix?.accuracyM ?? null
+      });
+      showToast(clubsRef.current.find((c) => c.id === clubId)?.name ?? "Club logged");
+    });
+    setNfcActive(isNfcSessionActive());
+    return () => {
+      offState();
+      offError();
+      offTag();
+    };
+  }, []);
+
+  /** Re-arms after a mid-round reload, which drops the reader but not the round. The chip press
+   * is the user gesture Chrome needs. */
+  async function rearmNfc() {
+    if (!isNfcSupported()) {
       showToast("NFC unavailable on this device");
+      return;
     }
+    if (!(await startNfcSession())) showToast("NFC unavailable on this device");
   }
-  function stopNfc() {
-    nfcStopRef.current?.();
-    nfcStopRef.current = null;
-    setNfcActive(false);
-  }
-  useEffect(() => stopNfc, []); // page unmount
 
   // Screen wake lock while a round is active: NFC only delivers while the page is visible, so the
   // screen staying on IS the capture reliability story. Re-acquired on visibilitychange because
@@ -379,27 +386,21 @@ export function RoundMapPage() {
     return () => clearTimeout(timer);
   }, [notesDraft, currentHole]);
 
-  // Preferred tee set (e.g. "Blue"), persisted across sessions. Empty string = no preference set
-  // yet, meaning "use the backmost tee" (see fallbackOrigin below).
-  const [selectedTeeName, setSelectedTeeName] = useState<string>(() =>
-    typeof localStorage === "undefined" ? "" : (localStorage.getItem(TEE_PREFERENCE_KEY) ?? "")
-  );
-  // The tee set is a once-per-round decision, so the selector disappears for good once it's made
-  // and never comes back hole to hole. (It also stays hidden once the round is under way.)
-  const [teeSelectorClosed, setTeeSelectorClosed] = useState(false);
-  function handleTeeChange(name: string) {
-    setSelectedTeeName(name);
-    setTeeSelectorClosed(true);
-    if (typeof localStorage === "undefined") return;
-    if (name) localStorage.setItem(TEE_PREFERENCE_KEY, name);
-    else localStorage.removeItem(TEE_PREFERENCE_KEY);
-  }
+  // Preferred tee set (e.g. "Blue"), chosen on the setup screen. Empty string means "use the
+  // backmost tee" (see fallbackOrigin below). Read once — it can't change mid-round.
+  const [selectedTeeName] = useState<string>(getTeePreference);
 
+  // Distinguishes "no round on this course" from "haven't looked yet" — without it the redirect
+  // below fires on the first render, before the lookup has had a chance to find the round you're
+  // trying to resume.
+  const [roundChecked, setRoundChecked] = useState(false);
   useEffect(() => {
     if (isDemo || !courseId) return;
     let cancelled = false;
     getActiveRoundForCourse(courseId).then((r) => {
-      if (!cancelled) setRound(r ?? null);
+      if (cancelled) return;
+      setRound(r ?? null);
+      setRoundChecked(true);
     });
     // Seeding is a write, so it can't live in a live query — but the bag can be edited in
     // Settings while this page is mounted, so the seed runs once and the live query below keeps
@@ -409,6 +410,15 @@ export function RoundMapPage() {
       cancelled = true;
     };
   }, [isDemo, courseId]);
+
+  // Rounds are started on the setup screen now, so there's nothing to do here without one.
+  // Suppressed once a round has been completed on this screen — finishing the 18th shouldn't
+  // bounce you back to a setup page you've just come through.
+  const finishedRef = useRef(false);
+  useEffect(() => {
+    if (isDemo || !roundChecked || round || finishedRef.current) return;
+    navigate(`/round/${courseId}/setup`, { replace: true });
+  }, [isDemo, roundChecked, round, courseId, navigate]);
 
   // Live so renames, reordering and additions in Settings show up in the shot sheet immediately
   // rather than only after the round screen is remounted.
@@ -553,14 +563,6 @@ export function RoundMapPage() {
 
   const activeTarget = currentRoundHole?.pinLocation ?? greenCentroid;
   const pinDataReady = !roundHoleId || currentRoundHole !== undefined;
-
-  // Excludes the generic "Tee" fallback name whenever real colour sets exist.
-  const uniqueTeeNames = useMemo(() => {
-    if (!allTeeBoxes?.length) return [];
-    const names = [...new Set(allTeeBoxes.map((t) => t.name))].sort();
-    const colorNames = names.filter((n) => n !== "Tee");
-    return colorNames.length > 0 ? colorNames : names;
-  }, [allTeeBoxes]);
 
   // Prefers the selected tee set for this hole; falls back to the backmost tee box (furthest
   // from the green) when no preference is set, or when this hole doesn't have a tee box under
@@ -711,15 +713,6 @@ export function RoundMapPage() {
     await setReviewFlagStatus(nextTeeFlag.id, "resolved");
   }
 
-  async function handleStartRound() {
-    if (!courseVersion) return;
-    const r = await startRound(courseVersion.id, { startHole: activeRange.start, endHole: activeRange.end });
-    setRound(r);
-    setHoleNumber(activeRange.start);
-    // This click IS the user gesture Web NFC's permission prompt needs — arm here, not in an effect.
-    armNfc(r.id);
-  }
-
   async function handleTargetChange(point: LatLng) {
     if (!roundHoleId) return;
     await setRoundHolePinLocation(roundHoleId, point);
@@ -792,9 +785,13 @@ export function RoundMapPage() {
       setHoleNumber(holeNumber + 1);
     } else if (round) {
       await completeRound(round.id);
-      stopNfc();
+      stopNfcSession();
+      // Flagged before clearing the round so the "no round here" redirect doesn't fire and
+      // bounce a finished round back to the setup screen.
+      finishedRef.current = true;
       setRound(null);
       showToast("Round complete");
+      navigate("/rounds", { replace: true });
     }
   }
 
@@ -1068,7 +1065,7 @@ export function RoundMapPage() {
             <div className="status-rail">
               <button
                 className={`status-chip glass${nfcActive ? " status-chip--on" : ""}`}
-                onClick={() => (nfcActive ? stopNfc() : armNfc(round.id))}
+                onClick={() => (nfcActive ? stopNfcSession() : rearmNfc())}
                 title={
                   isNfcSupported()
                     ? nfcActive
@@ -1089,64 +1086,6 @@ export function RoundMapPage() {
         </div>
       )}
 
-      {/* Pre-round setup: tee set (asked once, then gone for good) and how many holes. */}
-      {!isDemo && currentHole && !round && (
-        <div
-          className="glass"
-          style={{
-            position: "absolute",
-            right: 12,
-            bottom: "calc(var(--round-bar-h, 76px) + 10px)",
-            zIndex: 4,
-            borderRadius: 16,
-            padding: 10,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            alignItems: "flex-end"
-          }}
-        >
-          {uniqueTeeNames.length > 0 && !teeSelectorClosed && (
-            <select
-              className="field"
-              style={{ padding: "7px 12px", borderRadius: 999 }}
-              value={selectedTeeName}
-              onChange={(e) => handleTeeChange(e.target.value)}
-              aria-label="Tee set"
-            >
-              <option value="">Backmost tee</option>
-              {uniqueTeeNames.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          )}
-          {courseHasBackNine && (
-            <div className="chip-row" style={{ justifyContent: "flex-end" }}>
-              {([
-                { key: "full", label: "18", start: courseFirstHole },
-                { key: "front", label: "Front 9", start: courseFirstHole },
-                { key: "back", label: "Back 9", start: 10 }
-              ] as const).map((opt) => (
-                <button
-                  key={opt.key}
-                  className={`chip chip--sm${pendingRange === opt.key ? " chip--active" : ""}`}
-                  onClick={() => {
-                    setPendingRange(opt.key);
-                    // Jump to the range's first hole. The clamp effect alone would only nudge you
-                    // to the nearest in-range hole, so choosing "Front 9" from the 10th tee left
-                    // you on 9 rather than back at the 1st.
-                    setHoleNumber(opt.start);
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Simulation panel — only ever present when the Settings toggle is on. */}
       {!isDemo && currentHole && simulationMode && (
@@ -1283,11 +1222,9 @@ export function RoundMapPage() {
             </div>
           </div>
           <div className="row" style={{ gap: 8 }}>
-            {!round ? (
-              <button className="btn btn--primary" onClick={handleStartRound}>
-                <Icon.play size={16} /> Start round
-              </button>
-            ) : (
+            {/* Rounds start on the setup screen, so by the time this screen has a course to show
+                it either has a round or is the demo preview, which has no actions. */}
+            {round && (
               <>
                 <button className="btn btn--sm" onClick={() => setOpenSheet("shot")} disabled={!roundHoleId}>
                   <Icon.golfer size={15} /> Shot {shotCount + 1}

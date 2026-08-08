@@ -16,6 +16,22 @@ export function setGpsEnabled(enabled: boolean): void {
   localStorage.setItem(GPS_ENABLED_KEY, enabled ? "true" : "false");
 }
 
+export const TEE_PREFERENCE_KEY = "caddyshot_tee_preference";
+
+/** Which tee set to play, by name (e.g. "Blue"). Empty means "use the backmost tee on each
+ * hole" — the round map's fallback, and also what happens per-hole when the chosen set isn't
+ * mapped there. Chosen on the round setup screen and remembered across rounds. */
+export function getTeePreference(): string {
+  if (typeof localStorage === "undefined") return "";
+  return localStorage.getItem(TEE_PREFERENCE_KEY) ?? "";
+}
+
+export function setTeePreference(name: string): void {
+  if (typeof localStorage === "undefined") return;
+  if (name) localStorage.setItem(TEE_PREFERENCE_KEY, name);
+  else localStorage.removeItem(TEE_PREFERENCE_KEY);
+}
+
 export const SIMULATION_KEY = "caddyshot_simulation_mode";
 
 /** Simulation ("couch") mode: real GPS is ignored and the player's position is placed by tapping

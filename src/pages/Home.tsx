@@ -68,7 +68,7 @@ export function Home() {
 
   async function startOn(courseId: string) {
     await db.courses.update(courseId, { lastSelectedAt: new Date().toISOString() });
-    navigate(`/round/${courseId}`);
+    navigate(`/round/${courseId}/setup`);
   }
 
   return (

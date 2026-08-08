@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { Home } from "./pages/Home";
 import { CoursesPage } from "./pages/CoursesPage";
+import { RoundSetupPage } from "./pages/RoundSetupPage";
 import { RoundMapPage } from "./pages/RoundMapPage";
 import { ReviewRoundsPage } from "./pages/ReviewRoundsPage";
 import { DataImportsPage } from "./pages/DataImportsPage";
@@ -25,10 +26,18 @@ const NAV = [
 /** Routes that own the whole screen (full-bleed maps) hide the tab bar — their
  * own chrome sits where the nav would be. */
 const FULLSCREEN_PREFIXES = ["/round/", "/course-editor"];
+/** ...except the round setup screen, which sits under /round/ but is an ordinary
+ * scrolling page you should be able to navigate away from. */
+const FULLSCREEN_EXCEPTIONS = [/^\/round\/[^/]+\/setup\/?$/];
+
+function isFullscreenRoute(pathname: string): boolean {
+  if (FULLSCREEN_EXCEPTIONS.some((re) => re.test(pathname))) return false;
+  return FULLSCREEN_PREFIXES.some((p) => pathname.startsWith(p));
+}
 
 function BottomNav() {
   const { pathname } = useLocation();
-  if (FULLSCREEN_PREFIXES.some((p) => pathname.startsWith(p))) return null;
+  if (isFullscreenRoute(pathname)) return null;
 
   return (
     <nav className="bottom-nav">
@@ -53,7 +62,7 @@ function BottomNav() {
 
 export default function App() {
   const { pathname } = useLocation();
-  const fullscreen = FULLSCREEN_PREFIXES.some((p) => pathname.startsWith(p));
+  const fullscreen = isFullscreenRoute(pathname);
 
   // Fire-and-forget, once per app load. Seeding is idempotent (courses already at
   // the current importer version are skipped), and nothing drains the outbox yet,
@@ -69,6 +78,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/round/:courseId/setup" element={<RoundSetupPage />} />
           <Route path="/round/:courseId" element={<RoundMapPage />} />
           <Route path="/rounds" element={<ReviewRoundsPage />} />
           <Route path="/imports" element={<DataImportsPage />} />

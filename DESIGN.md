@@ -665,11 +665,26 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
   wrapper's threshold from the same handler's point of view, so no separate marker-vs-background
   distinction was needed. Verified explicitly since it's easy to assume markers might swallow the
   pointer events differently than a bare map drag; they don't.
-- **Teebox selector auto-hide**: `handleTeeChange` sets a `teeSelectorClosed` flag alongside
-  saving the preference, hiding the whole selector card immediately rather than leaving it open
-  for the rest of pre-round setup — the choice is already saved (`localStorage`), so there's
-  nothing left for the card to do. Resets on hole change (`useEffect` keyed on `currentHole?.id`)
-  so it's available again on a later hole, still gated to pre-round (`!round`) same as before.
+- **Pre-round setup moved off the map** (`RoundSetupPage.tsx`, route `/round/:courseId/setup`).
+  The tee-set selector and the 18/Front 9/Back 9 chips used to float over the round map, gated on
+  `!round`. Two once-per-round decisions sat in front of you on every hole until you pressed Start,
+  and both were one mis-tap from changing. They now live on their own screen, reached from Courses
+  and Home; the map is entered with a round already created and only ever replays the stored range
+  off the `Round` row. Landing on `/round/:courseId` without an active round redirects here, so
+  deep links and bookmarks still work.
+
+  Two consequences worth knowing:
+
+  - **NFC arming had to leave the component.** Chrome only grants the NFC permission from a live
+    user gesture, and the gesture that begins a round is now the setup screen's Start press — by
+    the time the map mounts there is none left, and a reader owned by the setup component would
+    die with it on navigation. `lib/nfcSession.ts` owns the reader outside React for the length of
+    the round; screens subscribe. The map's NFC chip re-arms after a mid-round reload (that press
+    is itself a gesture). `startNfcSession()` must be called before the first `await` in a handler
+    — awaiting first spends the activation and the scan is rejected.
+  - **Finishing the last hole navigates to `/rounds`** rather than leaving you on a map with no
+    round, which would otherwise trip the redirect and bounce a finished round back to setup.
+    Guarded by a `finishedRef` either way.
 
 ### In-App Course Editor
 
