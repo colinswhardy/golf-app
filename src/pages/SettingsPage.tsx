@@ -8,6 +8,7 @@ import { backupFilename, exportAll, importAll, readBackup, type BackupEnvelope, 
 import { findDanglingReferences, repairDanglingReferences, type RepairResult } from "../lib/integrity";
 import { listClubTags, pairClubTag, unpairClubTag } from "../lib/captureRepo";
 import { isNfcSupported, scanOnce } from "../lib/nfc";
+import { formatTagSerial } from "../lib/clubTagRead";
 import { baselineRowCount, importBaselineCsv } from "../lib/sg";
 import { generateDemoRound, hasDemoRound, removeDemoRound, type DemoHistoryResult } from "../lib/demoRound";
 import type { Club } from "../types/domain";
@@ -597,7 +598,7 @@ function NfcPairingSection({ clubs }: { clubs: Club[] }) {
       async (serial) => {
         await pairClubTag(serial, clubId);
         setArmedClubId(null);
-        setMessage(`Paired …${serial.slice(-8)} to ${clubs.find((c) => c.id === clubId)?.name ?? "club"}.`);
+        setMessage(`Paired …${formatTagSerial(serial, 8)} to ${clubs.find((c) => c.id === clubId)?.name ?? "club"}.`);
       },
       (err) => {
         setArmedClubId(null);
@@ -634,7 +635,7 @@ function NfcPairingSection({ clubs }: { clubs: Club[] }) {
             <div key={club.id} className="list-row">
               <span className="row grow" style={{ minWidth: 0 }}>
                 <span className="grow truncate">{club.name}</span>
-                {serial ? <Badge tone="accent">…{serial.slice(-6)}</Badge> : <Badge>no tag</Badge>}
+                {serial ? <Badge tone="accent">…{formatTagSerial(serial)}</Badge> : <Badge>no tag</Badge>}
               </span>
               <span className="row" style={{ gap: 6 }}>
                 {isArming ? (

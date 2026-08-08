@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Button, Icon, relativeToParLabel, scoreToneClass } from "./ui";
 import { findPutter } from "../lib/stats";
+import { formatTagSerial } from "../lib/clubTagRead";
 import type { Club, FairwayResult, Lie } from "../types/domain";
 
 const FAIRWAY_TILES: { label: string; value: FairwayResult }[] = [
@@ -83,6 +84,75 @@ export function ShotSheet(props: {
           </div>
         </>
       )}
+    </Sheet>
+  );
+}
+
+/**
+ * Pairing a club tag without leaving the round.
+ *
+ * An unpaired tag used to be a dead toast: the read was thrown away and the swing with it, and
+ * the only fix was Settings, after the round, from memory. This catches the read at the moment
+ * you're holding the club against the phone, which is the only moment you can be sure which club
+ * the tag is actually on.
+ *
+ * Whether to also log the read as a shot depends on why you're here, so the caller sets the
+ * default: a tag that surprised you mid-swing is a shot; deliberately catching up on pairing
+ * isn't. Either way it's one tap to flip.
+ */
+export function TagPairSheet(props: {
+  serialNumber: string;
+  clubs: Club[];
+  /** Set when this serial is already paired — i.e. this is a re-pair, not a new tag. */
+  currentClubId: string | null;
+  /** Club ids that already have some tag, so you can see what you're overwriting. */
+  taggedClubIds: Set<string>;
+  defaultLogShot: boolean;
+  onPair: (clubId: string, logShot: boolean) => void;
+  onClose: () => void;
+}) {
+  const [logShot, setLogShot] = useState(props.defaultLogShot);
+  const current = props.clubs.find((c) => c.id === props.currentClubId) ?? null;
+
+  return (
+    <Sheet title={current ? "Re-pair this tag" : "New club tag"} onClose={props.onClose}>
+      <div className="card__meta mb-2" style={{ lineHeight: 1.5 }}>
+        Tag ending <strong>…{formatTagSerial(props.serialNumber)}</strong>
+        {current ? (
+          <>
+            {" "}
+            is paired to <strong>{current.name}</strong>. Pick the club it's actually on.
+          </>
+        ) : (
+          <> isn't paired yet. Tap the club it's stuck to.</>
+        )}
+      </div>
+
+      <div className="tile-grid tile-grid--3">
+        {props.clubs.map((c) => (
+          <button
+            key={c.id}
+            className={`tile${c.id === props.currentClubId ? " tile--active" : ""}`}
+            onClick={() => props.onPair(c.id, logShot)}
+          >
+            {c.name}
+            {props.taggedClubIds.has(c.id) && c.id !== props.currentClubId && (
+              <span className="tiny faint" style={{ display: "block" }}>
+                has a tag
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="row row--between mt-3">
+        <span className="small dim">
+          {logShot ? "Logs a shot here too" : "Pairs only — no shot recorded"}
+        </span>
+        <button className={`chip chip--sm${logShot ? " chip--active" : ""}`} onClick={() => setLogShot((v) => !v)}>
+          {logShot ? "Shot on" : "Shot off"}
+        </button>
+      </div>
     </Sheet>
   );
 }

@@ -686,6 +686,32 @@ confidence-scaled semi-axes) is now wired up end-to-end via `lib/dispersion.ts`:
     round, which would otherwise trip the redirect and bounce a finished round back to setup.
     Guarded by a `finishedRef` either way.
 
+- **Pairing a club tag mid-round** (`TagPairSheet`, `lib/clubTagRead.ts`). An unpaired tag used to
+  be a dead "Unpaired tag" toast: the read was discarded and the swing with it, and the only fix
+  was Settings, after the round, from memory. A read that can't resolve to a club now opens a
+  sheet at the moment you're holding the club against the phone — the only moment you can be sure
+  which club the tag is on — and logs the swing along with the pairing.
+
+  What a read means is decided by `resolveTagRead()`, kept pure and unit-tested because the
+  branches decide whether a stroke is recorded at all:
+
+  - Known tag, normal play → log the swing (unchanged).
+  - Unknown tag → pair prompt, defaulting to **logging** the shot: you tapped it because you were
+    about to hit, and losing that stroke is the failure the capture system exists to prevent.
+  - Any tag while **pairing mode** is armed → pair prompt defaulting to **not** logging, since
+    deliberately catching up on pairing would otherwise sprinkle phantom strokes through the round.
+  - A read while a prompt is already open → ignored, so a second tap can't swap the sheet out from
+    under a finger already reaching for a club tile.
+
+  Pairing mode exists for the one case the unpaired path can't reach: a tag stuck on the *wrong*
+  club, which otherwise reads as a perfectly valid wrong club forever. It disarms itself after one
+  pair rather than staying latched — a mode that silently swallows shots is worse than one you
+  re-arm with a tap.
+
+  Pairing adds a serial rather than replacing one, so a club can end up with two live tags (a
+  replacement stuck on after the first fell off). Harmless — a dead serial is never read again —
+  but it's why the sheet marks clubs that already have a tag.
+
 ### In-App Course Editor
 
 `CourseEditorPage.tsx` (routes `/course-editor` and `/course-editor/:courseId`) exists to correct

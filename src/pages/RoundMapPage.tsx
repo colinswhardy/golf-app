@@ -27,6 +27,8 @@ import {
   addReviewFlag,
   clubIdForSerial,
   countCapturedSwings,
+  listClubTags,
+  pairClubTag,
   recordClubTap,
   recordWatchCalibration,
   recordWatchLap,
@@ -36,9 +38,10 @@ import { isNfcSupported } from "../lib/nfc";
 import { isNfcSessionActive, onNfcError, onNfcStateChange, onNfcTag, startNfcSession, stopNfcSession } from "../lib/nfcSession";
 import { ALL_LIES, LIE_LABELS, detectLie } from "../lib/lie";
 import { classifyFairwayResult } from "../lib/fairway";
+import { resolveTagRead } from "../lib/clubTagRead";
 import { CourseMap, type DispersionEllipseSpec } from "../components/CourseMap";
 import { GreenMap } from "../components/GreenMap";
-import { HoleScoreSheet, ScorecardSheet, ShotSheet } from "../components/RoundSheets";
+import { HoleScoreSheet, ScorecardSheet, ShotSheet, TagPairSheet } from "../components/RoundSheets";
 import { Icon, relativeToParLabel } from "../components/ui";
 import { bearingDegrees, distanceMeters, distanceYards, fromDownrangeOffline } from "../lib/geo";
 import { getClubDispersion } from "../lib/dispersion";
@@ -291,6 +294,28 @@ export function RoundMapPage() {
   const roundIdRef = useRef<string | null>(null);
   roundIdRef.current = round?.id ?? null;
 
+  // A tag read that needs a club before it can mean anything: either an unpaired tag, or any tag
+  // at all while pairing mode is armed. Holds the ORIGINAL time and fix so a shot logged from it
+  // lands where and when it was actually played, not wherever you'd wandered by the time you
+  // finished tapping.
+  const [pendingTag, setPendingTag] = useState<{
+    serial: string;
+    at: Date;
+    point: LatLng | null;
+    accuracyM: number | null;
+    currentClubId: string | null;
+    defaultLogShot: boolean;
+  } | null>(null);
+  const pendingTagRef = useRef(false);
+  pendingTagRef.current = pendingTag !== null;
+
+  // Arms "the next tag read is a pairing, not a shot" — the way to fix a tag stuck on the wrong
+  // club, which reads as a perfectly valid (wrong) club otherwise. Disarms itself after one pair
+  // so it can't quietly swallow the rest of the round's shots.
+  const [pairingMode, setPairingMode] = useState(false);
+  const pairingModeRef = useRef(false);
+  pairingModeRef.current = pairingMode;
+
   useEffect(() => {
     const offState = onNfcStateChange(setNfcActive);
     const offError = onNfcError((msg) => showToast(`NFC: ${msg}`));
@@ -298,23 +323,38 @@ export function RoundMapPage() {
       // Refs throughout: this subscription outlives any single render, and reading the
       // render-time values would pin every tap of the round to the hole it was set up on.
       const roundId = roundIdRef.current;
-      if (!roundId) return;
       const clubId = await clubIdForSerial(serial);
-      if (!clubId) {
-        showToast("Unpaired tag");
+      const outcome = resolveTagRead({
+        clubId,
+        pairingMode: pairingModeRef.current,
+        pairPending: pendingTagRef.current,
+        hasRound: roundId !== null
+      });
+      if (outcome.kind === "ignore") return;
+
+      const fix = lastPositionRef.current;
+      if (outcome.kind === "pair") {
+        setPendingTag({
+          serial,
+          at,
+          point: fix?.point ?? null,
+          accuracyM: fix?.accuracyM ?? null,
+          currentClubId: outcome.currentClubId,
+          defaultLogShot: outcome.defaultLogShot
+        });
         return;
       }
-      const fix = lastPositionRef.current;
+
       await recordClubTap({
-        roundId,
+        roundId: roundId!,
         roundHoleId: roundHoleIdRef.current,
-        clubId,
+        clubId: outcome.clubId,
         serialNumber: serial,
         at,
         point: fix?.point ?? null,
         accuracyM: fix?.accuracyM ?? null
       });
-      showToast(clubsRef.current.find((c) => c.id === clubId)?.name ?? "Club logged");
+      showToast(clubsRef.current.find((c) => c.id === outcome.clubId)?.name ?? "Club logged");
     });
     setNfcActive(isNfcSessionActive());
     return () => {
@@ -323,6 +363,33 @@ export function RoundMapPage() {
       offTag();
     };
   }, []);
+
+  const clubTags = useLiveQuery(() => listClubTags(), []);
+  const taggedClubIds = useMemo(() => new Set((clubTags ?? []).map((t) => t.clubId)), [clubTags]);
+
+  async function handlePairTag(clubId: string, logShot: boolean) {
+    const tag = pendingTag;
+    const roundId = roundIdRef.current;
+    if (!tag) return;
+    await pairClubTag(tag.serial, clubId);
+    const name = clubsRef.current.find((c) => c.id === clubId)?.name ?? "Club";
+    if (logShot && roundId) {
+      await recordClubTap({
+        roundId,
+        roundHoleId: roundHoleIdRef.current,
+        clubId,
+        serialNumber: tag.serial,
+        at: tag.at,
+        point: tag.point,
+        accuracyM: tag.accuracyM
+      });
+      showToast(`${name} paired · shot logged`);
+    } else {
+      showToast(`${name} paired`);
+    }
+    setPendingTag(null);
+    setPairingMode(false);
+  }
 
   /** Re-arms after a mid-round reload, which drops the reader but not the round. The chip press
    * is the user gesture Chrome needs. */
@@ -1076,6 +1143,19 @@ export function RoundMapPage() {
               >
                 <Icon.tag size={13} /> {nfcActive ? "NFC" : "NFC off"}
               </button>
+              {nfcActive && (
+                <button
+                  className={`status-chip glass${pairingMode ? " status-chip--on" : ""}`}
+                  onClick={() => setPairingMode((v) => !v)}
+                  title={
+                    pairingMode
+                      ? "Pairing: the next tag read asks which club it's on instead of logging a shot"
+                      : "Pair a tag — use this to fix a tag stuck on the wrong club"
+                  }
+                >
+                  <Icon.edit size={13} /> {pairingMode ? "Tap a tag…" : "Pair"}
+                </button>
+              )}
               {wakeLockHeld && (
                 <span className="status-chip glass status-chip--on" title="Screen staying awake so NFC taps register">
                   <Icon.bolt size={13} /> Awake
@@ -1249,6 +1329,22 @@ export function RoundMapPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Sits outside openSheet: a tag read can land at any moment, including over another sheet. */}
+      {pendingTag && (
+        <TagPairSheet
+          serialNumber={pendingTag.serial}
+          clubs={clubs}
+          currentClubId={pendingTag.currentClubId}
+          taggedClubIds={taggedClubIds}
+          defaultLogShot={pendingTag.defaultLogShot}
+          onPair={handlePairTag}
+          onClose={() => {
+            setPendingTag(null);
+            setPairingMode(false);
+          }}
+        />
       )}
 
       {openSheet === "shot" && roundHoleId && (
