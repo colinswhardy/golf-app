@@ -5,7 +5,7 @@ import * as turf from "@turf/turf";
 import { applyTouchDragOffset } from "../lib/mapTouch";
 import { Icon } from "./ui";
 import type { ChipMark } from "../lib/roundRepo";
-import type { LatLng, Lie } from "../types/domain";
+import type { Club, LatLng, Lie } from "../types/domain";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
@@ -33,6 +33,8 @@ interface GreenMapProps {
   /** Existing pin for this hole/round, when re-marking. */
   initialPin: LatLng | null;
   holeNumber: number;
+  /** The bag, for saying which club a chip was hit with. */
+  clubs: Club[];
   onFinish: (pin: LatLng, puttStarts: LatLng[], chips: ChipMark[]) => void;
   onClose: () => void;
 }
@@ -48,12 +50,12 @@ interface GreenMapProps {
  * untouched). Top-down camera: precision tapping wants no pitch. Course polygons stay invisible,
  * as everywhere.
  */
-export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber, onFinish, onClose }: GreenMapProps) {
+export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber, clubs, onFinish, onClose }: GreenMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const pinMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const puttMarkersRef = useRef<mapboxgl.Marker[]>([]);
-  const chipMarksRef = useRef<{ marker: mapboxgl.Marker; lie: Lie }[]>([]);
+  const chipMarksRef = useRef<{ marker: mapboxgl.Marker; lie: Lie; clubId: string | null }[]>([]);
   /** Add-order of putts and chips, so one Undo button can remove whichever came last. */
   const markOrderRef = useRef<("putt" | "chip")[]>([]);
 
@@ -62,11 +64,12 @@ export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber,
   const [puttCount, setPuttCount] = useState(0);
   const [chipCount, setChipCount] = useState(0);
   const [placingChip, setPlacingChip] = useState(false);
-  /** A chip has been placed and is waiting for its lie — map taps pause until it's picked. */
-  const [chipLiePending, setChipLiePending] = useState(false);
+  /** A chip has been placed and is walking through its details — lie, then club. Map taps pause
+   * until both are answered (club has a Skip). */
+  const [pendingChipStep, setPendingChipStep] = useState<"lie" | "club" | null>(null);
 
-  const stateRef = useRef({ pin, placingChip, chipLiePending });
-  stateRef.current = { pin, placingChip, chipLiePending };
+  const stateRef = useRef({ pin, placingChip, pendingChipStep });
+  stateRef.current = { pin, placingChip, pendingChipStep };
 
   function makeMarkerElement(label: string, background: string, size: number): HTMLDivElement {
     const el = document.createElement("div");
@@ -191,18 +194,25 @@ export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber,
   function addChipMarker(point: LatLng) {
     if (!mapRef.current) return;
     const index = chipMarksRef.current.length + 1;
-    // Lie filled in by the chooser that opens right after; "rough" is only the never-shown default.
-    chipMarksRef.current.push({ marker: makeDraggableMark(point, `C${index}`, "#f0a33a"), lie: "rough" });
+    // Lie and club filled in by the chooser that opens right after; "rough" is only the
+    // never-shown default.
+    chipMarksRef.current.push({ marker: makeDraggableMark(point, `C${index}`, "#f0a33a"), lie: "rough", clubId: null });
     markOrderRef.current.push("chip");
     setChipCount(chipMarksRef.current.length);
     setPlacingChip(false);
-    setChipLiePending(true);
+    setPendingChipStep("lie");
   }
 
   function setPendingChipLie(lie: Lie) {
     const chip = chipMarksRef.current[chipMarksRef.current.length - 1];
     if (chip) chip.lie = lie;
-    setChipLiePending(false);
+    setPendingChipStep("club");
+  }
+
+  function setPendingChipClub(clubId: string | null) {
+    const chip = chipMarksRef.current[chipMarksRef.current.length - 1];
+    if (chip) chip.clubId = clubId;
+    setPendingChipStep(null);
   }
 
   function undoLastMark() {
@@ -213,7 +223,7 @@ export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber,
     } else if (kind === "chip") {
       chipMarksRef.current.pop()?.marker.remove();
       setChipCount(chipMarksRef.current.length);
-      setChipLiePending(false);
+      setPendingChipStep(null);
     }
   }
 
@@ -224,9 +234,9 @@ export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber,
       const pos = m.getLngLat();
       return { lat: pos.lat, lng: pos.lng } as LatLng;
     });
-    const chips: ChipMark[] = chipMarksRef.current.map(({ marker, lie }) => {
+    const chips: ChipMark[] = chipMarksRef.current.map(({ marker, lie, clubId }) => {
       const pos = marker.getLngLat();
-      return { point: { lat: pos.lat, lng: pos.lng }, lie };
+      return { point: { lat: pos.lat, lng: pos.lng }, lie, clubId };
     });
     onFinish(curPin, putts, chips);
   }
@@ -268,7 +278,7 @@ export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber,
     map.on("click", (e) => {
       const clicked = { lat: e.lngLat.lat, lng: e.lngLat.lng };
       const cur = stateRef.current;
-      if (cur.chipLiePending) return; // finish the chip's lie first
+      if (cur.pendingChipStep) return; // finish the chip's lie/club first
       if (!cur.pin) {
         // First touch IS the pin — no confirmation step, straight on to putts.
         placePin(clicked);
@@ -310,11 +320,13 @@ export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber,
     ? "Tap where the pin was — first tap sets it"
     : movingPin
       ? "Slide the pin, then let go"
-      : chipLiePending
+      : pendingChipStep === "lie"
         ? "What was that chip played from?"
-        : placingChip
-          ? "Tap where you chipped from"
-          : `Tap each putt's start, in order · ${puttCount} marked · hold ⛳ to move it`;
+        : pendingChipStep === "club"
+          ? "Which club did you chip with?"
+          : placingChip
+            ? "Tap where you chipped from — add as many as you played"
+            : `Tap each putt's start, in order · ${puttCount} marked · hold ⛳ to move it`;
 
   return (
     <div className="map-root" style={{ position: "absolute", inset: 0, zIndex: 30, background: "var(--bg)" }}>
@@ -327,9 +339,10 @@ export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber,
         </span>
       </div>
 
-      {/* Lie chooser for the chip just placed. Modal by construction: map taps are ignored and
-          Finish is hidden until one of these is picked (Undo remains, to kill the chip instead). */}
-      {chipLiePending && (
+      {/* Detail chooser for the chip just placed — lie, then club. Modal by construction: map taps
+          are ignored and Finish is hidden until it's done (Undo remains, to kill the chip instead).
+          Club has a Skip: an unknown club stays out of club statistics rather than guessing. */}
+      {pendingChipStep && (
         <div
           className="glass"
           style={{
@@ -342,14 +355,39 @@ export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber,
             padding: "12px 14px"
           }}
         >
-          <div className="small bold mb-2">Chip {chipCount} — played from?</div>
-          <div className="row" style={{ gap: 8 }}>
-            {CHIP_LIES.map((c) => (
-              <button key={c.lie} className="chip" style={{ flex: 1, justifyContent: "center" }} onClick={() => setPendingChipLie(c.lie)}>
-                {c.label}
-              </button>
-            ))}
-          </div>
+          {pendingChipStep === "lie" ? (
+            <>
+              <div className="small bold mb-2">Chip {chipCount} — played from?</div>
+              <div className="row" style={{ gap: 8 }}>
+                {CHIP_LIES.map((c) => (
+                  <button
+                    key={c.lie}
+                    className="chip"
+                    style={{ flex: 1, justifyContent: "center" }}
+                    onClick={() => setPendingChipLie(c.lie)}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="row row--between mb-2">
+                <span className="small bold">Chip {chipCount} — which club?</span>
+                <button className="chip chip--sm" onClick={() => setPendingChipClub(null)}>
+                  Skip
+                </button>
+              </div>
+              <div className="row" style={{ gap: 6, flexWrap: "wrap", maxHeight: "30vh", overflowY: "auto" }}>
+                {clubs.map((c) => (
+                  <button key={c.id} className="chip chip--sm" onClick={() => setPendingChipClub(c.id)}>
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -369,12 +407,12 @@ export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber,
             <button
               className={`btn btn--sm${placingChip ? " btn--primary" : ""}`}
               onClick={() => setPlacingChip((v) => !v)}
-              disabled={chipLiePending}
+              disabled={pendingChipStep !== null}
             >
-              <Icon.plus size={14} /> Chip
+              <Icon.plus size={14} /> Chip{chipCount > 0 ? ` · ${chipCount}` : ""}
             </button>
             {/* Zero putts is valid — a chip-in or holed bunker shot. */}
-            {!chipLiePending && (
+            {!pendingChipStep && (
               <button className="btn btn--sm btn--primary" onClick={handleFinish}>
                 <Icon.check size={15} /> Finish · {puttCount}
               </button>

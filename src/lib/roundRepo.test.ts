@@ -64,6 +64,40 @@ describe("saveGreenMarks — chips added on the marking screen", () => {
     expect((await db.roundHoles.get(rh.id))?.putts).toBe(2);
   });
 
+  it("stores the chip's club and classifies it partial when inside the club's full-swing floor", async () => {
+    const { rh } = await freshRoundHole();
+    await db.clubs.put({ id: "sw", name: "56°", sortOrder: 1, fullSwingMinYards: 80, updatedAt: new Date().toISOString() });
+
+    // p(1) is ~11 yards from PIN — well inside the 56°'s 80-yard full-swing floor.
+    await saveGreenMarks({
+      roundHoleId: rh.id,
+      pin: PIN,
+      puttStarts: [p(3)],
+      chips: [{ point: p(1), lie: "rough", clubId: "sw" }]
+    });
+
+    const chip = (await listShotsForRoundHole(rh.id))[0];
+    expect(chip.clubId).toBe("sw");
+    expect(chip.swingType).toBe("partial");
+    expect(chip.intendedYards).toBeGreaterThan(0);
+    expect(chip.intendedYards).toBeLessThan(80);
+  });
+
+  it("keeps an unknown-club chip as a plain full swing with no club", async () => {
+    const { rh } = await freshRoundHole();
+    await saveGreenMarks({
+      roundHoleId: rh.id,
+      pin: PIN,
+      puttStarts: [],
+      chips: [{ point: p(1), lie: "fringe" }]
+    });
+
+    const chip = (await listShotsForRoundHole(rh.id))[0];
+    expect(chip.clubId).toBeNull();
+    expect(chip.swingType).toBe("full");
+    expect(chip.intendedYards).toBeNull();
+  });
+
   it("re-marking replaces previous chips and putts wholesale", async () => {
     const { rh } = await freshRoundHole();
     await saveGreenMarks({

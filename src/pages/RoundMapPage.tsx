@@ -1516,6 +1516,7 @@ export function RoundMapPage() {
           fallbackCenter={activeTarget ?? greenCentroid}
           initialPin={currentRoundHole?.pinLocation ?? null}
           holeNumber={currentHole.number}
+          clubs={clubs}
           onFinish={handleGreenFinish}
           onClose={() => {
             pendingHoleOutRef.current = false;

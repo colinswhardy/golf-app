@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { distanceYards } from "./geo";
 import { findPutter } from "./stats";
 import type { FairwayResult, LatLng, Lie, PenaltyType, PositionSource, Round, RoundHole, Shot } from "../types/domain";
 
@@ -196,14 +197,20 @@ export async function saveHoleResult(params: {
 export interface ChipMark {
   point: LatLng;
   lie: Lie;
+  /** The club the chip was hit with, when the player remembers it. Null = unknown — the row
+   * stays out of club statistics entirely. */
+  clubId?: string | null;
 }
 
 /**
  * Persists the green-marking screen's output (REVISION-SPEC 1.5 + 2.3): the authoritative pin
  * position for this hole/round, plus one real Shot row per putt — swingType "putt",
  * reconciliation "green_mark", positions from the marking taps — and one per greenside chip
- * (swingType "full", clubId null: the phone stayed in the cart, so the club is unknown). Chips
- * come before putts in the stroke sequence. Each mark's endPoint is the next mark's start; the
+ * (the phone stayed in the cart, so the club is only what the player says it was — clubId null
+ * when they don't). A chip whose club is known classifies as a PARTIAL swing exactly the way
+ * reconciliation does — pin distance at address under the club's fullSwingMinYards — so a 15-yard
+ * 56° chip lands in the wedge buckets instead of dragging the club's full-swing median down.
+ * Chips come before putts in the stroke sequence. Each mark's endPoint is the next mark's start; the
  * last one's endPoint is the pin. Re-marking a hole replaces its previous green_mark rows
  * wholesale (they're capture data, not user edits) and re-closes the approach shot's endPoint
  * onto the first mark.
@@ -237,11 +244,23 @@ export async function saveGreenMarks(params: {
     }
     const nonMark = existing.filter((s) => s.reconciliation !== "green_mark");
 
-    const putter = findPutter(await db.clubs.toArray());
+    const clubs = await db.clubs.toArray();
+    const putter = findPutter(clubs);
+    const clubById = new Map(clubs.map((c) => [c.id, c]));
     // The full mark sequence in play order: chips first, then putts.
     const marks = [
-      ...(params.chips ?? []).map((c) => ({ point: c.point, lie: c.lie, isPutt: false })),
-      ...params.puttStarts.map((p) => ({ point: p, lie: params.detectLieAt?.(p) ?? ("green" as Lie), isPutt: true }))
+      ...(params.chips ?? []).map((c) => ({
+        point: c.point,
+        lie: c.lie,
+        clubId: c.clubId ?? null,
+        isPutt: false
+      })),
+      ...params.puttStarts.map((p) => ({
+        point: p,
+        lie: params.detectLieAt?.(p) ?? ("green" as Lie),
+        clubId: null as string | null,
+        isPutt: true
+      }))
     ];
 
     // Close the approach (last non-mark shot) onto the first mark's start — or straight onto the
@@ -261,11 +280,17 @@ export async function saveGreenMarks(params: {
     for (let i = 0; i < marks.length; i++) {
       const mark = marks[i];
       const next = marks[i + 1];
+      // Same partial test reconcile.ts applies to captured swings: known club, pin closer at
+      // address than the club's full-swing floor.
+      const chipClub = mark.clubId ? clubById.get(mark.clubId) : undefined;
+      const pinDistance = distanceYards(mark.point, params.pin);
+      const isPartialChip =
+        !mark.isPutt && chipClub?.fullSwingMinYards != null && pinDistance < chipClub.fullSwingMinYards;
       const shot: Shot = {
         id: uuid(),
         roundHoleId: params.roundHoleId,
         shotNumber: nonMark.length + i + 1,
-        clubId: mark.isPutt ? putter?.id ?? null : null,
+        clubId: mark.isPutt ? putter?.id ?? null : mark.clubId,
         startPoint: mark.point,
         endPoint: next?.point ?? params.pin,
         positionSource: "manual",
@@ -278,8 +303,8 @@ export async function saveGreenMarks(params: {
         elevationM: null,
         targetPoint: params.pin,
         targetSource: "default_pin",
-        swingType: mark.isPutt ? "putt" : "full",
-        intendedYards: null,
+        swingType: mark.isPutt ? "putt" : isPartialChip ? "partial" : "full",
+        intendedYards: isPartialChip ? Math.round(pinDistance) : null,
         penaltyType: null,
         excluded: null,
         exclusionNote: null,
