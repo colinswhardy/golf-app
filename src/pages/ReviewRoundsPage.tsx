@@ -13,6 +13,7 @@ import {
   setShotTargetPoint
 } from "../lib/roundRepo";
 import { saveWatchData, setReviewFlagStatus } from "../lib/captureRepo";
+import { classifyAssignedSwing, findPutter } from "../lib/stats";
 import { parseFit } from "../lib/fit";
 import { reconcileRound } from "../lib/reconcileRunner";
 import { ALL_LIES, LIE_LABELS } from "../lib/lie";
@@ -173,6 +174,42 @@ export function ReviewRoundsPage() {
     const hole = holes?.find((h) => h.id === rh?.holeId);
     if (hole) setHoleNumber(hole.number);
     if (flag.shotId) setEditingShotId(flag.shotId);
+  }
+
+  /**
+   * Assigns (or, with null, explicitly clears) a shot's club, reclassifying the swing the way
+   * reconciliation would have with a tag — putter/green = putt, pin inside the club's full-swing
+   * floor = partial — so a club filled in after the round lands in the same statistical bucket a
+   * tagged one would. Marks the row user-edited (frozen against re-reconciliation, so a re-run
+   * can't null the club back out or re-raise the question) and resolves any open missing_club
+   * flag on the shot, draining the review queue as clubs are answered. Null is a real answer:
+   * "I don't remember" keeps the stroke in the score and putt/round totals while staying out of
+   * club statistics.
+   */
+  async function assignClub(shot: Shot, clubId: string | null) {
+    const patch: Partial<Pick<Shot, "clubId" | "swingType" | "intendedYards">> = { clubId };
+    // Penalties have no swing to classify; green-marked rows already carry their classification
+    // from the marking screen.
+    if (shot.penaltyType === null && shot.reconciliation !== "green_mark") {
+      const club = (clubId && clubs?.find((c) => c.id === clubId)) || null;
+      const pin = allRoundHoles?.find((r) => r.id === shot.roundHoleId)?.pinLocation ?? null;
+      const pinDistance = pin ? distanceYards(shot.startPoint, pin) : null;
+      Object.assign(patch, classifyAssignedSwing(club, findPutter(clubs ?? [])?.id ?? null, shot.lieStart, pinDistance));
+    }
+    await correctShot(shot.id, patch);
+    for (const f of flags ?? []) {
+      if (f.shotId === shot.id && f.type === "missing_club" && f.status !== "resolved") {
+        await setReviewFlagStatus(f.id, "resolved");
+      }
+    }
+  }
+
+  /** Inline answer on a missing_club flag row: fetch the shot (it may be on another hole) and
+   * assign. A flag whose shot has since been deleted just resolves. */
+  async function resolveMissingClub(flag: ReviewFlag, clubId: string | null) {
+    const shot = flag.shotId ? await db.shots.get(flag.shotId) : undefined;
+    if (shot) await assignClub(shot, clubId);
+    else await setReviewFlagStatus(flag.id, "resolved");
   }
 
   // --- FIT ingest: parse, overlap-guard, store, compute clock offset, reconcile ---
@@ -476,14 +513,41 @@ export function ReviewRoundsPage() {
                   const rh = allRoundHoles?.find((r) => r.id === f.roundHoleId);
                   const hole = holes?.find((h) => h.id === rh?.holeId);
                   return (
-                    <div key={f.id} className="list-row" style={{ borderColor: "rgba(255,192,67,.28)", background: "var(--warn-soft)" }}>
-                      <button className="row grow" style={{ background: "none", border: "none", textAlign: "left", padding: 0 }} onClick={() => jumpToFlag(f)}>
-                        <Badge tone="warn">H{hole?.number ?? "?"}</Badge>
-                        <span className="small grow">{f.detail}</span>
-                      </button>
-                      <button className="map-btn" style={{ width: 30, height: 30, color: "var(--accent)" }} onClick={() => setReviewFlagStatus(f.id, "resolved")} title="Mark resolved">
-                        <Icon.check size={16} />
-                      </button>
+                    <div
+                      key={f.id}
+                      className="list-row"
+                      style={{
+                        borderColor: "rgba(255,192,67,.28)",
+                        background: "var(--warn-soft)",
+                        flexDirection: "column",
+                        alignItems: "stretch",
+                        gap: 8
+                      }}
+                    >
+                      <div className="row">
+                        <button className="row grow" style={{ background: "none", border: "none", textAlign: "left", padding: 0 }} onClick={() => jumpToFlag(f)}>
+                          <Badge tone="warn">H{hole?.number ?? "?"}</Badge>
+                          <span className="small grow">{f.detail}</span>
+                        </button>
+                        <button className="map-btn" style={{ width: 30, height: 30, color: "var(--accent)" }} onClick={() => setReviewFlagStatus(f.id, "resolved")} title="Mark resolved">
+                          <Icon.check size={16} />
+                        </button>
+                      </div>
+                      {/* Forgotten tap: answer the club right here — one tap assigns it, reclassifies
+                          the swing, and resolves the flag. "Don't know" is a real answer too: the
+                          stroke stays in the score, just out of club statistics. */}
+                      {f.type === "missing_club" && f.shotId && (
+                        <div className="chip-row">
+                          {clubs?.map((c) => (
+                            <button key={c.id} className="chip chip--sm" onClick={() => resolveMissingClub(f, c.id)}>
+                              {c.name}
+                            </button>
+                          ))}
+                          <button className="chip chip--sm" style={{ opacity: 0.75 }} onClick={() => resolveMissingClub(f, null)}>
+                            Don't know
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -534,7 +598,9 @@ export function ReviewRoundsPage() {
                           <span className="bold">
                             {s.penaltyType
                               ? PENALTY_OPTIONS.find((p) => p.value === s.penaltyType)?.label ?? "Penalty"
-                              : `${s.shotNumber}. ${club?.name ?? (s.reconciliation === "lap_only" ? "Club?" : "—")}`}
+                              : /* "Club?" nags only while unanswered — an explicit "don't know"
+                                   (userEdited) reads as a settled "No club". */
+                                `${s.shotNumber}. ${club?.name ?? (s.reconciliation === "lap_only" && !s.userEdited ? "Club?" : "No club")}`}
                           </span>
                           {s.swingType === "putt" && <Badge>putt</Badge>}
                           {s.swingType === "partial" && <Badge tone="info">partial</Badge>}
@@ -573,11 +639,17 @@ export function ReviewRoundsPage() {
                                 <button
                                   key={c.id}
                                   className={`chip chip--sm${s.clubId === c.id ? " chip--active" : ""}`}
-                                  onClick={() => correctShot(s.id, { clubId: c.id })}
+                                  onClick={() => assignClub(s, c.id)}
                                 >
                                   {c.name}
                                 </button>
                               ))}
+                              <button
+                                className={`chip chip--sm${s.clubId === null ? " chip--active" : ""}`}
+                                onClick={() => assignClub(s, null)}
+                              >
+                                No club
+                              </button>
                             </div>
                             <div className="tiny faint mb-1">Lie</div>
                             <div className="chip-row mb-2">

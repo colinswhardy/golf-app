@@ -1,5 +1,5 @@
 import { bearingDegrees, distanceYards, toDownrangeOffline } from "./geo";
-import type { Club, LatLng, Shot } from "../types/domain";
+import type { Club, LatLng, Lie, Shot, SwingType } from "../types/domain";
 
 /**
  * Per-club distance / partial-wedge statistics engine (REVISION-SPEC Phase 5). PURE — no Dexie,
@@ -22,6 +22,29 @@ export function isPutter(club: Pick<Club, "name">): boolean {
 /** The putter in a bag, or null if there isn't one. */
 export function findPutter<T extends Pick<Club, "name">>(clubs: T[]): T | null {
   return clubs.find(isPutter) ?? null;
+}
+
+/**
+ * How a stroke classifies once its club is known (or known to be unknown) — the same rules
+ * reconciliation applies to captured swings: putter in hand or played off the green = putt;
+ * a known club with the pin inside its full-swing floor = partial (intendedYards is the
+ * bucketing key); everything else, including an unknown club, = full. Used when a club is
+ * assigned AFTER reconciliation (a forgotten tap filled in from the review screen), so the
+ * corrected row lands in the same statistical bucket a tagged one would have.
+ */
+export function classifyAssignedSwing(
+  club: Club | null,
+  putterId: string | null,
+  lieStart: Lie | null,
+  pinDistanceYards: number | null
+): { swingType: SwingType; intendedYards: number | null } {
+  if ((club && putterId !== null && club.id === putterId) || lieStart === "green") {
+    return { swingType: "putt", intendedYards: null };
+  }
+  if (club?.fullSwingMinYards != null && pinDistanceYards !== null && pinDistanceYards < club.fullSwingMinYards) {
+    return { swingType: "partial", intendedYards: Math.round(pinDistanceYards) };
+  }
+  return { swingType: "full", intendedYards: null };
 }
 
 // ---------------------------------------------------------------------------

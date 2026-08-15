@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   bucketForIntendedYards,
+  classifyAssignedSwing,
   computeClubDistances,
   confidence,
   countTier,
@@ -203,5 +204,30 @@ describe("partial bucketing (5.4)", () => {
     expect(bucketForIntendedYards(55)).toBe(60);
     expect(bucketForIntendedYards(12)).toBe(30);
     expect(bucketForIntendedYards(95)).toBe(80);
+  });
+});
+
+describe("classifyAssignedSwing — post-round club assignment mirrors reconciliation", () => {
+  const wedge = mkClub({ id: "sw", name: "56°", fullSwingMinYards: 80 });
+  const putter = mkClub({ id: "p", name: "Putter" });
+
+  it("the putter, or any stroke off the green, is a putt", () => {
+    expect(classifyAssignedSwing(putter, "p", "fringe", 5).swingType).toBe("putt");
+    expect(classifyAssignedSwing(wedge, "p", "green", 20).swingType).toBe("putt");
+    expect(classifyAssignedSwing(null, "p", "green", null).swingType).toBe("putt");
+  });
+
+  it("a known club inside its full-swing floor is a partial with intendedYards set", () => {
+    expect(classifyAssignedSwing(wedge, "p", "rough", 45)).toEqual({ swingType: "partial", intendedYards: 45 });
+  });
+
+  it("outside the floor, with no floor, or with no pin distance, it's a full swing", () => {
+    expect(classifyAssignedSwing(wedge, "p", "fairway", 95).swingType).toBe("full");
+    expect(classifyAssignedSwing(mkClub(), "p", "fairway", 45).swingType).toBe("full");
+    expect(classifyAssignedSwing(wedge, "p", "fairway", null).swingType).toBe("full");
+  });
+
+  it("an unknown club stays a plain full swing", () => {
+    expect(classifyAssignedSwing(null, "p", "rough", 30)).toEqual({ swingType: "full", intendedYards: null });
   });
 });
