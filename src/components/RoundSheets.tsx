@@ -91,11 +91,6 @@ export function ShotSheet(props: {
                 {c.name}
               </button>
             ))}
-            {/* Forgot which club? The stroke still counts — position, lie and score all record;
-                only club statistics sit this one out. */}
-            <button className="tile" style={{ opacity: 0.7 }} onClick={() => props.onSave(null, lie)}>
-              Not sure
-            </button>
           </div>
         </>
       )}

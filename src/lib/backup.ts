@@ -10,7 +10,8 @@ import { ensureDefaultClubs, resetClubBagMigration } from "./courseRepo";
 
 // Every syncable/user-data table. Deliberately NOT derived from db.tables so that adding a new
 // table forces a conscious decision about whether it belongs in backups (outbox does not).
-const BACKUP_TABLES = [
+// Shared with lib/sync.ts — the cloud backup mirrors exactly what the file backup contains.
+export const BACKUP_TABLES = [
   "courses",
   "courseVersions",
   "holes",
@@ -42,19 +43,24 @@ export interface BackupSummary {
   totalRows: number;
 }
 
-export async function exportAll(): Promise<Blob> {
+/** One consistent snapshot of every backup table — the shared core of the file export and the
+ * cloud push. */
+export async function exportEnvelope(): Promise<BackupEnvelope> {
   const tables: Record<string, unknown[]> = {};
   await db.transaction("r", BACKUP_TABLES.map((t) => db.table(t)), async () => {
     for (const name of BACKUP_TABLES) {
       tables[name] = await db.table(name).toArray();
     }
   });
-  const envelope: BackupEnvelope = {
+  return {
     schemaVersion: db.verno,
     exportedAt: new Date().toISOString(),
     tables
   };
-  return new Blob([JSON.stringify(envelope)], { type: "application/json" });
+}
+
+export async function exportAll(): Promise<Blob> {
+  return new Blob([JSON.stringify(await exportEnvelope())], { type: "application/json" });
 }
 
 export function backupFilename(now: Date = new Date()): string {

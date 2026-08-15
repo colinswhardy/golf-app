@@ -41,10 +41,23 @@ export async function discardRound(roundId: string): Promise<void> {
         await db.roundHoles.delete(rh.id);
         await queueOutbox("roundHoles", "delete", { id: rh.id });
       }
+      // Capture rows are outboxed on creation (captureRepo), so their deletion must queue too —
+      // otherwise the cloud backup keeps orphaned laps/taps/tracks forever and a restore
+      // resurrects them.
+      for (const l of await db.watchLaps.where("roundId").equals(roundId).toArray()) {
+        await queueOutbox("watchLaps", "delete", { id: l.id });
+      }
+      for (const t of await db.clubTaps.where("roundId").equals(roundId).toArray()) {
+        await queueOutbox("clubTaps", "delete", { id: t.id });
+      }
+      for (const f of await db.reviewFlags.where("roundId").equals(roundId).toArray()) {
+        await queueOutbox("reviewFlags", "delete", { id: f.id });
+      }
       await db.watchLaps.where("roundId").equals(roundId).delete();
       await db.clubTaps.where("roundId").equals(roundId).delete();
       await db.reviewFlags.where("roundId").equals(roundId).delete();
       await db.roundTracks.delete(roundId);
+      await queueOutbox("roundTracks", "delete", { roundId });
       await db.rounds.delete(roundId);
       await queueOutbox("rounds", "delete", { id: roundId });
     }

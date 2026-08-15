@@ -5,6 +5,19 @@ import { AppBar, Badge, Button, Icon, Note, Page, Section } from "../components/
 import { createClub, deleteClub, ensureDefaultClubs, listClubs, moveClub, renameClub, updateClubDispersion } from "../lib/courseRepo";
 import { isGpsEnabled, isSimulationEnabled, setGpsEnabled, setSimulationEnabled } from "../lib/settings";
 import { backupFilename, exportAll, importAll, readBackup, type BackupEnvelope, type BackupSummary } from "../lib/backup";
+import {
+  backupAllToCloud,
+  drainOutbox,
+  fetchCloudBackup,
+  getCloudUser,
+  isCloudConfigured,
+  lastCloudBackupAt,
+  sendLoginCode,
+  signOutCloud,
+  verifyLoginCode,
+  type CloudBackupInfo,
+  type CloudUser
+} from "../lib/sync";
 import { findDanglingReferences, repairDanglingReferences, type RepairResult } from "../lib/integrity";
 import { listClubTags, pairClubTag, unpairClubTag } from "../lib/captureRepo";
 import { isNfcSupported, scanOnce } from "../lib/nfc";
@@ -38,6 +51,7 @@ export function SettingsPage() {
       <AppBar title="Settings" />
 
       <SampleRoundSection />
+      <CloudBackupSection />
       <BackupSection />
       <IntegritySection />
 
@@ -178,8 +192,258 @@ function SampleRoundSection() {
   );
 }
 
-/** Export/import of the entire local database. All data is device-local IndexedDB — this is the
- * only backup path that exists. */
+/**
+ * Cloud backup (Supabase, ca-central-1). Sign in once with an emailed code; from then on every
+ * write queues to the outbox and drains to the cloud automatically on app start and reconnect.
+ * "Back up now" pushes a full snapshot (and prunes cloud rows deleted locally); Restore pulls the
+ * cloud copy down through the same confirm-then-import flow as a file restore.
+ */
+function CloudBackupSection() {
+  const [user, setUser] = useState<CloudUser | null>(null);
+  const [checked, setChecked] = useState(false);
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [stage, setStage] = useState<"email" | "code">("email");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [lastBackup, setLastBackup] = useState<string | null>(lastCloudBackupAt());
+  const [pendingRestore, setPendingRestore] = useState<CloudBackupInfo | null>(null);
+
+  useEffect(() => {
+    getCloudUser().then((u) => {
+      setUser(u);
+      setChecked(true);
+    });
+  }, []);
+
+  async function run(label: string, fn: () => Promise<string | null>) {
+    setBusy(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const msg = await fn();
+      if (msg) setMessage(msg);
+    } catch (e) {
+      setError(`${label}: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!isCloudConfigured()) {
+    return (
+      <Section title="Cloud backup">
+        <Note>Cloud backup isn't configured in this build.</Note>
+      </Section>
+    );
+  }
+
+  return (
+    <Section
+      title="Cloud backup"
+      hint="Rounds, shots, courses and settings mirror to a private cloud database (Supabase, Canada) the moment you're signed in — automatically on every app start and whenever you come back online."
+    >
+      {!checked ? (
+        <div className="note">Checking sign-in…</div>
+      ) : !user ? (
+        <div className="card">
+          {stage === "email" ? (
+            <>
+              <div className="card__meta mb-2">
+                Sign in with your email — a 6-digit code is sent to it, no password to remember.
+              </div>
+              <div className="row" style={{ gap: 8 }}>
+                <input
+                  className="field grow"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={busy || !email.includes("@")}
+                  onClick={() =>
+                    run("Send code", async () => {
+                      await sendLoginCode(email.trim());
+                      setStage("code");
+                      return `Code sent to ${email.trim()} — check your inbox.`;
+                    })
+                  }
+                >
+                  Send code
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="card__meta mb-2">Enter the 6-digit code sent to {email.trim()}.</div>
+              <div className="row" style={{ gap: 8 }}>
+                <input
+                  className="field grow"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={busy || code.trim().length < 6}
+                  onClick={() =>
+                    run("Verify", async () => {
+                      const u = await verifyLoginCode(email.trim(), code);
+                      setUser(u);
+                      setCode("");
+                      setStage("email");
+                      // First sign-in on a device with data: push it up right away.
+                      const drained = await drainOutbox();
+                      setLastBackup(lastCloudBackupAt());
+                      return drained
+                        ? "Signed in — cloud backup is on."
+                        : "Signed in.";
+                    })
+                  }
+                >
+                  Verify
+                </Button>
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => setStage("email")}>
+                  Back
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="card">
+          <div className="row row--between mb-2">
+            <span className="row" style={{ gap: 8, minWidth: 0 }}>
+              <Badge tone="accent">Signed in</Badge>
+              <span className="small truncate">{user.email}</span>
+            </span>
+            <button
+              className="tiny faint"
+              onClick={() =>
+                run("Sign out", async () => {
+                  await signOutCloud();
+                  setUser(null);
+                  return "Signed out. Data stays on this device; cloud copy keeps its last state.";
+                })
+              }
+            >
+              Sign out
+            </button>
+          </div>
+          <div className="tiny faint mb-2">
+            {lastBackup
+              ? `Last backed up ${new Date(lastBackup).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
+              : "Not backed up from this device yet — run a full backup once."}
+          </div>
+          <div className="row row--wrap" style={{ gap: 8 }}>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={busy}
+              onClick={() =>
+                run("Backup", async () => {
+                  const r = await backupAllToCloud();
+                  setLastBackup(lastCloudBackupAt());
+                  return `Backed up ${r.pushed} rows${r.pruned ? ` (pruned ${r.pruned} stale)` : ""}.`;
+                })
+              }
+            >
+              <Icon.upload size={15} /> Back up now
+            </Button>
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() =>
+                run("Restore", async () => {
+                  const info = await fetchCloudBackup();
+                  if (!info.totalRows) return "Nothing in the cloud yet — back up first.";
+                  setPendingRestore(info);
+                  return null;
+                })
+              }
+            >
+              <Icon.download size={15} /> Restore from cloud
+            </Button>
+            {busy && <span className="spinner" />}
+          </div>
+
+          {pendingRestore && (
+            <div className="card mt-2" style={{ borderColor: "rgba(255,192,67,.32)" }}>
+              <div className="card__title">
+                Cloud copy from {pendingRestore.envelope.exportedAt.slice(0, 10)} · {pendingRestore.totalRows} rows
+              </div>
+              <div className="tiny faint mt-1">
+                {Object.entries(pendingRestore.counts)
+                  .filter(([, n]) => n > 0)
+                  .map(([t, n]) => `${t} ${n}`)
+                  .join(" · ")}
+              </div>
+              <div className="small dim mt-2">
+                <strong>Merge</strong> upserts rows by id. <strong>Replace</strong> clears every table
+                first — current device data is lost.
+              </div>
+              <div className="row row--wrap mt-2" style={{ gap: 8 }}>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={busy}
+                  onClick={() =>
+                    run("Restore", async () => {
+                      await importAll(pendingRestore.envelope, "merge");
+                      setPendingRestore(null);
+                      return "Restored (merge) from the cloud.";
+                    })
+                  }
+                >
+                  Merge
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  disabled={busy}
+                  onClick={() =>
+                    run("Restore", async () => {
+                      await importAll(pendingRestore.envelope, "replace");
+                      setPendingRestore(null);
+                      return "Restored (replace) from the cloud.";
+                    })
+                  }
+                >
+                  Replace
+                </Button>
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => setPendingRestore(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {message && (
+        <div className="mt-2">
+          <Note tone="ok">{message}</Note>
+        </div>
+      )}
+      {error && (
+        <div className="mt-2">
+          <Note tone="danger">{error}</Note>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/** Export/import of the entire local database as a file — the offline complement to the cloud
+ * backup above (works with no account and no connection). */
 function BackupSection() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<{ envelope: BackupEnvelope; summary: BackupSummary } | null>(null);
@@ -234,8 +498,8 @@ function BackupSection() {
 
   return (
     <Section
-      title="Backup"
-      hint="Everything lives only on this device. Export before clearing site data, switching phones, or reinstalling — there is no cloud copy."
+      title="File backup"
+      hint="A downloadable copy of everything, independent of the cloud — handy before clearing site data or for moving between phones without signing in."
     >
       <div className="row row--wrap" style={{ gap: 8 }}>
         <Button size="sm" onClick={handleExport} disabled={busy}>

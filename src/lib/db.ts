@@ -140,10 +140,11 @@ db.version(4)
     });
   });
 
-/** Deletes outbox entries older than 30 days (REVISION-SPEC 0.5). Nothing drains the outbox yet
- * (no sync worker exists), so without this it grows forever. The queueOutbox pattern itself stays
- * — a future sync implementation replays what's here — this just stops it consuming storage
- * indefinitely. Called fire-and-forget from App on start. */
+/** Deletes outbox entries older than 30 days (REVISION-SPEC 0.5). lib/sync.ts drains the outbox
+ * to the cloud now, so in a signed-in install entries rarely live minutes — this backstop only
+ * matters for signed-out installs, where the queue would otherwise grow forever. Anything pruned
+ * unpushed is still covered by the next full "Back up now" snapshot. Called fire-and-forget from
+ * App on start. */
 export async function pruneOutbox(maxAgeDays = 30): Promise<number> {
   const cutoff = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000).toISOString();
   return db.outbox.where("createdAt").below(cutoff).delete();

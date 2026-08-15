@@ -13,6 +13,7 @@ import { StatsPage } from "./pages/StatsPage";
 import { Icon } from "./components/ui";
 import { seedBundledCourses } from "./lib/seedCourses";
 import { pruneOutbox } from "./lib/db";
+import { drainOutbox } from "./lib/sync";
 
 const APP_VERSION = "2.0";
 
@@ -65,11 +66,24 @@ export default function App() {
   const fullscreen = isFullscreenRoute(pathname);
 
   // Fire-and-forget, once per app load. Seeding is idempotent (courses already at
-  // the current importer version are skipped), and nothing drains the outbox yet,
-  // so old entries are just dead weight.
+  // the current importer version are skipped).
   useEffect(() => {
     seedBundledCourses();
     pruneOutbox().catch(() => {});
+  }, []);
+
+  // Cloud backup: push queued writes shortly after launch and again whenever the connection
+  // comes back. Silently a no-op when signed out or offline — drainOutbox owns those checks.
+  useEffect(() => {
+    const kick = () => {
+      drainOutbox().catch(() => {});
+    };
+    const timer = setTimeout(kick, 2500);
+    window.addEventListener("online", kick);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("online", kick);
+    };
   }, []);
 
   return (
