@@ -3,7 +3,17 @@ import type { ReactNode } from "react";
 import { Button, Icon, relativeToParLabel, scoreToneClass } from "./ui";
 import { findPutter } from "../lib/stats";
 import { formatTagSerial } from "../lib/clubTagRead";
-import type { Club, FairwayResult, Lie } from "../types/domain";
+import type { Club, FairwayResult, Lie, PenaltyType } from "../types/domain";
+
+/** Penalty vocabulary, shared by the mid-round penalty sheet and post-round review. */
+export const PENALTY_OPTIONS: { value: PenaltyType; label: string }[] = [
+  { value: "lost_ball", label: "Lost ball" },
+  { value: "penalty_red", label: "Penalty area (red)" },
+  { value: "penalty_yellow", label: "Penalty area (yellow)" },
+  { value: "ob", label: "Out of bounds" },
+  { value: "unplayable", label: "Unplayable" },
+  { value: "stroke_distance", label: "Stroke and distance" }
+];
 
 const FAIRWAY_TILES: { label: string; value: FairwayResult }[] = [
   { label: "Hit", value: "hit" },
@@ -157,6 +167,25 @@ export function TagPairSheet(props: {
   );
 }
 
+/**
+ * What kind of penalty was that? Opens right after the map tap that placed it — the location is
+ * already chosen, so one tile finishes the job.
+ */
+export function PenaltySheet(props: { onPick: (type: PenaltyType) => void; onClose: () => void }) {
+  return (
+    <Sheet title="Penalty stroke" onClose={props.onClose}>
+      <div className="card__meta mb-2">Adds one stroke to this hole, at the spot you tapped.</div>
+      <div className="tile-grid tile-grid--2">
+        {PENALTY_OPTIONS.map((p) => (
+          <button key={p.value} className="tile" onClick={() => props.onPick(p.value)}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+    </Sheet>
+  );
+}
+
 /** Scorecard for the round so far: hole/par/score/± with a running total. Shared
  * by the live round map and post-round review so both show the same thing. */
 export function ScorecardSheet(props: {
@@ -210,17 +239,20 @@ export function HoleScoreSheet(props: {
   recordedShots: number;
   /** Putt count from the green-marking screen when the hole was marked. */
   markedPutts?: number | null;
+  /** Penalty strokes already placed on this hole (map-tap penalties) — part of the score seed. */
+  penaltyCount?: number;
   autoDetectedFairwayResult?: FairwayResult | null;
   onSave: (score: number, putts: number, fairwayResult: FairwayResult | null) => void;
   onClose: () => void;
 }) {
+  const penalties = props.penaltyCount ?? 0;
   const initialPutts = props.markedPutts ?? 2;
   const [putts, setPutts] = useState(initialPutts);
   const [scoreTouched, setScoreTouched] = useState(false);
-  const [score, setScore] = useState(props.recordedShots + initialPutts);
+  const [score, setScore] = useState(props.recordedShots + initialPutts + penalties);
   const [fairwayResult, setFairwayResult] = useState<FairwayResult | null>(props.autoDetectedFairwayResult ?? null);
 
-  const effectiveScore = scoreTouched ? score : props.recordedShots + putts;
+  const effectiveScore = scoreTouched ? score : props.recordedShots + putts + penalties;
   const showFairway = props.par >= 4;
   const diff = effectiveScore - props.par;
 
@@ -250,13 +282,17 @@ export function HoleScoreSheet(props: {
         min={0}
         onChange={(v) => {
           setPutts(v);
-          if (!scoreTouched) setScore(props.recordedShots + v);
+          if (!scoreTouched) setScore(props.recordedShots + v + penalties);
         }}
       />
 
       <Stepper
         label="Score"
-        hint={scoreTouched ? undefined : `${props.recordedShots} shots + ${putts} putts`}
+        hint={
+          scoreTouched
+            ? undefined
+            : `${props.recordedShots} shots + ${putts} putts${penalties > 0 ? ` + ${penalties} pen` : ""}`
+        }
         value={effectiveScore}
         min={1}
         onChange={(v) => {

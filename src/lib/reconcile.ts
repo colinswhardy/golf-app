@@ -484,12 +484,15 @@ export function reconcile(input: ReconcileInput): ReconcileResult {
     const frozenPenalties = holeFrozen.filter((s) => s.penaltyType !== null);
     const frozenSwings = holeFrozen.filter((s) => s.swingType !== "putt" && s.penaltyType === null);
 
-    // Swings: generated (lap/tap) + frozen manual swings, merged by time.
+    // Swings: generated (lap/tap) + frozen manual swings, merged by time. Ties break on frozen
+    // shotNumber for the same reason frozenPutts sort by it above: green-marked CHIPS are frozen
+    // swings written in the same tight loop as the putts, so two chips routinely share a
+    // millisecond — and their chain order must stay the order they were placed in.
     type Entry = { time: number; gen: Generated | null; frozen: Shot | null };
     const entries: Entry[] = [
       ...holeGenerated.map((g) => ({ time: g.tWatch - clockOffsetMs, gen: g, frozen: null as Shot | null })),
       ...frozenSwings.map((s) => ({ time: Date.parse(s.recordedAt), gen: null as Generated | null, frozen: s }))
-    ].sort((a, b) => a.time - b.time);
+    ].sort((a, b) => a.time - b.time || (a.frozen?.shotNumber ?? 0) - (b.frozen?.shotNumber ?? 0));
 
     const holeShots: Shot[] = [];
     for (const e of entries) {

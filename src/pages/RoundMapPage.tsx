@@ -13,15 +13,18 @@ import {
   updateHoleWaypoints
 } from "../lib/courseRepo";
 import {
+  addPenaltyStroke,
   completeRound,
   correctShot,
+  discardRound,
   getActiveRoundForCourse,
   getOrCreateRoundHole,
   recordShot,
   saveGreenMarks,
   saveHoleResult,
   setRoundHoleFairwayResult,
-  setRoundHolePinLocation
+  setRoundHolePinLocation,
+  type ChipMark
 } from "../lib/roundRepo";
 import {
   addReviewFlag,
@@ -41,12 +44,12 @@ import { classifyFairwayResult } from "../lib/fairway";
 import { resolveTagRead } from "../lib/clubTagRead";
 import { CourseMap, type DispersionEllipseSpec } from "../components/CourseMap";
 import { GreenMap } from "../components/GreenMap";
-import { HoleScoreSheet, ScorecardSheet, ShotSheet, TagPairSheet } from "../components/RoundSheets";
+import { HoleScoreSheet, PenaltySheet, ScorecardSheet, Sheet, ShotSheet, TagPairSheet } from "../components/RoundSheets";
 import { Icon, relativeToParLabel } from "../components/ui";
 import { bearingDegrees, distanceMeters, distanceYards, fromDownrangeOffline } from "../lib/geo";
 import { getClubDispersion } from "../lib/dispersion";
 import { getTeePreference, isGpsEnabled, isSimulationEnabled } from "../lib/settings";
-import type { Club, FairwayResult, LatLng, Lie, Round, RoundHole } from "../types/domain";
+import type { Club, FairwayResult, LatLng, Lie, PenaltyType, Round, RoundHole } from "../types/domain";
 
 const GREENSIDE_BUNKER_MAX_YARDS = 40;
 const FAR_FROM_HOLE_METERS = 300;
@@ -536,8 +539,13 @@ export function RoundMapPage() {
   );
   // Putts are Shot rows now (reconciliation "green_mark") — swing numbering, the score sheet's
   // "recorded shots" and dispersion centering all count SWINGS only, or green marking would
-  // double-count against the putts stepper.
-  const manualShotCount = shots?.filter((s) => s.reconciliation !== "green_mark").length ?? 0;
+  // double-count against the putts stepper. Penalty rows are excluded too: they're strokes but
+  // not swings, and they get their own count below.
+  const manualShotCount = shots?.filter((s) => s.reconciliation !== "green_mark" && s.penaltyType === null).length ?? 0;
+  // Chips added on the green-marking screen (green_mark rows that aren't putts) ARE swings the
+  // capture streams never saw — the phone stayed in the cart — so they count toward the score.
+  const greenChipCount = shots?.filter((s) => s.reconciliation === "green_mark" && s.swingType !== "putt").length ?? 0;
+  const penaltyCount = shots?.filter((s) => s.penaltyType !== null).length ?? 0;
 
   // Swings signalled on this hole through the capture streams (watch lap presses and NFC club
   // tags). These don't become Shot rows until the watch file is ingested and reconciled after the
@@ -559,8 +567,9 @@ export function RoundMapPage() {
     );
   }, [capturedLaps, capturedTaps, roundHoleId]);
 
-  // The stroke count the whole screen works from: hand-entered shots plus captured swings.
-  const shotCount = manualShotCount + capturedSwings;
+  // The stroke count the whole screen works from: hand-entered shots, captured swings, and
+  // chips added on the green-marking screen. Penalties are separate — strokes, not swings.
+  const shotCount = manualShotCount + capturedSwings + greenChipCount;
 
   // All roundHoles played so far this round, for the score badge + scorecard sheet.
   const allRoundHoles = useLiveQuery(
@@ -685,12 +694,13 @@ export function RoundMapPage() {
   // once — so pass the number we just wrote rather than reading it back.
   const [justMarkedPutts, setJustMarkedPutts] = useState<number | null>(null);
 
-  async function handleGreenFinish(pin: LatLng, puttStarts: LatLng[]) {
+  async function handleGreenFinish(pin: LatLng, puttStarts: LatLng[], chips: ChipMark[]) {
     if (!roundHoleId) return;
     await saveGreenMarks({
       roundHoleId,
       pin,
       puttStarts,
+      chips,
       detectLieAt: (p) => detectLie(p, holeFeatures ?? [])
     });
     setJustMarkedPutts(puttStarts.length);
@@ -699,6 +709,46 @@ export function RoundMapPage() {
       pendingHoleOutRef.current = false;
       setOpenSheet("score");
     }
+  }
+
+  // --- Penalty strokes: arm from the tool rail, tap the map where it happened, pick the type.
+  // The Shot row lands at the tapped point so the review map can show where the round leaked. ---
+  const [placingPenalty, setPlacingPenalty] = useState(false);
+  const [penaltyPoint, setPenaltyPoint] = useState<LatLng | null>(null);
+  // Disarm on hole change: a tap armed on the 4th must not land a penalty stroke on the 5th.
+  useEffect(() => {
+    setPlacingPenalty(false);
+    setPenaltyPoint(null);
+  }, [currentHole?.id]);
+
+  async function handlePenaltyPick(type: PenaltyType) {
+    if (!roundHoleId || !penaltyPoint) return;
+    await addPenaltyStroke(roundHoleId, type, penaltyPoint, "live");
+    setPenaltyPoint(null);
+    showToast("Penalty stroke added");
+  }
+
+  // --- Leaving early: the back arrow opens this instead of silently bailing. Pausing keeps the
+  // round resumable; "save partial" completes it for metrics only; discard deletes everything. ---
+  const [exitMenuOpen, setExitMenuOpen] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+
+  async function handleSavePartial() {
+    if (!round) return;
+    await completeRound(round.id, { partial: true });
+    stopNfcSession();
+    finishedRef.current = true;
+    setRound(null);
+    navigate("/rounds", { replace: true });
+  }
+
+  async function handleDiscardRound() {
+    if (!round) return;
+    await discardRound(round.id);
+    stopNfcSession();
+    finishedRef.current = true;
+    setRound(null);
+    navigate("/", { replace: true });
   }
 
   async function handleCalibrateWatch() {
@@ -829,14 +879,14 @@ export function RoundMapPage() {
       const openMismatch = (await db.reviewFlags.where("roundId").equals(round.id).toArray()).filter(
         (f) => f.roundHoleId === roundHoleId && f.type === "score_mismatch" && f.status !== "resolved"
       );
-      if (shotCount > 0 && shotCount + putts !== score) {
+      if (shotCount > 0 && shotCount + putts + penaltyCount !== score) {
         if (!openMismatch.length) {
           await addReviewFlag({
             roundId: round.id,
             roundHoleId,
             shotId: null,
             type: "score_mismatch",
-            detail: `Hole ${currentHole?.number}: score ${score}, but ${shotCount} swing${shotCount === 1 ? "" : "s"} + ${putts} putt${putts === 1 ? "" : "s"} recorded.`
+            detail: `Hole ${currentHole?.number}: score ${score}, but ${shotCount} swing${shotCount === 1 ? "" : "s"} + ${putts} putt${putts === 1 ? "" : "s"}${penaltyCount > 0 ? ` + ${penaltyCount} penalt${penaltyCount === 1 ? "y" : "ies"}` : ""} recorded.`
           });
         }
       } else {
@@ -873,9 +923,25 @@ export function RoundMapPage() {
 
   return (
     <div className="map-root">
-      <Link to="/" className="map-btn glass" style={{ position: "absolute", top: "calc(12px + var(--safe-t))", left: 12, zIndex: 4 }} aria-label="Exit round">
-        <Icon.back size={19} />
-      </Link>
+      {/* Mid-round, the back arrow opens the exit menu (pause / save partial / discard) instead
+          of silently leaving — without a round there's nothing to decide, so it's a plain link. */}
+      {round ? (
+        <button
+          className="map-btn glass"
+          style={{ position: "absolute", top: "calc(12px + var(--safe-t))", left: 12, zIndex: 4 }}
+          aria-label="Exit round"
+          onClick={() => {
+            setConfirmDiscard(false);
+            setExitMenuOpen(true);
+          }}
+        >
+          <Icon.back size={19} />
+        </button>
+      ) : (
+        <Link to="/" className="map-btn glass" style={{ position: "absolute", top: "calc(12px + var(--safe-t))", left: 12, zIndex: 4 }} aria-label="Exit round">
+          <Icon.back size={19} />
+        </Link>
+      )}
 
       {!isDemo && currentHole && (
         <div className="hole-bar glass">
@@ -939,6 +1005,17 @@ export function RoundMapPage() {
               active={greenMarked}
               disabled={!roundHoleId}
               onPress={() => setGreenMapOpen(true)}
+              onHint={setToolHint}
+            />
+          )}
+          {round && (
+            <ToolButton
+              icon={<Icon.warn size={19} />}
+              label="Penalty stroke"
+              hint="Tap the map where the penalty happened, then pick what it was. Adds one stroke to this hole."
+              active={placingPenalty}
+              disabled={!roundHoleId}
+              onPress={() => setPlacingPenalty((v) => !v)}
               onHint={setToolHint}
             />
           )}
@@ -1086,6 +1163,11 @@ export function RoundMapPage() {
             onSimPositionPlaced={(p) => {
               setSimPosition(p);
               setPlacingSimPosition(false);
+            }}
+            placingPenalty={placingPenalty}
+            onPenaltyPlaced={(p) => {
+              setPenaltyPoint(p);
+              setPlacingPenalty(false);
             }}
           />
         ) : (
@@ -1296,6 +1378,12 @@ export function RoundMapPage() {
                             : ""}
                       </span>
                     )}
+                    {penaltyCount > 0 && (
+                      <span className="faint">
+                        {" · "}
+                        {penaltyCount} pen
+                      </span>
+                    )}
                   </>
                 )}
               </div>
@@ -1362,12 +1450,61 @@ export function RoundMapPage() {
           par={currentHole.par}
           recordedShots={shotCount}
           markedPutts={justMarkedPutts ?? (greenMarked ? currentRoundHole?.putts : null)}
+          penaltyCount={penaltyCount}
           autoDetectedFairwayResult={currentRoundHole?.fairwayResult}
           onSave={handleSaveHole}
           onClose={() => setOpenSheet(null)}
         />
       )}
       {openSheet === "scorecard" && <ScorecardSheet entries={scorecardEntries} onClose={() => setOpenSheet(null)} />}
+
+      {penaltyPoint && roundHoleId && (
+        <PenaltySheet onPick={handlePenaltyPick} onClose={() => setPenaltyPoint(null)} />
+      )}
+
+      {exitMenuOpen && round && (
+        <Sheet title="Leave the round?" onClose={() => setExitMenuOpen(false)}>
+          <div className="stack" style={{ gap: 8 }}>
+            <button
+              className="card card--interactive"
+              onClick={() => {
+                setExitMenuOpen(false);
+                navigate("/");
+              }}
+            >
+              <div className="card__title">Pause round</div>
+              <div className="card__meta mt-1">Leave now, pick it up later from the home screen.</div>
+            </button>
+            <button className="card card--interactive" onClick={handleSavePartial}>
+              <div className="card__title">Save partial round</div>
+              <div className="card__meta mt-1">
+                Ends the round here but keeps everything recorded — distances, putts, pins — for your
+                stats. It won't count as a scored round.
+              </div>
+            </button>
+            {confirmDiscard ? (
+              <div className="card" style={{ borderColor: "rgba(255,107,107,.3)" }}>
+                <div className="small mb-2">Discard this round and everything recorded in it?</div>
+                <div className="row" style={{ gap: 8 }}>
+                  <button className="btn btn--sm btn--danger" onClick={handleDiscardRound}>
+                    Discard
+                  </button>
+                  <button className="btn btn--sm btn--ghost" onClick={() => setConfirmDiscard(false)}>
+                    Keep
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button className="card card--interactive" onClick={() => setConfirmDiscard(true)}>
+                <div className="card__title" style={{ color: "var(--danger)" }}>
+                  Discard round
+                </div>
+                <div className="card__meta mt-1">Delete every shot, putt and score from this round. Not recoverable.</div>
+              </button>
+            )}
+          </div>
+        </Sheet>
+      )}
 
       {greenMapOpen && currentHole && greenCentroid && (
         <GreenMap

@@ -122,6 +122,11 @@ export interface Round {
    * full hole range, which is what those rounds were. */
   startHole?: number;
   endHole?: number;
+  /** True when the round was ended early via "Save partial round". Its shots, putts and pins
+   * still feed distance/putting/SG statistics (which read shots directly), but score-keeping
+   * surfaces (last-round score, rounds-list to-par) must skip or badge it — a part-round score
+   * is not a score. Absent/false on every normally completed round. */
+  partial?: boolean;
   /** Phone timestamp of the "Calibrate watch" press (user hits the watch lap button at the same
    * moment); used at ingest to compute clockOffsetMs. */
   watchCalibrationAt: string | null;

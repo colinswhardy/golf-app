@@ -28,11 +28,12 @@ export function Home() {
     return { round, course, played };
   }, []);
 
-  // Last completed round, with its to-par summary.
+  // Last completed round, with its to-par summary. Partial rounds (ended early, saved for
+  // metrics only) are skipped — this card is a score, and they don't have one.
   const lastRound = useLiveQuery(async () => {
-    const rounds = (await db.rounds.where("status").equals("completed").toArray()).sort((a, b) =>
-      b.playedOn.localeCompare(a.playedOn)
-    );
+    const rounds = (await db.rounds.where("status").equals("completed").toArray())
+      .filter((r) => !r.partial)
+      .sort((a, b) => b.playedOn.localeCompare(a.playedOn));
     const round = rounds[0];
     if (!round) return null;
     const version = await db.courseVersions.get(round.courseVersionId);

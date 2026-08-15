@@ -191,21 +191,32 @@ export async function saveHoleResult(params: {
   });
 }
 
+/** A chip added on the green-marking screen — played without the phone in hand (the whole point),
+ * so its position comes from a marking tap and its lie from the player, never auto-detection. */
+export interface ChipMark {
+  point: LatLng;
+  lie: Lie;
+}
+
 /**
  * Persists the green-marking screen's output (REVISION-SPEC 1.5 + 2.3): the authoritative pin
  * position for this hole/round, plus one real Shot row per putt — swingType "putt",
- * reconciliation "green_mark", positions from the marking taps. Each putt's endPoint is the next
- * putt's start; the last putt's endPoint is the pin. Re-marking a hole replaces its previous
- * green_mark rows wholesale (they're capture data, not user edits) and re-closes the approach
- * shot's endPoint onto the first putt.
+ * reconciliation "green_mark", positions from the marking taps — and one per greenside chip
+ * (swingType "full", clubId null: the phone stayed in the cart, so the club is unknown). Chips
+ * come before putts in the stroke sequence. Each mark's endPoint is the next mark's start; the
+ * last one's endPoint is the pin. Re-marking a hole replaces its previous green_mark rows
+ * wholesale (they're capture data, not user edits) and re-closes the approach shot's endPoint
+ * onto the first mark.
  */
 export async function saveGreenMarks(params: {
   roundHoleId: string;
   pin: LatLng;
   /** Putt start positions, in the order they were holed. Empty = chip-in / holed from off green. */
   puttStarts: LatLng[];
+  /** Chips played around the green before the putts, in the order they were played. */
+  chips?: ChipMark[];
   /** Lie detector for putt start positions (fringe putts are real; the lie decides the SG
-   * baseline later). Omit to default every putt lie to "green". */
+   * baseline later). Omit to default every putt lie to "green". Chips carry their own lie. */
   detectLieAt?: (p: LatLng) => Lie;
 }): Promise<void> {
   await db.transaction("rw", [db.roundHoles, db.shots, db.clubs, db.outbox], async () => {
@@ -224,40 +235,50 @@ export async function saveGreenMarks(params: {
         await queueOutbox("shots", "delete", { id: s.id });
       }
     }
-    const nonPutt = existing.filter((s) => s.reconciliation !== "green_mark");
+    const nonMark = existing.filter((s) => s.reconciliation !== "green_mark");
 
-    // Close the approach (last non-putt shot) onto the first putt's start — or straight onto the
-    // pin for a chip-in with zero putts.
-    const last = nonPutt[nonPutt.length - 1];
-    const approachEnd = params.puttStarts[0] ?? params.pin;
+    const putter = findPutter(await db.clubs.toArray());
+    // The full mark sequence in play order: chips first, then putts.
+    const marks = [
+      ...(params.chips ?? []).map((c) => ({ point: c.point, lie: c.lie, isPutt: false })),
+      ...params.puttStarts.map((p) => ({ point: p, lie: params.detectLieAt?.(p) ?? ("green" as Lie), isPutt: true }))
+    ];
+
+    // Close the approach (last non-mark shot) onto the first mark's start — or straight onto the
+    // pin for a walk-off approach with zero marks.
+    const last = nonMark[nonMark.length - 1];
     if (last && !last.endPoint) {
-      const closed: Shot = { ...last, endPoint: approachEnd, lieEnd: "green", updatedAt: now() };
+      const closed: Shot = {
+        ...last,
+        endPoint: marks[0]?.point ?? params.pin,
+        lieEnd: marks[0]?.lie ?? "green",
+        updatedAt: now()
+      };
       await db.shots.put(closed);
       await queueOutbox("shots", "upsert", closed);
     }
 
-    const putter = findPutter(await db.clubs.toArray());
-    for (let i = 0; i < params.puttStarts.length; i++) {
-      const start = params.puttStarts[i];
-      const end = params.puttStarts[i + 1] ?? params.pin;
+    for (let i = 0; i < marks.length; i++) {
+      const mark = marks[i];
+      const next = marks[i + 1];
       const shot: Shot = {
         id: uuid(),
         roundHoleId: params.roundHoleId,
-        shotNumber: nonPutt.length + i + 1,
-        clubId: putter?.id ?? null,
-        startPoint: start,
-        endPoint: end,
+        shotNumber: nonMark.length + i + 1,
+        clubId: mark.isPutt ? putter?.id ?? null : null,
+        startPoint: mark.point,
+        endPoint: next?.point ?? params.pin,
         positionSource: "manual",
         accuracyM: null,
-        lieStart: params.detectLieAt?.(start) ?? "green",
-        lieEnd: "green",
+        lieStart: mark.lie,
+        lieEnd: next?.lie ?? "green",
         watchLapId: null,
         clubTapId: null,
         reconciliation: "green_mark",
         elevationM: null,
         targetPoint: params.pin,
         targetSource: "default_pin",
-        swingType: "putt",
+        swingType: mark.isPutt ? "putt" : "full",
         intendedYards: null,
         penaltyType: null,
         excluded: null,
@@ -304,10 +325,22 @@ export async function setShotExcluded(shotId: string, exclude: boolean, note: st
 
 /**
  * Inserts a penalty stroke as a real Shot row (4.2 / Appendix C: every stroke in the score is a
- * Shot row) at the tapped point, then recomputes the hole score as swings + putts + penalties so
- * the balance check holds again. Penalty rows carry no club and never enter club statistics.
+ * Shot row) at the tapped point, then updates the hole score. Penalty rows carry no club and
+ * never enter club statistics.
+ *
+ * scoreMode picks how the score reacts:
+ * - "recompute" (post-round review): score = swings + putts + penalties from the Shot rows, so
+ *   the balance check holds again. Correct once reconciliation has run and every stroke is a row.
+ * - "live" (mid-round): captured swings aren't Shot rows yet, so a recompute would trash a
+ *   hand-entered score. An unscored hole is left null (the score sheet folds penalties into its
+ *   seed at hole-out); an already-scored hole is bumped by one.
  */
-export async function addPenaltyStroke(roundHoleId: string, penaltyType: PenaltyType, point: LatLng): Promise<void> {
+export async function addPenaltyStroke(
+  roundHoleId: string,
+  penaltyType: PenaltyType,
+  point: LatLng,
+  scoreMode: "recompute" | "live" = "recompute"
+): Promise<void> {
   await db.transaction("rw", [db.shots, db.roundHoles, db.outbox], async () => {
     const existing = await listShotsForRoundHole(roundHoleId);
     const shot: Shot = {
@@ -341,11 +374,18 @@ export async function addPenaltyStroke(roundHoleId: string, penaltyType: Penalty
 
     const rh = await db.roundHoles.get(roundHoleId);
     if (!rh) return;
-    const all = [...existing, shot];
-    const swings = all.filter((s) => s.swingType !== "putt" && s.penaltyType === null).length;
-    const putts = all.filter((s) => s.swingType === "putt").length;
-    const penalties = all.filter((s) => s.penaltyType !== null).length;
-    const updated: RoundHole = { ...rh, score: swings + putts + penalties, updatedAt: now() };
+    let score: number | null;
+    if (scoreMode === "live") {
+      score = rh.score === null ? null : rh.score + 1;
+    } else {
+      const all = [...existing, shot];
+      const swings = all.filter((s) => s.swingType !== "putt" && s.penaltyType === null).length;
+      const putts = all.filter((s) => s.swingType === "putt").length;
+      const penalties = all.filter((s) => s.penaltyType !== null).length;
+      score = swings + putts + penalties;
+    }
+    if (score === rh.score) return;
+    const updated: RoundHole = { ...rh, score, updatedAt: now() };
     await db.roundHoles.put(updated);
     await queueOutbox("roundHoles", "upsert", updated);
   });
@@ -370,10 +410,17 @@ export async function removePenaltyStroke(shotId: string): Promise<void> {
   });
 }
 
-export async function completeRound(roundId: string): Promise<void> {
+/** Marks a round completed. `partial: true` is the mid-round "save what I have" exit — everything
+ * recorded keeps feeding statistics, but score surfaces treat the round as unscored. */
+export async function completeRound(roundId: string, opts?: { partial?: boolean }): Promise<void> {
   const round = await db.rounds.get(roundId);
   if (!round) return;
-  const updated: Round = { ...round, status: "completed", updatedAt: now() };
+  const updated: Round = {
+    ...round,
+    status: "completed",
+    ...(opts?.partial ? { partial: true } : {}),
+    updatedAt: now()
+  };
   await db.rounds.put(updated);
   await queueOutbox("rounds", "upsert", updated);
 }

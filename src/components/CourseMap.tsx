@@ -119,6 +119,9 @@ interface CourseMapProps {
   /** While true, the next map tap sets the simulated position rather than a target/measure dot. */
   placingSimPosition?: boolean;
   onSimPositionPlaced?: (p: LatLng) => void;
+  /** While true, the next map tap marks where a penalty stroke was incurred. */
+  placingPenalty?: boolean;
+  onPenaltyPlaced?: (p: LatLng) => void;
 }
 
 /**
@@ -148,7 +151,9 @@ export function CourseMap({
   simulationMode = false,
   simulatedPosition,
   placingSimPosition = false,
-  onSimPositionPlaced
+  onSimPositionPlaced,
+  placingPenalty = false,
+  onPenaltyPlaced
 }: CourseMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -210,7 +215,9 @@ export function CourseMap({
     currentShotNumber,
     onSaveWaypoints,
     placingSimPosition,
-    onSimPositionPlaced
+    onSimPositionPlaced,
+    placingPenalty,
+    onPenaltyPlaced
   });
   stateRef.current = {
     origin,
@@ -225,7 +232,9 @@ export function CourseMap({
     currentShotNumber,
     onSaveWaypoints,
     placingSimPosition,
-    onSimPositionPlaced
+    onSimPositionPlaced,
+    placingPenalty,
+    onPenaltyPlaced
   };
 
   // --- Geolocation: watch position for the blue dot ---
@@ -319,12 +328,20 @@ export function CourseMap({
         setSettingTarget: curSetSettingTarget,
         onTargetChange: curOnTargetChange,
         placingSimPosition: curPlacingSim,
-        onSimPositionPlaced: curOnSimPlaced
+        onSimPositionPlaced: curOnSimPlaced,
+        placingPenalty: curPlacingPenalty,
+        onPenaltyPlaced: curOnPenaltyPlaced
       } = stateRef.current;
 
       // Simulation: dropping your position wins over every other tap meaning while armed.
       if (curPlacingSim) {
         curOnSimPlaced?.(clicked);
+        return;
+      }
+
+      // Marking where a penalty stroke happened — armed from the round page's tool rail.
+      if (curPlacingPenalty) {
+        curOnPenaltyPlaced?.(clicked);
         return;
       }
 

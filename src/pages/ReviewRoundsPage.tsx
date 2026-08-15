@@ -18,22 +18,13 @@ import { reconcileRound } from "../lib/reconcileRunner";
 import { ALL_LIES, LIE_LABELS } from "../lib/lie";
 import { distanceYards } from "../lib/geo";
 import { ReviewMap } from "../components/ReviewMap";
-import { ScorecardSheet } from "../components/RoundSheets";
+import { PENALTY_OPTIONS, ScorecardSheet } from "../components/RoundSheets";
 import { AppBar, Badge, EmptyState, Icon, Page, Stat, relativeToParLabel, scoreToneClass } from "../components/ui";
 import type { LatLng, PenaltyType, ReviewFlag, Shot } from "../types/domain";
 
 /** How far apart the FIT time range and the round's shot timestamps may sit before the file is
  * rejected as belonging to a different round — generous, clocks drift by seconds not hours. */
 const FIT_OVERLAP_SLACK_MS = 30 * 60 * 1000;
-
-const PENALTY_OPTIONS: { value: PenaltyType; label: string }[] = [
-  { value: "lost_ball", label: "Lost ball" },
-  { value: "penalty_red", label: "Penalty area (red)" },
-  { value: "penalty_yellow", label: "Penalty area (yellow)" },
-  { value: "ob", label: "Out of bounds" },
-  { value: "unplayable", label: "Unplayable" },
-  { value: "stroke_distance", label: "Stroke and distance" }
-];
 
 const POSITION_SOURCE_LABELS: Record<Shot["positionSource"], string> = {
   gps: "phone GPS",
@@ -292,14 +283,28 @@ export function ReviewRoundsPage() {
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div className="accent num" style={{ fontSize: 24, fontWeight: 750, letterSpacing: "-0.03em" }}>
-                      {relativeToParLabel(toPar)}
-                    </div>
-                    <div className="tiny faint num">{strokes} strokes</div>
+                    {/* A partial round's score is deliberately not a score — it fed the stats and
+                        stops there. */}
+                    {round.partial ? (
+                      <>
+                        <div className="dim num" style={{ fontSize: 24, fontWeight: 750, letterSpacing: "-0.03em" }}>
+                          —
+                        </div>
+                        <div className="tiny faint">metrics only</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="accent num" style={{ fontSize: 24, fontWeight: 750, letterSpacing: "-0.03em" }}>
+                          {relativeToParLabel(toPar)}
+                        </div>
+                        <div className="tiny faint num">{strokes} strokes</div>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="row" style={{ gap: 6 }}>
                   <Badge>{scoredHoles} holes</Badge>
+                  {round.partial && <Badge tone="info">Partial</Badge>}
                   {round.fitIngestedAt && <Badge tone="info">Watch data</Badge>}
                   {openFlags > 0 && <Badge tone="warn">{openFlags} to review</Badge>}
                 </div>
