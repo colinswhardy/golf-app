@@ -116,6 +116,44 @@ function greenPutt(roundHoleId: string, start: LatLng, end: LatLng, shotNumber: 
   };
 }
 
+/** A Shot-sheet row: lie + club picked on the phone at `tSec` (phone clock), standing at `point`
+ * (the phone's fix — typically a walk on from where the ball actually was). */
+function handEntered(
+  roundHoleId: string,
+  tSec: number,
+  clubId: string | null,
+  lie: Shot["lieStart"],
+  point: LatLng,
+  extra: Partial<Shot> = {}
+): Shot {
+  return {
+    id: nid(),
+    roundHoleId,
+    shotNumber: 0,
+    clubId,
+    startPoint: point,
+    endPoint: null,
+    positionSource: "gps",
+    accuracyM: 6,
+    lieStart: lie,
+    lieEnd: null,
+    watchLapId: null,
+    clubTapId: null,
+    reconciliation: "manual",
+    elevationM: null,
+    targetPoint: null,
+    targetSource: "default_green",
+    swingType: lie === "green" ? "putt" : "full",
+    intendedYards: null,
+    penaltyType: null,
+    excluded: null,
+    exclusionNote: null,
+    recordedAt: new Date(T0 + tSec * 1000).toISOString(),
+    updatedAt: "",
+    ...extra
+  };
+}
+
 function run(partial: Partial<ReconcileInput>): ReturnType<typeof reconcile> {
   return reconcile({
     laps: [],
@@ -337,6 +375,154 @@ describe("reconcile — Appendix A", () => {
     expect(r.shots[1].endPoint).toEqual(HOLE1.pin);
     expect(r.shots[1].lieEnd).toBe("green");
     expect(r.shots.filter((s) => s.swingType === "putt")).toHaveLength(0);
+  });
+
+  describe("hand-entered rows adopt the lap they duplicate (STEP 2b)", () => {
+    // The phone flow: press the watch at the ball, walk on 25 m, pick lie + club in the app.
+    const lapPoints = [pt(0, 0), pt(0, 240), pt(0, 330)];
+    const phonePoints = [pt(0, 25), pt(0, 265), pt(0, 345)];
+    const threeLaps = () => lapPoints.map((p, i) => lap(i * 300, p, i));
+    const threeRows = () => [
+      handEntered("rh1", 40, "driver", "tee", phonePoints[0]),
+      handEntered("rh1", 340, "5i", "fairway", phonePoints[1]),
+      handEntered("rh1", 640, "56", "rough", phonePoints[2])
+    ];
+
+    it("one stroke, two records: the row keeps club + lie, takes the lap's position and time", () => {
+      const putt = greenPutt("rh1", pt(0, 350), pt(0, 355), 4);
+      const r = run({ laps: threeLaps(), holes: [{ ...HOLE1, score: 4 }], existingShots: [...threeRows(), putt] });
+
+      // Three swings + the marked putt — NOT six swings.
+      expect(swings(r)).toHaveLength(3);
+      expect(r.shots).toHaveLength(4);
+      expect(r.handEnteredMerges).toBe(3);
+      expect(r.flags.filter((f) => f.type === "missing_club" || f.type === "score_mismatch")).toHaveLength(0);
+
+      const merged = swings(r);
+      expect(merged.map((s) => s.clubId)).toEqual(["driver", "5i", "56"]);
+      expect(merged.map((s) => s.lieStart)).toEqual(["tee", "fairway", "rough"]);
+      merged.forEach((s, i) => {
+        expect(s.reconciliation).toBe("manual");
+        expect(s.startPoint).toEqual(lapPoints[i]);
+        expect(s.positionSource).toBe("watch_lap");
+        expect(s.accuracyM).toBeNull();
+        expect(s.watchLapId).not.toBeNull();
+        // The strike moment, not the moment the sheet was filled in.
+        expect(Date.parse(s.recordedAt)).toBe(T0 + i * 300 * 1000);
+      });
+      // Chain runs through the lap positions.
+      expect(merged[0].endPoint).toEqual(lapPoints[1]);
+      expect(merged[2].endPoint).toEqual(putt.startPoint);
+      // The laps report the rows they were folded into.
+      const lapIds = new Set(merged.map((s) => s.watchLapId));
+      expect(r.lapMatches.filter((m) => lapIds.has(m.lapId)).map((m) => m.shotId).sort()).toEqual(
+        merged.map((s) => s.id).sort()
+      );
+    });
+
+    it("a forgotten lap leaves the row where the phone was; a forgotten log leaves a lap_only shot", () => {
+      const laps = threeLaps().filter((l) => l.lapIndex !== 1); // no press on the second shot
+      const rows = threeRows().slice(0, 2); // third shot never logged
+      const r = run({ laps, existingShots: rows });
+
+      expect(swings(r)).toHaveLength(3);
+      const [first, second, third] = swings(r);
+      expect(first.watchLapId).not.toBeNull();
+      expect(first.startPoint).toEqual(lapPoints[0]);
+      // Second: hand-entered, no lap to adopt — the phone's own fix stands, honestly labelled.
+      expect(second.clubId).toBe("5i");
+      expect(second.watchLapId).toBeNull();
+      expect(second.startPoint).toEqual(phonePoints[1]);
+      expect(second.positionSource).toBe("gps");
+      // Third: lap with no log — a shot of its own, asking for the club.
+      expect(third.reconciliation).toBe("lap_only");
+      expect(third.startPoint).toEqual(lapPoints[2]);
+      expect(r.flags.filter((f) => f.type === "missing_club" && f.shotId === third.id)).toHaveLength(1);
+      expect(r.handEnteredMerges).toBe(1);
+    });
+
+    it("the window is asymmetric: a log four minutes AFTER the lap merges, four minutes BEFORE does not", () => {
+      // Tee shot: hit, waited for the group, walked on, logged 4 minutes later.
+      const late = run({ laps: [lap(0, pt(0, 0), 0)], existingShots: [handEntered("rh1", 240, "driver", "tee", pt(0, 25))] });
+      expect(swings(late)).toHaveLength(1);
+      expect(swings(late)[0].watchLapId).not.toBeNull();
+      // Nobody picks a club four minutes before hitting: two different strokes.
+      const early = run({ laps: [lap(240, pt(0, 240), 0)], existingShots: [handEntered("rh1", 0, "driver", "tee", pt(0, 25))] });
+      expect(swings(early)).toHaveLength(2);
+      expect(early.handEnteredMerges).toBe(0);
+    });
+
+    it("each lap takes the nearest log in time, closest pairs first", () => {
+      // Two laps 200s apart; the first was logged promptly, the second late — each still finds
+      // its own row rather than the second row grabbing whichever lap it happens to be nearer.
+      const laps = [lap(0, pt(0, 0), 0), lap(200, pt(0, 240), 1)];
+      const rows = [handEntered("rh1", 30, "driver", "tee", pt(0, 25)), handEntered("rh1", 330, "5i", "fairway", pt(0, 265))];
+      const r = run({ laps, existingShots: rows });
+
+      expect(swings(r)).toHaveLength(2);
+      expect(swings(r)[0].clubId).toBe("driver");
+      expect(swings(r)[0].startPoint).toEqual(pt(0, 0));
+      expect(swings(r)[1].clubId).toBe("5i");
+      expect(swings(r)[1].startPoint).toEqual(pt(0, 240));
+    });
+
+    it("re-running is a no-op, and a previously double-counted round heals on re-run", () => {
+      const laps = threeLaps();
+      const first = run({ laps, existingShots: threeRows() });
+      const second = run({ laps, existingShots: first.shots });
+      expect(second.shots).toEqual(first.shots);
+      expect(second.deleteShotIds).toHaveLength(0);
+      expect(second.handEnteredMerges).toBe(0);
+
+      // A round ingested under the old engine: lap_only rows sitting next to the hand-entered
+      // ones. Re-running folds each lap into its row and drops the duplicate.
+      const legacyLapOnly = run({ laps }).shots; // 3 lap_only rows
+      expect(legacyLapOnly.every((s) => s.reconciliation === "lap_only")).toBe(true);
+      const healed = run({ laps, existingShots: [...threeRows(), ...legacyLapOnly] });
+      expect(swings(healed)).toHaveLength(3);
+      expect(healed.deleteShotIds.sort()).toEqual(legacyLapOnly.map((s) => s.id).sort());
+      expect(healed.handEnteredMerges).toBe(3);
+    });
+
+    it("re-attaching the watch file (fresh lap ids) re-links rows instead of duplicating them", () => {
+      const first = run({ laps: threeLaps(), existingShots: threeRows() });
+      const freshLaps = threeLaps(); // same presses, new ids — what parseFit produces
+      const r = run({ laps: freshLaps, existingShots: first.shots });
+      expect(swings(r)).toHaveLength(3);
+      const freshIds = new Set(freshLaps.map((l) => l.id));
+      expect(swings(r).every((s) => s.watchLapId !== null && freshIds.has(s.watchLapId))).toBe(true);
+    });
+
+    it("a row the player positioned by hand keeps that position and only gains the link", () => {
+      const placed = pt(3, 2); // dragged onto the middle of the tee in review
+      const rows = [handEntered("rh1", 40, "driver", "tee", placed, { positionSource: "manual", accuracyM: null, userEdited: true })];
+      const r = run({ laps: [lap(0, pt(0, 0), 0)], existingShots: rows });
+      expect(swings(r)).toHaveLength(1);
+      expect(swings(r)[0].startPoint).toEqual(placed);
+      expect(swings(r)[0].positionSource).toBe("manual");
+      expect(swings(r)[0].watchLapId).not.toBeNull();
+    });
+
+    it("a tap near a hand-entered row is the same stroke: no tap_only shot; the row's club stands", () => {
+      const rows = [handEntered("rh1", 40, "driver", "tee", phonePoints[0]), handEntered("rh1", 340, null, "fairway", phonePoints[1])];
+      const taps = [tap(-5, "5i"), tap(295, "7i")]; // first tap disagrees with the row; second fills a blank
+      const r = run({ laps: threeLaps().slice(0, 2), taps, existingShots: rows });
+      expect(swings(r)).toHaveLength(2);
+      expect(r.flags.filter((f) => f.type === "unmatched_tap")).toHaveLength(0);
+      expect(swings(r)[0].clubId).toBe("driver");
+      expect(swings(r)[1].clubId).toBe("7i");
+      expect(swings(r).every((s) => s.clubTapId !== null && s.watchLapId !== null)).toBe(true);
+    });
+
+    it("penalty strokes and green-marked putts never adopt a lap", () => {
+      const penalty = handEntered("rh1", 10, null, null, pt(0, 200), { penaltyType: "penalty_red", userEdited: true });
+      const putt = greenPutt("rh1", pt(0, 350), pt(0, 355), 2);
+      const r = run({ laps: [lap(0, pt(0, 0), 0), lap(2000, pt(0, 350), 1)], existingShots: [penalty, putt] });
+      expect(r.handEnteredMerges).toBe(0);
+      expect(r.shots.filter((s) => s.penaltyType !== null)[0].watchLapId).toBeNull();
+      expect(r.shots.filter((s) => s.reconciliation === "green_mark")[0].watchLapId).toBeNull();
+      expect(r.shots.filter((s) => s.reconciliation === "lap_only")).toHaveLength(2);
+    });
   });
 
   // Case 10

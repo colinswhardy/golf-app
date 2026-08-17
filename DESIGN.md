@@ -440,6 +440,25 @@ the selected round's actual recorded shots.
   other write in that file. The shot list below the map has a "🎯 Set Aim Target" toggle per shot;
   toggling one arms `ReviewMap`'s click handler, and the next map tap writes the point and disarms.
   Rendered as a small red marker per shot that has one set.
+- **Repositioning a shot**: the same arm-then-tap pattern moves where a shot was *played from*
+  ("Move shot" → tap the map), with a one-tap "Move to tee" for tee shots — the common correction
+  when the watch was pressed after walking off the box. `roundRepo.moveShotStart` writes the new
+  `startPoint`, marks the position hand-placed (`positionSource: "manual"`, `userEdited`), drags
+  the previous stroke's `endPoint` along so the chain stays joined, and clears the stale
+  elevation. Reconciliation honours a hand-placed position even when the row later adopts a lap.
+- **Hand-entered rows and watch laps are one stroke.** The phone flow is "press the watch at the
+  ball, walk on, pick lie + club in the Shot sheet" — that row and the lap are two records of the
+  same swing, not two swings. `reconcile.ts` STEP 2b pairs each Shot-sheet row with the lap (and
+  NFC tap) it duplicates by nearest time, closest pairs first (`pairNearest`, the same greedy
+  shape as lap↔tap matching) inside an asymmetric window — the log may trail the lap by up to
+  five minutes but lead it by at most two — and the row adopts the lap's position, time and
+  elevation while keeping the player's club and lie. Ordinary watch/phone clock drift is
+  absorbed by those windows, so the round map's "Calibrate watch" button was removed. Laps and
+  logs that find no partner still stand on their own (a `lap_only` shot with a "which club?" flag;
+  a phone-positioned row) — one is the backup of the other. Because a Shot-sheet row that never
+  merged is the only kind of duplicate that can't be fixed by re-running reconciliation, the
+  review list offers "Delete" on those rows (`roundRepo.deleteHandEnteredShot`, which re-joins the
+  chain and renumbers; the hole score is left as counted at hole-out).
 
 ## 12. Water Hazards & Bunker Warnings
 

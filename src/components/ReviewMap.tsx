@@ -12,9 +12,12 @@ interface ReviewMapProps {
   shots: Shot[];
   /** Tee box, used as a camera fallback when there are no shots recorded yet for this hole. */
   fallbackOrigin: LatLng | null;
-  /** Shot id currently accepting a target tap, or null if none armed (drives marker highlight
+  /** Shot id currently accepting a map tap, or null if none armed (drives marker highlight
    * and the "tap the map" HUD). */
   armedShotId: string | null;
+  /** What the tap will do to the armed shot: set where it was aimed, or move where it was
+   * played from. Defaults to "target". */
+  armedAction?: "target" | "move";
   /** Forward map taps to onMapClick even without an armed shot — e.g. penalty-point entry.
    * Defaults to false so idle taps stay inert. */
   clickArmed?: boolean;
@@ -31,7 +34,7 @@ interface ReviewMapProps {
  * props on it — the interaction model here is fundamentally different (fixed data, tap to
  * set a planned aim point) from CourseMap's live-round GPS-driven one.
  */
-export function ReviewMap({ shots, fallbackOrigin, armedShotId, clickArmed = false, onMapClick }: ReviewMapProps) {
+export function ReviewMap({ shots, fallbackOrigin, armedShotId, armedAction = "target", clickArmed = false, onMapClick }: ReviewMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const shotMarkersRef = useRef<mapboxgl.Marker[]>([]);
@@ -190,7 +193,9 @@ export function ReviewMap({ shots, fallbackOrigin, armedShotId, clickArmed = fal
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
       {armedShotId && (
         <div className="toast glass" style={{ top: "auto", bottom: 12, color: "var(--warn)" }}>
-          Tap the map to set shot {armedIndex + 1}'s target
+          {armedAction === "move"
+            ? `Tap the map where shot ${armedIndex + 1} was played from`
+            : `Tap the map to set shot ${armedIndex + 1}'s target`}
         </div>
       )}
     </div>

@@ -33,6 +33,8 @@ async function queueOutbox(table: string, op: "upsert" | "delete", payload: unkn
 export interface ReconcileRunSummary {
   shotCount: number;
   flagCount: number;
+  /** Laps folded into shots that were entered by hand on the phone (one stroke, two records). */
+  handEnteredMerges: number;
   clockOffsetMs: number;
   clockOffsetMethod: "calibrated" | "estimated" | "assumed_zero";
 }
@@ -216,6 +218,7 @@ export async function reconcileRound(roundId: string): Promise<ReconcileRunSumma
   return {
     shotCount: shotsWithTargets.length,
     flagCount: result.flags.length,
+    handEnteredMerges: result.handEnteredMerges,
     clockOffsetMs: result.clockOffsetMs,
     clockOffsetMethod: result.clockOffsetMethod
   };

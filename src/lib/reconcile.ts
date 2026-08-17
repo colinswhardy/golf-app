@@ -20,21 +20,31 @@ import type {
  * lib/reconcileRunner.ts does the I/O on either side. Unit tests in reconcile.test.ts cover
  * Appendix A.
  *
- * Idempotency contract: FROZEN rows — reconciliation "manual" (old tap-to-record flow),
+ * Idempotency contract: FROZEN rows — reconciliation "manual" (the phone's Shot sheet),
  * "green_mark" (green-marking screen), penalty strokes, and anything the user edited
  * (userEdited) — are never regenerated; reconcile may only touch their derived chain fields
  * (endPoint/lieEnd/shotNumber). Regenerated rows keep their previous id when the same
  * (watchLapId, clubTapId) identity existed before, so a re-run with unchanged inputs is a
  * byte-level no-op.
  *
- * Known limitation, deliberate: a round tracked with BOTH the old manual ShotSheet flow and
- * laps/taps will double-count those swings — the engine has no way to know a manual row and a
- * lap are the same physical shot. Use one capture flow per round.
+ * Hand-entered rows and capture events are two records of ONE stroke, not two strokes. The
+ * phone flow is "press the watch at the ball, walk on, pick lie + club in the app": the lap
+ * knows where the ball was struck from, the row knows what it was struck with. STEP 2b pairs
+ * each hand-entered row with the lap (and tap) it duplicates, and the row adopts the lap's
+ * position and time — the one deliberate exception to "frozen rows are never touched", made
+ * once; the link is stored on the row, so a re-run leaves it alone. Laps and taps that no
+ * hand-entered row claims still become rows of their own, exactly as before.
  */
 
 // --- Tunables (spec values) ---
 const TAP_COLLAPSE_WINDOW_MS = 20_000; // STEP 2: club-change collapse
 const MATCH_WINDOW_MS = 90_000; // STEP 3: max |dt| for a (lap, tap) pair
+/** STEP 2b: how far a hand-entered row may sit from the lap/tap it duplicates. Far wider than
+ * MATCH_WINDOW_MS, and asymmetric: the Shot sheet gets filled in AFTER the stroke — after the
+ * walk on, and on the tee after the rest of the group has hit too — while the only way for it to
+ * come first is pressing the watch late (walked off the tee, logged, then remembered the
+ * button). */
+const HAND_ENTERED_WINDOW_MS = { before: 120_000, after: 300_000 };
 const TEE_PROXIMITY_M = 35; // STEP 1: "inside the tee polygon" fallback radius around the tee point
 const AMBIGUOUS_LIE_BOUNDARY_M = 2; // STEP 6
 /** A lap this close to the calibration press is the calibration press, not a shot. */
@@ -84,11 +94,41 @@ export interface ReconcileResult {
   flags: NewReconcileFlag[];
   lapMatches: { lapId: string; shotId: string | null }[];
   tapMatches: { tapId: string; shotId: string | null }[];
+  /** Laps that were folded into a hand-entered row this run (STEP 2b) rather than becoming rows
+   * of their own — surfaced so the ingest message can say the merge happened. */
+  handEnteredMerges: number;
   clockOffsetMs: number;
   clockOffsetMethod: "calibrated" | "estimated" | "assumed_zero";
 }
 
 const uuid = () => crypto.randomUUID();
+
+/**
+ * Greedy nearest-in-time pairing of two event lists — the same shape as STEP 3's lap↔tap
+ * matching. A b-event may sit up to `window.before` ms before its a-event or `window.after` ms
+ * after it; nothing outside that is ever paired, and each event pairs at most once, closest
+ * pairs first. Returns [indexInA, indexInB] pairs.
+ */
+function pairNearest(a: number[], b: number[], window: { before: number; after: number }): [number, number][] {
+  const candidates: { d: number; i: number; j: number }[] = [];
+  for (let i = 0; i < a.length; i++) {
+    for (let j = 0; j < b.length; j++) {
+      const d = b[j] - a[i];
+      if (d >= -window.before && d <= window.after) candidates.push({ d: Math.abs(d), i, j });
+    }
+  }
+  candidates.sort((x, y) => x.d - y.d);
+  const usedA = new Set<number>();
+  const usedB = new Set<number>();
+  const pairs: [number, number][] = [];
+  for (const c of candidates) {
+    if (usedA.has(c.i) || usedB.has(c.j)) continue;
+    usedA.add(c.i);
+    usedB.add(c.j);
+    pairs.push([c.i, c.j]);
+  }
+  return pairs;
+}
 
 function isFrozen(s: Shot): boolean {
   return (
@@ -303,12 +343,19 @@ export function reconcile(input: ReconcileInput): ReconcileResult {
   const watchToPhoneIso = (watchMs: number) => new Date(watchMs - clockOffsetMs).toISOString();
 
   // ----- Frozen rows and consumed capture events -----
-  const frozen = input.existingShots.filter(isFrozen);
+  let frozen = input.existingShots.filter(isFrozen);
   const previousGenerated = input.existingShots.filter((s) => !isFrozen(s));
-  const consumedLapIds = new Set(frozen.map((s) => s.watchLapId).filter((id): id is string => !!id));
-  const consumedTapIds = new Set(frozen.map((s) => s.clubTapId).filter((id): id is string => !!id));
+  // Only links to events that still exist count. Re-attaching a watch file replaces every lap
+  // with a fresh id, so a row linked to the OLD ingest is unlinked as far as this run is
+  // concerned — and free to adopt its lap again below.
+  const lapIds = new Set(input.laps.map((l) => l.id));
+  const tapIds = new Set(input.taps.map((t) => t.id));
+  const hasLiveLap = (s: Shot) => s.watchLapId !== null && lapIds.has(s.watchLapId);
+  const hasLiveTap = (s: Shot) => s.clubTapId !== null && tapIds.has(s.clubTapId);
+  const consumedLapIds = new Set(frozen.filter(hasLiveLap).map((s) => s.watchLapId!));
+  const consumedTapIds = new Set(frozen.filter(hasLiveTap).map((s) => s.clubTapId!));
 
-  const openLaps = laps.filter((l) => !consumedLapIds.has(l.id));
+  let openLaps = laps.filter((l) => !consumedLapIds.has(l.id));
   let openTaps = [...input.taps]
     .filter((t) => !consumedTapIds.has(t.id))
     .sort((a, b) => tapWatchTime(a) - tapWatchTime(b));
@@ -343,6 +390,76 @@ export function reconcile(input: ReconcileInput): ReconcileResult {
     collapsed.push(cur);
   }
   openTaps = collapsed;
+
+  // ----- STEP 2b: hand-entered rows adopt the lap (and tap) they duplicate -----
+  // A Shot-sheet row and a lap press are one stroke: the row supplies club + lie (the player's
+  // own call), the lap supplies where the ball actually was and when it was struck. Penalties
+  // are excluded (no swing behind them); green-marked putts are excluded (their positions come
+  // from the marking screen and are better than watch GPS at putt scale). A row the player has
+  // since hand-positioned in review keeps that position and only gains the link. Runs before
+  // STEP 3 so a hand-entered row outranks a stray tap for the same lap.
+  const adopted = new Map<string, Shot>();
+  let handEnteredMerges = 0;
+  const handEntered = frozen
+    .filter((s) => s.reconciliation === "manual" && s.penaltyType === null)
+    .sort((a, b) => Date.parse(a.recordedAt) - Date.parse(b.recordedAt));
+  {
+    const lapCandidates = handEntered.filter((s) => !hasLiveLap(s));
+    const lapPairs = pairNearest(
+      openLaps.map(lapTime),
+      lapCandidates.map((s) => Date.parse(s.recordedAt) + clockOffsetMs),
+      HAND_ENTERED_WINDOW_MS
+    );
+    const takenLaps = new Set<string>();
+    for (const [li, si] of lapPairs) {
+      const lap = openLaps[li];
+      const shot = lapCandidates[si];
+      const repositioned = shot.positionSource === "manual";
+      adopted.set(shot.id, {
+        ...shot,
+        watchLapId: lap.id,
+        ...(repositioned
+          ? {}
+          : {
+              startPoint: lap.point,
+              positionSource: "watch_lap" as const,
+              accuracyM: null,
+              elevationM: lap.elevationM ?? shot.elevationM
+            }),
+        // The strike moment, not the moment the sheet was filled in — keeps the hole's sequence
+        // honest even when a log was late.
+        recordedAt: watchToPhoneIso(lapTime(lap)),
+        updatedAt: new Date().toISOString()
+      });
+      takenLaps.add(lap.id);
+      consumedLapIds.add(lap.id);
+      handEnteredMerges++;
+    }
+    openLaps = openLaps.filter((l) => !takenLaps.has(l.id));
+  }
+  {
+    // Same again for taps (bag tags AND the Shot sheet in one round — simulation mode does this).
+    // The row's club stands; the tap only fills a blank.
+    const tapCandidates = handEntered
+      .map((s) => adopted.get(s.id) ?? s)
+      .filter((s) => !hasLiveTap(s))
+      .sort((a, b) => Date.parse(a.recordedAt) - Date.parse(b.recordedAt));
+    const tapPairs = pairNearest(
+      openTaps.map(tapWatchTime),
+      tapCandidates.map((s) => Date.parse(s.recordedAt) + clockOffsetMs),
+      HAND_ENTERED_WINDOW_MS
+    );
+    const takenTaps = new Set<string>();
+    for (const [ti, si] of tapPairs) {
+      const tap = openTaps[ti];
+      const shot = tapCandidates[si];
+      adopted.set(shot.id, { ...shot, clubTapId: tap.id, clubId: shot.clubId ?? tap.clubId, updatedAt: new Date().toISOString() });
+      takenTaps.add(tap.id);
+      consumedTapIds.add(tap.id);
+    }
+    openTaps = openTaps.filter((t) => !takenTaps.has(t.id));
+  }
+  frozen = frozen.map((s) => adopted.get(s.id) ?? s);
 
   // ----- STEP 3: greedy nearest-in-time matching -----
   const pairs: { d: number; lap: WatchLap; tap: ClubTap }[] = [];
@@ -625,5 +742,5 @@ export function reconcile(input: ReconcileInput): ReconcileResult {
     tapMatches.push({ tapId: id, shotId: shot?.id ?? null });
   }
 
-  return { shots: outShots, deleteShotIds, flags, lapMatches, tapMatches, clockOffsetMs, clockOffsetMethod };
+  return { shots: outShots, deleteShotIds, flags, lapMatches, tapMatches, handEnteredMerges, clockOffsetMs, clockOffsetMethod };
 }

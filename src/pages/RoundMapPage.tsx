@@ -30,7 +30,6 @@ import {
   listClubTags,
   pairClubTag,
   recordClubTap,
-  recordWatchCalibration,
   recordWatchLap,
   setReviewFlagStatus
 } from "../lib/captureRepo";
@@ -701,13 +700,6 @@ export function RoundMapPage() {
     }
   }
 
-  async function handleCalibrateWatch() {
-    if (!round) return;
-    await recordWatchCalibration(round.id);
-    setRound({ ...round, watchCalibrationAt: new Date().toISOString() });
-    showToast("Now press the watch lap button");
-  }
-
   // --- Simulation ("couch") mode: rehearse a round indoors. The position is placed by tapping
   // the map, and the two capture streams get on-screen stand-ins for the watch lap button and an
   // NFC club tap. Both write the SAME rows the real hardware would, so what's rehearsed here is
@@ -939,15 +931,6 @@ export function RoundMapPage() {
               active={greenMarked}
               disabled={!roundHoleId}
               onPress={() => setGreenMapOpen(true)}
-              onHint={setToolHint}
-            />
-          )}
-          {round && !round.watchCalibrationAt && (
-            <ToolButton
-              icon={<Icon.watch size={19} />}
-              label="Calibrate watch"
-              hint="Tap this and press the watch lap button at the same moment, so the two clocks line up."
-              onPress={handleCalibrateWatch}
               onHint={setToolHint}
             />
           )}

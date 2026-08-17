@@ -287,6 +287,85 @@ export async function correctShot(
   await queueOutbox("shots", "upsert", updated);
 }
 
+/**
+ * Review-screen repositioning of a stroke — the watch was pressed after walking off the tee, or
+ * the phone's fix drifted. Moves the row's startPoint and marks the position hand-placed
+ * (positionSource "manual", userEdited), which reconciliation honours even when the row later
+ * adopts a lap. The previous stroke ended where this one starts, so its endPoint follows;
+ * penalties carry no movement and are stepped over. Elevation is cleared — it belonged to the
+ * old spot. Pass `lie` to restate the lie at the same time (snapping to the tee box means "played
+ * from the tee"); otherwise the lie the player recorded stands.
+ */
+export async function moveShotStart(shotId: string, point: LatLng, lie?: Lie): Promise<void> {
+  await db.transaction("rw", [db.shots, db.outbox], async () => {
+    const shot = await db.shots.get(shotId);
+    if (!shot) return;
+    const moved: Shot = {
+      ...shot,
+      startPoint: point,
+      // A penalty is a point, not a movement — both ends travel together.
+      endPoint: shot.penaltyType !== null ? point : shot.endPoint,
+      positionSource: "manual",
+      accuracyM: null,
+      elevationM: null,
+      ...(lie ? { lieStart: lie } : {}),
+      userEdited: true,
+      updatedAt: now()
+    };
+    await db.shots.put(moved);
+    await queueOutbox("shots", "upsert", moved);
+    if (shot.penaltyType !== null) return;
+
+    const ordered = await listShotsForRoundHole(shot.roundHoleId);
+    const idx = ordered.findIndex((s) => s.id === shotId);
+    for (let i = idx - 1; i >= 0; i--) {
+      const prev = ordered[i];
+      if (prev.penaltyType !== null) continue;
+      const closed: Shot = { ...prev, endPoint: point, lieEnd: moved.lieStart ?? prev.lieEnd, updatedAt: now() };
+      await db.shots.put(closed);
+      await queueOutbox("shots", "upsert", closed);
+      break;
+    }
+  });
+}
+
+/**
+ * Removes a stroke entered by hand on the phone — the backup that duplicates a watch lap when the
+ * two didn't merge, or a double tap of the Shot sheet — and joins the chain across the gap: the
+ * previous stroke now ends where the removed one did. Only for Shot-sheet rows: a reconciled row
+ * would just be regenerated from its lap on the next run, and penalties have their own removal,
+ * which also recomputes the score. The hole score is left alone here — it was counted at hole-out
+ * and the duplicate row was the thing that disagreed with it. Remaining strokes are renumbered.
+ */
+export async function deleteHandEnteredShot(shotId: string): Promise<void> {
+  await db.transaction("rw", [db.shots, db.watchLaps, db.clubTaps, db.outbox], async () => {
+    const shot = await db.shots.get(shotId);
+    if (!shot || shot.reconciliation !== "manual" || shot.penaltyType !== null) return;
+    await db.shots.delete(shotId);
+    await queueOutbox("shots", "delete", { id: shotId });
+    // The lap/tap this row had claimed is free again for the next reconciliation.
+    if (shot.watchLapId) await db.watchLaps.update(shot.watchLapId, { matchedShotId: null });
+    if (shot.clubTapId) await db.clubTaps.update(shot.clubTapId, { matchedShotId: null });
+
+    const rest = await listShotsForRoundHole(shot.roundHoleId);
+    const before = rest.filter((s) => s.shotNumber < shot.shotNumber && s.penaltyType === null);
+    const prev = before[before.length - 1];
+    if (prev) {
+      // Null endPoint (the removed row was the open last stroke) re-opens the chain, correctly.
+      const closed: Shot = { ...prev, endPoint: shot.endPoint, lieEnd: shot.lieEnd, updatedAt: now() };
+      await db.shots.put(closed);
+      await queueOutbox("shots", "upsert", closed);
+    }
+    const remaining = await listShotsForRoundHole(shot.roundHoleId);
+    for (let i = 0; i < remaining.length; i++) {
+      if (remaining[i].shotNumber === i + 1) continue;
+      const renumbered: Shot = { ...remaining[i], shotNumber: i + 1, updatedAt: now() };
+      await db.shots.put(renumbered);
+      await queueOutbox("shots", "upsert", renumbered);
+    }
+  });
+}
+
 /** Manual stats exclusion toggle (4.2). Force-include clears even an auto_outlier mark. */
 export async function setShotExcluded(shotId: string, exclude: boolean, note: string | null = null): Promise<void> {
   const shot = await db.shots.get(shotId);

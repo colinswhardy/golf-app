@@ -158,18 +158,6 @@ export async function recordWatchLap(
   return lap;
 }
 
-// --- Clock calibration (2.5) ---
-
-/** Records the phone timestamp of the "Calibrate watch" press (the user presses the watch lap
- * button at the same moment). Ingest later matches this to the nearest lap to derive the offset. */
-export async function recordWatchCalibration(roundId: string): Promise<void> {
-  const round = await db.rounds.get(roundId);
-  if (!round) return;
-  const updated: Round = { ...round, watchCalibrationAt: now(), updatedAt: now() };
-  await db.rounds.put(updated);
-  await queueOutbox("rounds", "upsert", updated);
-}
-
 // --- Review flags (Phase 3/4) ---
 
 export async function addReviewFlag(flag: Omit<ReviewFlag, "id" | "createdAt" | "resolvedAt" | "status"> & { status?: ReviewFlag["status"] }): Promise<ReviewFlag> {

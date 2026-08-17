@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../lib/db";
-import { getHolesForVersion } from "../lib/courseRepo";
+import { getFeaturesForHole, getHolesForVersion } from "../lib/courseRepo";
+import { greenCentroidOf } from "../lib/targets";
 import {
   addPenaltyStroke,
   correctShot,
+  deleteHandEnteredShot,
   discardRound,
   listCompletedRounds,
   listShotsForRoundHole,
+  moveShotStart,
   removePenaltyStroke,
   setShotExcluded,
   setShotTargetPoint
@@ -17,6 +20,7 @@ import { parseFit } from "../lib/fit";
 import { reconcileRound } from "../lib/reconcileRunner";
 import { ALL_LIES, LIE_LABELS } from "../lib/lie";
 import { distanceYards } from "../lib/geo";
+import { getTeePreference } from "../lib/settings";
 import { ReviewMap } from "../components/ReviewMap";
 import { ScorecardSheet } from "../components/RoundSheets";
 import { AppBar, Badge, EmptyState, Icon, Page, Stat, relativeToParLabel, scoreToneClass } from "../components/ui";
@@ -35,6 +39,12 @@ const PENALTY_OPTIONS: { value: PenaltyType; label: string }[] = [
   { value: "stroke_distance", label: "Stroke and distance" }
 ];
 
+/** " (N laps matched shots you logged)" for the ingest message, or nothing when none did. */
+function describeMerges(n: number): string {
+  if (n === 0) return "";
+  return ` (${n} lap${n === 1 ? "" : "s"} matched shots you logged on the phone)`;
+}
+
 const POSITION_SOURCE_LABELS: Record<Shot["positionSource"], string> = {
   gps: "phone GPS",
   watch_lap: "watch lap",
@@ -46,10 +56,13 @@ const POSITION_SOURCE_LABELS: Record<Shot["positionSource"], string> = {
 export function ReviewRoundsPage() {
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
   const [holeNumber, setHoleNumber] = useState(1);
-  const [armedShotId, setArmedShotId] = useState<string | null>(null);
+  // The shot waiting for a map tap, and what the tap will do to it: set where it was aimed, or
+  // move where it was played from (the watch pressed late, a phone fix that drifted).
+  const [armed, setArmed] = useState<{ shotId: string; action: "target" | "move" } | null>(null);
   const [armedPenaltyType, setArmedPenaltyType] = useState<PenaltyType | null>(null);
   const [showScorecard, setShowScorecard] = useState(false);
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [fitBusy, setFitBusy] = useState(false);
   const [fitMessage, setFitMessage] = useState<string | null>(null);
   // Abandoning a COMPLETED round. Home already offers this for a round still in progress
@@ -128,6 +141,18 @@ export function ReviewRoundsPage() {
     [currentHole?.id]
   );
   const fallbackOrigin = teeBoxes?.[0]?.location ?? null;
+  const holeFeatures = useLiveQuery(() => (currentHole ? getFeaturesForHole(currentHole.id) : []), [currentHole?.id]);
+  // Where "Move to tee" puts a shot — the same box the round map plays from: the chosen tee set
+  // when this hole has it, otherwise the backmost one (courses map a dozen unnamed "Tee" points
+  // per hole, so offering each would be noise).
+  const teeLocation = useMemo(() => {
+    if (!teeBoxes?.length) return null;
+    const preferred = teeBoxes.find((t) => t.name === getTeePreference());
+    if (preferred) return preferred.location;
+    const green = currentHole?.greenPoint ?? (holeFeatures?.length ? greenCentroidOf(holeFeatures) : null);
+    if (!green) return teeBoxes[0].location;
+    return [...teeBoxes].sort((a, b) => distanceYards(b.location, green) - distanceYards(a.location, green))[0].location;
+  }, [teeBoxes, holeFeatures, currentHole?.greenPoint]);
 
   const clubs = useLiveQuery(() => db.clubs.toArray(), []);
 
@@ -156,9 +181,10 @@ export function ReviewRoundsPage() {
   }, [scorecardEntries]);
 
   useEffect(() => {
-    setArmedShotId(null);
+    setArmed(null);
     setArmedPenaltyType(null);
     setEditingShotId(null);
+    setConfirmDeleteId(null);
   }, [selectedRoundId, currentHole?.id]);
   useEffect(() => {
     setShowScorecard(false);
@@ -166,15 +192,28 @@ export function ReviewRoundsPage() {
   }, [selectedRoundId]);
 
   async function handleMapClick(point: LatLng) {
-    if (armedShotId) {
-      await setShotTargetPoint(armedShotId, point);
-      setArmedShotId(null);
+    if (armed) {
+      if (armed.action === "target") await setShotTargetPoint(armed.shotId, point);
+      else await moveShotStart(armed.shotId, point);
+      setArmed(null);
       return;
     }
     if (armedPenaltyType && currentRoundHole) {
       await addPenaltyStroke(currentRoundHole.id, armedPenaltyType, point);
       setArmedPenaltyType(null);
     }
+  }
+
+  /** Toggles the map-tap arming for one shot; arming one action disarms the other. */
+  function toggleArmed(shotId: string, action: "target" | "move") {
+    setArmed((cur) => (cur?.shotId === shotId && cur.action === action ? null : { shotId, action }));
+  }
+
+  async function handleDeleteShot(shot: Shot) {
+    setConfirmDeleteId(null);
+    if (editingShotId === shot.id) setEditingShotId(null);
+    if (armed?.shotId === shot.id) setArmed(null);
+    await deleteHandEnteredShot(shot.id);
   }
 
   function jumpToFlag(flag: ReviewFlag) {
@@ -233,7 +272,8 @@ export function ReviewRoundsPage() {
       });
       const summary = await reconcileRound(selectedRound.id);
       setFitMessage(
-        `Ingested ${parsed.laps.length} laps → ${summary.shotCount} shots, ${summary.flagCount} flag(s). ` +
+        `Ingested ${parsed.laps.length} laps → ${summary.shotCount} shots${describeMerges(summary.handEnteredMerges)}, ` +
+          `${summary.flagCount} flag(s). ` +
           `Clock offset ${(summary.clockOffsetMs / 1000).toFixed(1)}s (${summary.clockOffsetMethod.replace(/_/g, " ")}).`
       );
     } catch (e) {
@@ -248,7 +288,7 @@ export function ReviewRoundsPage() {
     setFitBusy(true);
     try {
       const summary = await reconcileRound(selectedRound.id);
-      setFitMessage(`Re-reconciled: ${summary.shotCount} shots, ${summary.flagCount} flag(s).`);
+      setFitMessage(`Re-reconciled: ${summary.shotCount} shots${describeMerges(summary.handEnteredMerges)}, ${summary.flagCount} flag(s).`);
     } catch (e) {
       setFitMessage(e instanceof Error ? e.message : String(e));
     } finally {
@@ -407,7 +447,8 @@ export function ReviewRoundsPage() {
         <ReviewMap
           shots={shots ?? []}
           fallbackOrigin={fallbackOrigin}
-          armedShotId={armedShotId}
+          armedShotId={armed?.shotId ?? null}
+          armedAction={armed?.action}
           clickArmed={armedPenaltyType !== null}
           onMapClick={handleMapClick}
         />
@@ -521,6 +562,7 @@ export function ReviewRoundsPage() {
                 const distLabel =
                   rawYards === null ? null : s.swingType === "putt" ? `${Math.round(rawYards * 3)}ft` : `${Math.round(rawYards)}y`;
                 const badPosition = s.positionSource === "tee_fallback" || (s.accuracyM !== null && s.accuracyM > 15);
+                const isArmedFor = (action: "target" | "move") => armed?.shotId === s.id && armed.action === action;
                 return (
                   <div key={s.id} className="card card--tight">
                     <div className="row row--between">
@@ -540,6 +582,9 @@ export function ReviewRoundsPage() {
                           {s.lieStart ? LIE_LABELS[s.lieStart] : "—"}
                           {distLabel !== null && !s.penaltyType ? ` · ${distLabel}` : ""}
                           {` · ${POSITION_SOURCE_LABELS[s.positionSource]}`}
+                          {/* A Shot-sheet row that took its position from a watch press: one
+                              stroke, two records, and the reader can see both were there. */}
+                          {s.reconciliation === "manual" && s.positionSource === "watch_lap" ? " + phone log" : ""}
                           {s.targetPoint ? ` · target ${s.targetSource.replace("default_", "")}` : ""}
                           {s.userEdited ? " · edited" : ""}
                         </div>
@@ -586,17 +631,56 @@ export function ReviewRoundsPage() {
                                 </button>
                               ))}
                             </div>
+                            <div className="tiny faint mb-1">Position</div>
+                            <div className="row row--wrap mb-2" style={{ gap: 8 }}>
+                              <button
+                                className={`btn btn--sm${isArmedFor("move") ? " btn--primary" : ""}`}
+                                onClick={() => toggleArmed(s.id, "move")}
+                              >
+                                <Icon.pin size={14} /> {isArmedFor("move") ? "Tap map…" : "Move shot"}
+                              </button>
+                              {/* Snapping to the tee is the common correction (the watch pressed
+                                  after walking off the box), so it's one tap for tee shots. */}
+                              {(s.shotNumber === 1 || s.lieStart === "tee") && s.swingType !== "putt" && teeLocation && (
+                                <button className="btn btn--sm btn--ghost" onClick={() => moveShotStart(s.id, teeLocation, "tee")}>
+                                  Move to tee
+                                </button>
+                              )}
+                            </div>
                             <div className="row row--wrap" style={{ gap: 8 }}>
                               <button
-                                className={`btn btn--sm${armedShotId === s.id ? " btn--primary" : ""}`}
-                                onClick={() => setArmedShotId((id) => (id === s.id ? null : s.id))}
+                                className={`btn btn--sm${isArmedFor("target") ? " btn--primary" : ""}`}
+                                onClick={() => toggleArmed(s.id, "target")}
                               >
-                                <Icon.target size={14} /> {armedShotId === s.id ? "Tap map…" : "Set target"}
+                                <Icon.target size={14} /> {isArmedFor("target") ? "Tap map…" : "Set target"}
                               </button>
                               <button className="btn btn--sm btn--ghost" onClick={() => setShotExcluded(s.id, s.excluded === null)}>
                                 {s.excluded === null ? "Exclude from stats" : "Include in stats"}
                               </button>
+                              {/* Only Shot-sheet rows can go: a reconciled row would come straight
+                                  back from its lap on the next run. */}
+                              {s.reconciliation === "manual" && (
+                                <button className="btn btn--sm btn--danger" onClick={() => setConfirmDeleteId(s.id)}>
+                                  <Icon.trash size={14} /> Delete
+                                </button>
+                              )}
                             </div>
+                            {confirmDeleteId === s.id && (
+                              <div className="card mt-2" style={{ borderColor: "rgba(255,107,107,.3)" }}>
+                                <div className="small mb-2">
+                                  Delete shot {s.shotNumber}? The strokes after it move up one; the hole score stays as
+                                  you counted it.
+                                </div>
+                                <div className="row" style={{ gap: 8 }}>
+                                  <button className="btn btn--sm btn--danger" onClick={() => handleDeleteShot(s)}>
+                                    Delete
+                                  </button>
+                                  <button className="btn btn--sm btn--ghost" onClick={() => setConfirmDeleteId(null)}>
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </>
                         )}
                       </div>

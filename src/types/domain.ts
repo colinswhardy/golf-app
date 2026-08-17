@@ -122,8 +122,10 @@ export interface Round {
    * full hole range, which is what those rounds were. */
   startHole?: number;
   endHole?: number;
-  /** Phone timestamp of the "Calibrate watch" press (user hits the watch lap button at the same
-   * moment); used at ingest to compute clockOffsetMs. */
+  /** Phone timestamp of a "Calibrate watch" press (the user hit the watch lap button at the same
+   * moment), used at ingest to compute clockOffsetMs. The round map no longer offers the button —
+   * the pairing windows absorb ordinary clock drift — but rounds that recorded one (and the
+   * sample round) still carry it and reconciliation still honours it. */
   watchCalibrationAt: string | null;
   reconciledAt: string | null;
   updatedAt: string;
