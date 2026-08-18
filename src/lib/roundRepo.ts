@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { findPutter } from "./stats";
+import { distanceMeters } from "./geo";
 import type { FairwayResult, LatLng, Lie, PenaltyType, PositionSource, Round, RoundHole, Shot } from "../types/domain";
 
 const now = () => new Date().toISOString();
@@ -218,20 +219,30 @@ export async function saveGreenMarks(params: {
 
     // Replace any previous green_mark rows for this hole (re-marking).
     const existing = await listShotsForRoundHole(params.roundHoleId);
-    for (const s of existing) {
-      if (s.reconciliation === "green_mark") {
-        await db.shots.delete(s.id);
-        await queueOutbox("shots", "delete", { id: s.id });
-      }
+    const previousPutts = existing.filter((s) => s.reconciliation === "green_mark");
+    for (const s of previousPutts) {
+      await db.shots.delete(s.id);
+      await queueOutbox("shots", "delete", { id: s.id });
     }
     const nonPutt = existing.filter((s) => s.reconciliation !== "green_mark");
 
-    // Close the approach (last non-putt shot) onto the first putt's start — or straight onto the
-    // pin for a chip-in with zero putts.
-    const last = nonPutt[nonPutt.length - 1];
+    // The putts' timestamp is the hole-out moment: reconciliation reads it as "you were still on
+    // this hole until then" when it segments laps. Re-marking from the review screen days later
+    // must therefore keep the ORIGINAL marking time, not stamp the edit time — that would pin
+    // every later lap of the round to this hole on the next re-run. A hole marked for the first
+    // time in review has no such time; the last stroke's plus a minute stands in.
+    const strokes = nonPutt.filter((s) => s.penaltyType === null);
+    const lastStroke = strokes[strokes.length - 1];
+    const markedAt =
+      previousPutts.map((s) => s.recordedAt).sort()[0] ??
+      (lastStroke ? new Date(Date.parse(lastStroke.recordedAt) + 60_000).toISOString() : now());
+
+    // Close the approach (last real stroke — penalties carry no movement) onto the first putt's
+    // start, or straight onto the pin for a chip-in with zero putts. Unconditional: when
+    // re-marking, the approach already ends on the OLD first putt and has to follow.
     const approachEnd = params.puttStarts[0] ?? params.pin;
-    if (last && !last.endPoint) {
-      const closed: Shot = { ...last, endPoint: approachEnd, lieEnd: "green", updatedAt: now() };
+    if (lastStroke) {
+      const closed: Shot = { ...lastStroke, endPoint: approachEnd, lieEnd: "green", updatedAt: now() };
       await db.shots.put(closed);
       await queueOutbox("shots", "upsert", closed);
     }
@@ -262,7 +273,7 @@ export async function saveGreenMarks(params: {
         penaltyType: null,
         excluded: null,
         exclusionNote: null,
-        recordedAt: now(),
+        recordedAt: markedAt,
         updatedAt: now()
       };
       await db.shots.put(shot);
@@ -364,6 +375,180 @@ export async function deleteHandEnteredShot(shotId: string): Promise<void> {
       await queueOutbox("shots", "upsert", renumbered);
     }
   });
+}
+
+/**
+ * Re-derives a hole's numbering and chain from the rows' own order — the same order
+ * reconciliation assembles: strokes and penalties by recordedAt, then the putts in their marked
+ * order. Each stroke ends where the next stroke starts (penalties carry no movement and are
+ * stepped over); the last stroke ends at the first putt, else the pin, else keeps whatever it
+ * had; putts chain onto each other and the last onto the pin. Called after an edit that changes
+ * ORDER (inserting or reordering a stroke); position edits keep their own narrower chain fixes.
+ * Only rows that actually changed are written.
+ */
+async function rechainHole(roundHoleId: string): Promise<void> {
+  const rh = await db.roundHoles.get(roundHoleId);
+  const rows = await listShotsForRoundHole(roundHoleId);
+  const putts = rows.filter((s) => s.swingType === "putt");
+  const others = [...rows.filter((s) => s.swingType !== "putt")].sort(
+    (a, b) => Date.parse(a.recordedAt) - Date.parse(b.recordedAt) || a.shotNumber - b.shotNumber
+  );
+  const ordered = [...others, ...putts];
+  const strokes = ordered.filter((s) => s.penaltyType === null);
+
+  const next = new Map<string, Shot | null>();
+  for (let i = 0; i < strokes.length; i++) next.set(strokes[i].id, strokes[i + 1] ?? null);
+
+  for (let i = 0; i < ordered.length; i++) {
+    const s = ordered[i];
+    let patched: Shot = s.shotNumber === i + 1 ? s : { ...s, shotNumber: i + 1 };
+    if (s.penaltyType === null) {
+      const following = next.get(s.id) ?? null;
+      const end = following?.startPoint ?? rh?.pinLocation ?? s.endPoint;
+      const lieEnd: Lie | null = following ? following.lieStart : end ? "green" : s.lieEnd;
+      if (end && (end.lat !== s.endPoint?.lat || end.lng !== s.endPoint?.lng || lieEnd !== s.lieEnd)) {
+        patched = { ...patched, endPoint: end, lieEnd };
+      }
+    }
+    if (patched !== s) {
+      const written: Shot = { ...patched, updatedAt: now() };
+      await db.shots.put(written);
+      await queueOutbox("shots", "upsert", written);
+    }
+  }
+}
+
+/**
+ * Adds a stroke the player forgot to log at the time, from the review screen. It joins the
+ * hole's stroke sequence wherever it lengthens the path least — a tap in the fairway between
+ * the drive's landing spot and the green slots in as the approach, a tap on the tee goes first —
+ * and takes a recordedAt between its new neighbours so reconciliation orders it the same way.
+ * Hand-entered and hand-positioned, so it's frozen; if a watch lap turns out to sit at that
+ * moment, reconciliation will still fold the lap into it. Returns the new row.
+ */
+export async function insertShot(params: {
+  roundHoleId: string;
+  point: LatLng;
+  lie: Lie;
+  clubId?: string | null;
+}): Promise<Shot> {
+  return db.transaction("rw", [db.shots, db.roundHoles, db.outbox], async () => {
+    const rows = await listShotsForRoundHole(params.roundHoleId);
+    const strokes = rows
+      .filter((s) => s.swingType !== "putt" && s.penaltyType === null)
+      .sort((a, b) => Date.parse(a.recordedAt) - Date.parse(b.recordedAt) || a.shotNumber - b.shotNumber);
+    const firstPutt = rows.filter((s) => s.swingType === "putt")[0] ?? null;
+
+    // The hole's path so far: every stroke's start, then where the last one finished (its end,
+    // else the first putt, else the pin). Slot k inserts between nodes[k-1] and nodes[k]; the cost
+    // is the extra length that detour adds. A slot past the last stroke's start — including one
+    // past the tail — appends. Ties go to the later slot: a tap right where the last stroke
+    // finished is the NEXT stroke, not a repeat of the last.
+    const rh = await db.roundHoles.get(params.roundHoleId);
+    const nodes: LatLng[] = strokes.map((s) => s.startPoint);
+    const lastStroke = strokes[strokes.length - 1] ?? null;
+    const tail = lastStroke ? (lastStroke.endPoint ?? firstPutt?.startPoint ?? rh?.pinLocation ?? null) : null;
+    if (tail) nodes.push(tail);
+    let bestSlot = nodes.length;
+    let bestCost = Infinity;
+    for (let k = 0; k <= nodes.length; k++) {
+      const a = nodes[k - 1] ?? null;
+      const b = nodes[k] ?? null;
+      let cost: number;
+      if (a && b) cost = distanceMeters(a, params.point) + distanceMeters(params.point, b) - distanceMeters(a, b);
+      else if (b) cost = distanceMeters(params.point, b);
+      else if (a) cost = distanceMeters(a, params.point);
+      else cost = 0;
+      if (cost <= bestCost + 1e-6) {
+        bestCost = cost;
+        bestSlot = k;
+      }
+    }
+    const bestIdx = Math.min(bestSlot, strokes.length);
+    const before = strokes[bestIdx - 1] ?? null;
+    const after = strokes[bestIdx] ?? firstPutt;
+    const t =
+      before && after
+        ? (Date.parse(before.recordedAt) + Date.parse(after.recordedAt)) / 2
+        : before
+          ? Date.parse(before.recordedAt) + 60_000
+          : after
+            ? Date.parse(after.recordedAt) - 60_000
+            : Date.now();
+
+    const shot: Shot = {
+      id: uuid(),
+      roundHoleId: params.roundHoleId,
+      shotNumber: 0, // rechainHole numbers it
+      clubId: params.clubId ?? null,
+      startPoint: params.point,
+      endPoint: null,
+      positionSource: "manual",
+      accuracyM: null,
+      lieStart: params.lie,
+      lieEnd: null,
+      watchLapId: null,
+      clubTapId: null,
+      reconciliation: "manual",
+      elevationM: null,
+      targetPoint: null,
+      targetSource: "default_green",
+      // Always a stroke: putts are added on the green-marking screen, where they get positions
+      // and a pin to chain onto.
+      swingType: "full",
+      intendedYards: null,
+      penaltyType: null,
+      excluded: null,
+      exclusionNote: null,
+      recordedAt: new Date(t).toISOString(),
+      updatedAt: now(),
+      userEdited: true
+    };
+    await db.shots.put(shot);
+    await queueOutbox("shots", "upsert", shot);
+    await rechainHole(params.roundHoleId);
+    return (await db.shots.get(shot.id)) ?? shot;
+  });
+}
+
+/**
+ * Moves a stroke one place earlier or later in its hole's sequence by trading recordedAt with
+ * the neighbouring stroke, then re-chains. Both rows become userEdited so reconciliation orders
+ * them by that time rather than by their lap. Putts keep their marked order; penalties sit where
+ * they were incurred and aren't reordered.
+ */
+export async function swapShotOrder(shotId: string, direction: -1 | 1): Promise<void> {
+  await db.transaction("rw", [db.shots, db.roundHoles, db.outbox], async () => {
+    const shot = await db.shots.get(shotId);
+    if (!shot || shot.swingType === "putt" || shot.penaltyType !== null) return;
+    const strokes = (await listShotsForRoundHole(shot.roundHoleId))
+      .filter((s) => s.swingType !== "putt" && s.penaltyType === null)
+      .sort((a, b) => Date.parse(a.recordedAt) - Date.parse(b.recordedAt) || a.shotNumber - b.shotNumber);
+    const idx = strokes.findIndex((s) => s.id === shotId);
+    const other = strokes[idx + direction];
+    if (idx < 0 || !other) return;
+    // Identical timestamps would swap into themselves; nudge a second past the neighbour instead.
+    const swappedAt =
+      other.recordedAt === shot.recordedAt
+        ? new Date(Date.parse(shot.recordedAt) + direction * 1000).toISOString()
+        : other.recordedAt;
+    const a: Shot = { ...shot, recordedAt: swappedAt, userEdited: true, updatedAt: now() };
+    const b: Shot = { ...other, recordedAt: shot.recordedAt, userEdited: true, updatedAt: now() };
+    await db.shots.put(a);
+    await queueOutbox("shots", "upsert", a);
+    await db.shots.put(b);
+    await queueOutbox("shots", "upsert", b);
+    await rechainHole(shot.roundHoleId);
+  });
+}
+
+/** Review-screen score correction. The score is the player's own count; nothing derives it. */
+export async function setRoundHoleScore(roundHoleId: string, score: number | null): Promise<void> {
+  const rh = await db.roundHoles.get(roundHoleId);
+  if (!rh) return;
+  const updated: RoundHole = { ...rh, score, updatedAt: now() };
+  await db.roundHoles.put(updated);
+  await queueOutbox("roundHoles", "upsert", updated);
 }
 
 /** Manual stats exclusion toggle (4.2). Force-include clears even an auto_outlier mark. */

@@ -6,6 +6,16 @@ import type { LatLng, Shot } from "../types/domain";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const PATH_SOURCE_ID = "review-path";
+/** Tilt for the tee-at-bottom camera, matching the live round map. */
+const FRAME_PITCH = 55;
+/** Room around the fitted path: the hole bar / back button sit over the top edge on the phone
+ * layout and the "tap the map" toast over the bottom, so the tee and green stay clear of both. */
+const FRAME_PADDING = { top: 72, bottom: 56, left: 40, right: 40 };
+/** A hole that's all putts would otherwise fit to street-level zoom and lose all context. */
+const FRAME_MAX_ZOOM = 19;
+/** Transient empty shot lists (Dexie briefly emits [] while a new hole's rows load) shouldn't
+ * bounce the camera to the tee and back; a short debounce lets the real rows land first. */
+const FRAME_DEBOUNCE_MS = 60;
 
 interface ReviewMapProps {
   /** Shots for the hole being reviewed, sorted by shotNumber. */
@@ -43,15 +53,54 @@ export function ReviewMap({ shots, fallbackOrigin, armedShotId, armedAction = "t
   const stateRef = useRef({ shots, armedShotId, clickArmed, onMapClick });
   stateRef.current = { shots, armedShotId, clickArmed, onMapClick };
 
-  const pathPoints: LatLng[] = [];
-  if (shots.length) {
-    pathPoints.push(shots[0].startPoint);
-    for (const s of shots) {
-      if (s.endPoint) pathPoints.push(s.endPoint);
-    }
+  // Everything the camera has to keep in frame: every stroke's start and finish. Falls back to
+  // the tee box for a hole with nothing recorded yet.
+  const framePoints: LatLng[] = [];
+  for (const s of shots) {
+    framePoints.push(s.startPoint);
+    if (s.endPoint) framePoints.push(s.endPoint);
   }
-  const origin = pathPoints[0] ?? fallbackOrigin ?? null;
-  const finalPoint = pathPoints[pathPoints.length - 1] ?? null;
+  if (!framePoints.length && fallbackOrigin) framePoints.push(fallbackOrigin);
+  const origin = framePoints[0] ?? null;
+  const finalPoint = shots.length ? (shots[shots.length - 1].endPoint ?? shots[shots.length - 1].startPoint) : null;
+  const framePointsRef = useRef({ framePoints, origin, finalPoint });
+  framePointsRef.current = { framePoints, origin, finalPoint };
+
+  /**
+   * Frames the hole: fits every path point with the tee at the bottom and the green at the top
+   * (bearing tee→last point, tilted like the live map). A fit rather than "centre on the tee at
+   * a fixed zoom" so a long par 5 fills a tall desktop frame instead of running off the top, and
+   * a short par 3 doesn't sit in a sea of neighbouring holes. First placement is instant — the
+   * data almost never exists on the very first render, and a fly-in from the generic fallback
+   * would be disorienting; every later change (a new hole, rows finishing loading) eases.
+   */
+  const hasPlacedCameraRef = useRef(false);
+  function frameHole() {
+    const map = mapRef.current;
+    const { framePoints: pts, origin: o, finalPoint: f } = framePointsRef.current;
+    if (!map || !o) return;
+    const duration = hasPlacedCameraRef.current ? 600 : 0;
+    hasPlacedCameraRef.current = true;
+    const spread = f && (f.lat !== o.lat || f.lng !== o.lng);
+    if (!spread) {
+      map.easeTo({ center: [o.lng, o.lat], zoom: 17, bearing: 0, pitch: 0, duration });
+      return;
+    }
+    const bounds = new mapboxgl.LngLatBounds();
+    for (const p of pts) bounds.extend([p.lng, p.lat]);
+    map.fitBounds(bounds, {
+      bearing: bearingDegrees(o, f),
+      pitch: FRAME_PITCH,
+      padding: FRAME_PADDING,
+      maxZoom: FRAME_MAX_ZOOM,
+      duration
+    });
+  }
+  const frameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function scheduleFrame() {
+    if (frameTimerRef.current) clearTimeout(frameTimerRef.current);
+    frameTimerRef.current = setTimeout(frameHole, FRAME_DEBOUNCE_MS);
+  }
 
   // Clears and rebuilds every marker + the path line from the current shots list. Always a
   // full rebuild rather than an incremental per-marker update — simpler, and (unlike
@@ -107,16 +156,12 @@ export function ReviewMap({ shots, fallbackOrigin, armedShotId, armedAction = "t
     mapboxgl.accessToken = TOKEN;
 
     const center = origin ?? { lat: 43.55, lng: -80.2 };
-    const bearing = origin && finalPoint ? bearingDegrees(origin, finalPoint) : 0;
-    const pitch = origin && finalPoint ? 55 : 0;
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: "mapbox://styles/mapbox/satellite-streets-v12",
       center: [center.lng, center.lat],
-      zoom: 17,
-      pitch,
-      bearing
+      zoom: 17
     });
     mapRef.current = map;
 
@@ -140,7 +185,12 @@ export function ReviewMap({ shots, fallbackOrigin, armedShotId, armedAction = "t
       curOnClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
     });
 
+    // The frame changes shape when the phone/desktop layout flips or the window is resized, and
+    // a fit computed for the old shape leaves the hole cropped or tiny in the new one.
+    map.on("resize", scheduleFrame);
+
     return () => {
+      if (frameTimerRef.current) clearTimeout(frameTimerRef.current);
       map.remove();
       mapRef.current = null;
       shotMarkersRef.current = [];
@@ -149,25 +199,17 @@ export function ReviewMap({ shots, fallbackOrigin, armedShotId, armedAction = "t
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-centers the camera whenever real origin/finalPoint data becomes available or changes.
-  // Needed because `shots`/`fallbackOrigin` come from async useLiveQuery chains in the parent
-  // that are almost never resolved yet on ReviewMap's very first render — the mount effect
-  // above would otherwise permanently lock the camera onto its generic fallback coordinates,
-  // since it only runs once. First real placement jumps instantly (no disorienting spin from
-  // the fallback location); later changes (switching holes, shots finishing loading) ease.
-  const hasPlacedCameraRef = useRef(false);
+  // Re-frame when the hole's set of strokes changes (a different hole, rows finishing loading,
+  // a stroke added or removed) — but NOT when a stroke merely moves: nudging a position from
+  // the shot list shouldn't send the camera drifting after it. `shots`/`fallbackOrigin` come
+  // from async useLiveQuery chains that are almost never resolved on the first render, which is
+  // why the mount effect alone can't place the camera.
+  const frameKey = shots.length ? shots.map((s) => s.id).join("|") : `tee:${fallbackOrigin?.lat ?? ""},${fallbackOrigin?.lng ?? ""}`;
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !origin) return;
-    const bearing = finalPoint ? bearingDegrees(origin, finalPoint) : 0;
-    const pitch = finalPoint ? 55 : 0;
-    if (!hasPlacedCameraRef.current) {
-      map.jumpTo({ center: [origin.lng, origin.lat], bearing, pitch });
-      hasPlacedCameraRef.current = true;
-    } else {
-      map.easeTo({ center: [origin.lng, origin.lat], bearing, pitch, duration: 600 });
-    }
-  }, [origin?.lat, origin?.lng, finalPoint?.lat, finalPoint?.lng]);
+    if (!mapRef.current || !origin) return;
+    scheduleFrame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameKey]);
 
   // Re-render whenever the shot list, its endpoints, or its aim points change (e.g. after
   // setShotAimPoint writes back to Dexie and the parent's useLiveQuery re-delivers shots).

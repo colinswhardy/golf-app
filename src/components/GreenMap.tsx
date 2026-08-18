@@ -17,6 +17,9 @@ interface GreenMapProps {
   fallbackCenter: LatLng;
   /** Existing pin for this hole/round, when re-marking. */
   initialPin: LatLng | null;
+  /** Existing putt starts, in order, when re-marking from review — pre-placed as draggable
+   * markers so a fix is a nudge, not a redo. */
+  initialPuttStarts?: LatLng[];
   holeNumber: number;
   onFinish: (pin: LatLng, puttStarts: LatLng[]) => void;
   onClose: () => void;
@@ -29,7 +32,7 @@ interface GreenMapProps {
  * untouched). Top-down camera: precision tapping wants no pitch. Course polygons stay invisible,
  * as everywhere.
  */
-export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber, onFinish, onClose }: GreenMapProps) {
+export function GreenMap({ greenPolygon, fallbackCenter, initialPin, initialPuttStarts, holeNumber, onFinish, onClose }: GreenMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const pinMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -153,8 +156,9 @@ export function GreenMap({ greenPolygon, fallbackCenter, initialPin, holeNumber,
       else addPuttMarker(clicked);
     });
 
-    // Re-marking an already-marked hole: show the existing pin immediately.
+    // Re-marking an already-marked hole: show the existing pin and putts immediately.
     if (initialPin) placePin(initialPin);
+    for (const p of initialPuttStarts ?? []) addPuttMarker(p);
 
     return () => {
       map.remove();

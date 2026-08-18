@@ -8,20 +8,25 @@ import {
   correctShot,
   deleteHandEnteredShot,
   discardRound,
+  insertShot,
   listCompletedRounds,
   listShotsForRoundHole,
   moveShotStart,
   removePenaltyStroke,
+  saveGreenMarks,
+  setRoundHoleScore,
   setShotExcluded,
-  setShotTargetPoint
+  setShotTargetPoint,
+  swapShotOrder
 } from "../lib/roundRepo";
 import { saveWatchData, setReviewFlagStatus } from "../lib/captureRepo";
 import { parseFit } from "../lib/fit";
 import { reconcileRound } from "../lib/reconcileRunner";
-import { ALL_LIES, LIE_LABELS } from "../lib/lie";
+import { ALL_LIES, LIE_LABELS, detectLie } from "../lib/lie";
 import { distanceYards } from "../lib/geo";
 import { getTeePreference } from "../lib/settings";
 import { ReviewMap } from "../components/ReviewMap";
+import { GreenMap } from "../components/GreenMap";
 import { ScorecardSheet } from "../components/RoundSheets";
 import { AppBar, Badge, EmptyState, Icon, Page, Stat, relativeToParLabel, scoreToneClass } from "../components/ui";
 import type { LatLng, PenaltyType, ReviewFlag, Shot } from "../types/domain";
@@ -60,6 +65,9 @@ export function ReviewRoundsPage() {
   // move where it was played from (the watch pressed late, a phone fix that drifted).
   const [armed, setArmed] = useState<{ shotId: string; action: "target" | "move" } | null>(null);
   const [armedPenaltyType, setArmedPenaltyType] = useState<PenaltyType | null>(null);
+  // "Add shot": the next map tap becomes a new stroke on this hole (forgot to log one at the time).
+  const [addingShot, setAddingShot] = useState(false);
+  const [greenEditorOpen, setGreenEditorOpen] = useState(false);
   const [showScorecard, setShowScorecard] = useState(false);
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -161,6 +169,57 @@ export function ReviewRoundsPage() {
     [selectedRound?.id]
   );
   const pendingFlags = useMemo(() => (flags ?? []).filter((f) => f.status !== "resolved"), [flags]);
+  // Flags belong with the hole they're about: hole-level ones (score balance) sit above that
+  // hole's shot list, shot-level ones inside the shot's own card. Other holes' open flags are
+  // only pointed at, so the reader isn't shown a queue for the whole round on every hole.
+  const holeFlags = useMemo(
+    () => pendingFlags.filter((f) => f.roundHoleId === currentRoundHole?.id),
+    [pendingFlags, currentRoundHole?.id]
+  );
+  const shotIds = useMemo(() => new Set((shots ?? []).map((s) => s.id)), [shots]);
+  const holeLevelFlags = holeFlags.filter((f) => !f.shotId || !shotIds.has(f.shotId));
+  const flagsByShot = useMemo(() => {
+    const m = new Map<string, ReviewFlag[]>();
+    for (const f of holeFlags) {
+      if (!f.shotId) continue;
+      m.set(f.shotId, [...(m.get(f.shotId) ?? []), f]);
+    }
+    return m;
+  }, [holeFlags]);
+  /** Hole numbers (other than the current one) that still have something open, ascending. */
+  const otherFlaggedHoles = useMemo(() => {
+    const nums = new Set<number>();
+    for (const f of pendingFlags) {
+      const rh = allRoundHoles?.find((r) => r.id === f.roundHoleId);
+      const hole = holes?.find((h) => h.id === rh?.holeId);
+      if (hole && hole.number !== holeNumber) nums.add(hole.number);
+    }
+    return [...nums].sort((a, b) => a - b);
+  }, [pendingFlags, allRoundHoles, holes, holeNumber]);
+  const flaggedHoleNumbers = useMemo(() => new Set([...otherFlaggedHoles, ...(holeFlags.length ? [holeNumber] : [])]), [otherFlaggedHoles, holeFlags.length, holeNumber]);
+
+  // Strokes as the hole's rows account for them, against the score the player counted. Shown
+  // when they disagree so a putt or stroke edit here can be squared with the score in one tap.
+  const accounted = useMemo(() => {
+    const rows = shots ?? [];
+    return {
+      swings: rows.filter((s) => s.swingType !== "putt" && s.penaltyType === null).length,
+      putts: rows.filter((s) => s.swingType === "putt").length,
+      penalties: rows.filter((s) => s.penaltyType !== null).length
+    };
+  }, [shots]);
+  const accountedTotal = accounted.swings + accounted.putts + accounted.penalties;
+  const puttStarts = useMemo(
+    () => (shots ?? []).filter((s) => s.reconciliation === "green_mark").map((s) => s.startPoint),
+    [shots]
+  );
+  /** The reorderable sequence: strokes only, in display order. */
+  const strokeRows = useMemo(() => (shots ?? []).filter((s) => s.swingType !== "putt" && s.penaltyType === null), [shots]);
+  const greenPolygon = useMemo(
+    () => (holeFeatures?.find((f) => f.featureType === "green" && f.geometry.type === "Polygon")?.geometry as GeoJSON.Polygon | undefined) ?? null,
+    [holeFeatures]
+  );
+  const greenCentroid = useMemo(() => (holeFeatures?.length ? greenCentroidOf(holeFeatures) : null), [holeFeatures]);
 
   const scorecardEntries = useMemo(() => {
     if (!holes) return [];
@@ -183,6 +242,8 @@ export function ReviewRoundsPage() {
   useEffect(() => {
     setArmed(null);
     setArmedPenaltyType(null);
+    setAddingShot(false);
+    setGreenEditorOpen(false);
     setEditingShotId(null);
     setConfirmDeleteId(null);
   }, [selectedRoundId, currentHole?.id]);
@@ -191,11 +252,48 @@ export function ReviewRoundsPage() {
     setFitMessage(null);
   }, [selectedRoundId]);
 
+  // Desktop affordances: ←/→ step through the holes, Esc drops whatever is armed. Ignored while
+  // a form control has focus so the penalty select keeps its own arrow-key behaviour.
+  useEffect(() => {
+    if (!selectedRoundId) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (["INPUT", "SELECT", "TEXTAREA"].includes(t.tagName) || t.isContentEditable)) return;
+      if (e.key === "ArrowLeft") setHoleNumber((n) => Math.max(firstHoleNumber, n - 1));
+      else if (e.key === "ArrowRight") setHoleNumber((n) => Math.min(maxHoleNumber, n + 1));
+      else if (e.key === "Escape") {
+        setArmed(null);
+        setArmedPenaltyType(null);
+        setAddingShot(false);
+        setConfirmDeleteId(null);
+        setShowScorecard(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedRoundId, firstHoleNumber, maxHoleNumber]);
+
+  // A flag jump lands on another hole whose rows load asynchronously, so scroll the shot's card
+  // into view once it exists. "nearest" leaves the panel alone when the card is already visible.
+  useEffect(() => {
+    if (!editingShotId) return;
+    document.getElementById(`shot-${editingShotId}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [editingShotId, shots]);
+
+  const selectedSummary = completedRounds?.find((r) => r.round.id === selectedRoundId) ?? null;
+
   async function handleMapClick(point: LatLng) {
     if (armed) {
       if (armed.action === "target") await setShotTargetPoint(armed.shotId, point);
       else await moveShotStart(armed.shotId, point);
       setArmed(null);
+      return;
+    }
+    if (addingShot && currentRoundHole) {
+      setAddingShot(false);
+      // Straight into edit so the club (unknown — that's why it was forgotten) gets picked next.
+      const shot = await insertShot({ roundHoleId: currentRoundHole.id, point, lie: detectLie(point, holeFeatures ?? []) });
+      setEditingShotId(shot.id);
       return;
     }
     if (armedPenaltyType && currentRoundHole) {
@@ -206,7 +304,14 @@ export function ReviewRoundsPage() {
 
   /** Toggles the map-tap arming for one shot; arming one action disarms the other. */
   function toggleArmed(shotId: string, action: "target" | "move") {
+    setAddingShot(false);
     setArmed((cur) => (cur?.shotId === shotId && cur.action === action ? null : { shotId, action }));
+  }
+
+  async function handleGreenFinish(pin: LatLng, starts: LatLng[]) {
+    if (!currentRoundHole) return;
+    await saveGreenMarks({ roundHoleId: currentRoundHole.id, pin, puttStarts: starts, detectLieAt: (p) => detectLie(p, holeFeatures ?? []) });
+    setGreenEditorOpen(false);
   }
 
   async function handleDeleteShot(shot: Shot) {
@@ -214,13 +319,6 @@ export function ReviewRoundsPage() {
     if (editingShotId === shot.id) setEditingShotId(null);
     if (armed?.shotId === shot.id) setArmed(null);
     await deleteHandEnteredShot(shot.id);
-  }
-
-  function jumpToFlag(flag: ReviewFlag) {
-    const rh = allRoundHoles?.find((r) => r.id === flag.roundHoleId);
-    const hole = holes?.find((h) => h.id === rh?.holeId);
-    if (hole) setHoleNumber(hole.number);
-    if (flag.shotId) setEditingShotId(flag.shotId);
   }
 
   // --- FIT ingest: parse, overlap-guard, store, compute clock offset, reconcile ---
@@ -397,80 +495,99 @@ export function ReviewRoundsPage() {
   }
 
   // -------------------------------------------------------------- round detail
-  return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ position: "relative", flex: "0 0 42%", minHeight: 240 }}>
-        <button
-          className="map-btn glass"
-          onClick={() => setSelectedRoundId(null)}
-          style={{ position: "absolute", top: "calc(12px + var(--safe-t))", left: 12, zIndex: 4 }}
-          aria-label="Back to rounds"
-        >
-          <Icon.back size={19} />
-        </button>
-        <button
-          className="btn btn--sm glass"
-          onClick={() => setShowScorecard(true)}
-          style={{ position: "absolute", top: "calc(12px + var(--safe-t))", right: 12, zIndex: 4 }}
-        >
-          Scorecard
-        </button>
-        {currentHole && (
-          <div className="hole-bar glass">
-            <button
-              className="hole-bar__nav"
-              onClick={() => setHoleNumber((n) => Math.max(firstHoleNumber, n - 1))}
-              disabled={holeNumber <= firstHoleNumber}
-            >
-              ‹
-            </button>
-            <span className="hole-bar__label">
-              {currentHole.number}
-              <span className="hole-bar__par">
-                {" · "}Par {currentHole.par}
-              </span>
-            </span>
-            <button
-              className="hole-bar__nav"
-              onClick={() => setHoleNumber((n) => Math.min(maxHoleNumber, n + 1))}
-              disabled={holeNumber >= maxHoleNumber}
-            >
-              ›
-            </button>
-          </div>
-        )}
-        {armedPenaltyType && (
-          <div className="toast glass" style={{ top: "auto", bottom: 12, color: "var(--warn)" }}>
-            Tap the map where the penalty happened
-          </div>
-        )}
-        <ReviewMap
-          shots={shots ?? []}
-          fallbackOrigin={fallbackOrigin}
-          armedShotId={armed?.shotId ?? null}
-          armedAction={armed?.action}
-          clickArmed={armedPenaltyType !== null}
-          onMapClick={handleMapClick}
-        />
-      </div>
+  const playedOnLabel = new Date(selectedRound.playedOn).toLocaleDateString(undefined, {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
 
-      <div style={{ flex: 1, overflowY: "auto", background: "var(--bg)" }}>
-        <div style={{ padding: "14px 16px 28px", maxWidth: 720, margin: "0 auto" }}>
-          {/* Round summary */}
+  return (
+    <div className="review-layout">
+      <section className="review-panel">
+        {/* Wide-screen header: the map's floating chrome moves in here, plus a hole strip that
+            only makes sense with room to spare. Hidden on the phone by CSS. */}
+        <div className="review-panel__head">
+          <AppBar
+            title={selectedSummary?.courseName ?? "Round"}
+            subtitle={`${playedOnLabel}${roundTotals.strokes ? ` · ${roundTotals.strokes} strokes · ${relativeToParLabel(roundTotals.toPar)}` : ""}`}
+            onBack={() => setSelectedRoundId(null)}
+            actions={
+              <button className="btn btn--sm" onClick={() => setShowScorecard(true)}>
+                Scorecard
+              </button>
+            }
+          />
+          <div className="review-hole-strip" role="tablist" aria-label="Holes">
+            {scorecardEntries.map((e) => (
+              <button
+                key={e.holeNumber}
+                role="tab"
+                aria-selected={e.holeNumber === holeNumber}
+                className={`${e.score !== null ? scoreToneClass(e.score, e.par) : "score-dot score-dot--none"}${
+                  e.holeNumber === holeNumber ? " is-active" : ""
+                }${flaggedHoleNumbers.has(e.holeNumber) ? " has-flags" : ""}`}
+                onClick={() => setHoleNumber(e.holeNumber)}
+                title={`Hole ${e.holeNumber} · Par ${e.par}${e.score !== null ? ` · ${e.score}` : ""}${
+                  flaggedHoleNumbers.has(e.holeNumber) ? " · to review" : ""
+                }`}
+              >
+                {e.holeNumber}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="review-panel__scroll">
+        <div className="review-panel__body">
+          {/* Round summary + this hole's score, editable in place */}
           <div className="stat-row mb-3">
             <Stat value={roundTotals.strokes || "—"} label="Strokes" />
             <Stat value={relativeToParLabel(roundTotals.toPar)} label="To par" />
-            <Stat
-              value={
-                currentRoundHole?.score != null ? (
-                  <span className={scoreToneClass(currentRoundHole.score, currentHole?.par ?? 4)}>{currentRoundHole.score}</span>
-                ) : (
-                  "—"
-                )
-              }
-              label={`Hole ${holeNumber}`}
-            />
+            <div className="stat">
+              <div className="row" style={{ gap: 6, alignItems: "center" }}>
+                <button
+                  className="map-btn"
+                  style={{ width: 26, height: 26, fontSize: 15 }}
+                  onClick={() => currentRoundHole && setRoundHoleScore(currentRoundHole.id, Math.max(1, (currentRoundHole.score ?? currentHole?.par ?? 4) - 1))}
+                  disabled={!currentRoundHole || (currentRoundHole.score ?? 0) <= 1}
+                  aria-label="Score down"
+                >
+                  −
+                </button>
+                <span className="stat__value" style={{ minWidth: 28, textAlign: "center" }}>
+                  {currentRoundHole?.score != null ? (
+                    <span className={scoreToneClass(currentRoundHole.score, currentHole?.par ?? 4)}>{currentRoundHole.score}</span>
+                  ) : (
+                    "—"
+                  )}
+                </span>
+                <button
+                  className="map-btn"
+                  style={{ width: 26, height: 26, fontSize: 15 }}
+                  onClick={() => currentRoundHole && setRoundHoleScore(currentRoundHole.id, (currentRoundHole.score ?? currentHole?.par ?? 4) + 1)}
+                  disabled={!currentRoundHole}
+                  aria-label="Score up"
+                >
+                  +
+                </button>
+              </div>
+              <div className="stat__label">{currentHole ? `Hole ${holeNumber} · Par ${currentHole.par}` : `Hole ${holeNumber}`}</div>
+            </div>
           </div>
+          {/* The rows and the count disagree — after a putt or stroke edit here, or a miscount
+              at hole-out. One tap squares them; the reader decides which side was right. */}
+          {currentRoundHole?.score != null && accountedTotal > 0 && accountedTotal !== currentRoundHole.score && (
+            <div className="note note--warn mb-3 row row--between" style={{ gap: 8 }}>
+              <span className="small">
+                Recorded: {accounted.swings} shot{accounted.swings === 1 ? "" : "s"} + {accounted.putts} putt{accounted.putts === 1 ? "" : "s"}
+                {accounted.penalties ? ` + ${accounted.penalties} penalt${accounted.penalties === 1 ? "y" : "ies"}` : ""} = {accountedTotal}
+              </span>
+              <button className="btn btn--sm" onClick={() => currentRoundHole && setRoundHoleScore(currentRoundHole.id, accountedTotal)}>
+                Set score to {accountedTotal}
+              </button>
+            </div>
+          )}
 
           {/* Watch ingest */}
           <div className="row row--wrap mb-2" style={{ gap: 8 }}>
@@ -501,32 +618,6 @@ export function ReviewRoundsPage() {
             </div>
           )}
 
-          {/* Flag queue */}
-          {pendingFlags.length > 0 && (
-            <div className="mb-3">
-              <div className="section__title mb-2">
-                {pendingFlags.length} item{pendingFlags.length === 1 ? "" : "s"} to review
-              </div>
-              <div className="stack" style={{ gap: 6 }}>
-                {pendingFlags.map((f) => {
-                  const rh = allRoundHoles?.find((r) => r.id === f.roundHoleId);
-                  const hole = holes?.find((h) => h.id === rh?.holeId);
-                  return (
-                    <div key={f.id} className="list-row" style={{ borderColor: "rgba(255,192,67,.28)", background: "var(--warn-soft)" }}>
-                      <button className="row grow" style={{ background: "none", border: "none", textAlign: "left", padding: 0 }} onClick={() => jumpToFlag(f)}>
-                        <Badge tone="warn">H{hole?.number ?? "?"}</Badge>
-                        <span className="small grow">{f.detail}</span>
-                      </button>
-                      <button className="map-btn" style={{ width: 30, height: 30, color: "var(--accent)" }} onClick={() => setReviewFlagStatus(f.id, "resolved")} title="Mark resolved">
-                        <Icon.check size={16} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Penalty entry */}
           <div className="row mb-3" style={{ gap: 8 }}>
             <span className="small dim" style={{ flex: "none" }}>
@@ -535,7 +626,10 @@ export function ReviewRoundsPage() {
             <select
               className="field grow"
               value={armedPenaltyType ?? ""}
-              onChange={(e) => setArmedPenaltyType((e.target.value || null) as PenaltyType | null)}
+              onChange={(e) => {
+                setAddingShot(false);
+                setArmedPenaltyType((e.target.value || null) as PenaltyType | null);
+              }}
               style={{ padding: "8px 10px" }}
             >
               <option value="">Add… then tap the map</option>
@@ -547,8 +641,44 @@ export function ReviewRoundsPage() {
             </select>
           </div>
 
+          {/* This hole's own review items. Score-balance flags live here; a flag about one shot is
+              shown inside that shot's card below. */}
+          {holeLevelFlags.length > 0 && (
+            <div className="stack mb-3" style={{ gap: 6 }}>
+              {holeLevelFlags.map((f) => (
+                <div key={f.id} className="list-row" style={{ borderColor: "rgba(255,192,67,.28)", background: "var(--warn-soft)" }}>
+                  <span className="warn" style={{ display: "flex", flex: "none" }}>
+                    <Icon.warn size={16} />
+                  </span>
+                  <span className="small grow">{f.detail}</span>
+                  <button className="map-btn" style={{ width: 30, height: 30, color: "var(--accent)" }} onClick={() => setReviewFlagStatus(f.id, "resolved")} title="Mark resolved">
+                    <Icon.check size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Shot list */}
-          <div className="section__title mb-2">Shots</div>
+          <div className="row row--between mb-2" style={{ gap: 8 }}>
+            <span className="section__title">Shots</span>
+            <div className="row" style={{ gap: 6 }}>
+              <button
+                className={`btn btn--sm${addingShot ? " btn--primary" : ""}`}
+                onClick={() => {
+                  setArmed(null);
+                  setArmedPenaltyType(null);
+                  setAddingShot((v) => !v);
+                }}
+                disabled={!currentRoundHole}
+              >
+                <Icon.plus size={14} /> {addingShot ? "Tap map…" : "Add shot"}
+              </button>
+              <button className="btn btn--sm btn--ghost" onClick={() => setGreenEditorOpen(true)} disabled={!currentRoundHole}>
+                <Icon.pin size={14} /> {puttStarts.length || currentRoundHole?.pinLocation ? "Edit green" : "Mark green"}
+              </button>
+            </div>
+          </div>
           {!shots?.length ? (
             <div className="note">No shots recorded for this hole.</div>
           ) : (
@@ -563,8 +693,10 @@ export function ReviewRoundsPage() {
                   rawYards === null ? null : s.swingType === "putt" ? `${Math.round(rawYards * 3)}ft` : `${Math.round(rawYards)}y`;
                 const badPosition = s.positionSource === "tee_fallback" || (s.accuracyM !== null && s.accuracyM > 15);
                 const isArmedFor = (action: "target" | "move") => armed?.shotId === s.id && armed.action === action;
+                const strokeIndex = strokeRows.findIndex((r) => r.id === s.id);
+                const strokeCount = strokeRows.length;
                 return (
-                  <div key={s.id} className="card card--tight">
+                  <div key={s.id} id={`shot-${s.id}`} className="card card--tight">
                     <div className="row row--between">
                       <div className="grow" style={{ minWidth: 0 }}>
                         <div className="row" style={{ gap: 8 }}>
@@ -598,6 +730,19 @@ export function ReviewRoundsPage() {
                         {isEditing ? "Done" : "Edit"}
                       </button>
                     </div>
+
+                    {/* Review items about this shot, right where the fix happens (Edit is a tap away). */}
+                    {(flagsByShot.get(s.id) ?? []).map((f) => (
+                      <div key={f.id} className="row mt-2" style={{ gap: 8, padding: "6px 10px", borderRadius: "var(--r-sm)", background: "var(--warn-soft)" }}>
+                        <span className="warn" style={{ display: "flex", flex: "none" }}>
+                          <Icon.warn size={14} />
+                        </span>
+                        <span className="tiny grow">{f.detail}</span>
+                        <button className="map-btn" style={{ width: 26, height: 26, color: "var(--accent)" }} onClick={() => setReviewFlagStatus(f.id, "resolved")} title="Mark resolved">
+                          <Icon.check size={14} />
+                        </button>
+                      </div>
+                    ))}
 
                     {isEditing && (
                       <div className="mt-2">
@@ -654,6 +799,18 @@ export function ReviewRoundsPage() {
                               >
                                 <Icon.target size={14} /> {isArmedFor("target") ? "Tap map…" : "Set target"}
                               </button>
+                              {/* Order fix for an added stroke that landed one slot off. Putts keep
+                                  their marked order and penalties sit where they were incurred. */}
+                              {s.swingType !== "putt" && (
+                                <>
+                                  <button className="btn btn--sm btn--ghost" onClick={() => swapShotOrder(s.id, -1)} disabled={strokeIndex <= 0} title="Move earlier in the hole">
+                                    ↑ Earlier
+                                  </button>
+                                  <button className="btn btn--sm btn--ghost" onClick={() => swapShotOrder(s.id, 1)} disabled={strokeIndex < 0 || strokeIndex >= strokeCount - 1} title="Move later in the hole">
+                                    ↓ Later
+                                  </button>
+                                </>
+                              )}
                               <button className="btn btn--sm btn--ghost" onClick={() => setShotExcluded(s.id, s.excluded === null)}>
                                 {s.excluded === null ? "Exclude from stats" : "Include in stats"}
                               </button>
@@ -690,10 +847,104 @@ export function ReviewRoundsPage() {
               })}
             </div>
           )}
+
+          {/* Where else the round still needs a look — a pointer, not a queue. */}
+          {otherFlaggedHoles.length > 0 && (
+            <div className="row row--wrap mt-3" style={{ gap: 6, alignItems: "center" }}>
+              <span className="tiny faint">Also to review:</span>
+              {otherFlaggedHoles.map((n) => (
+                <button key={n} className="chip chip--sm" onClick={() => setHoleNumber(n)}>
+                  <Icon.warn size={12} /> Hole {n}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+        </div>
+      </section>
+
+      <div className="review-map">
+        {/* Phone chrome, floating over the map. On wide screens the panel header carries these. */}
+        <div className="review-map__mobile-chrome">
+          <button
+            className="map-btn glass"
+            onClick={() => setSelectedRoundId(null)}
+            style={{ position: "absolute", top: "calc(12px + var(--safe-t))", left: 12, zIndex: 4 }}
+            aria-label="Back to rounds"
+          >
+            <Icon.back size={19} />
+          </button>
+          <button
+            className="btn btn--sm glass"
+            onClick={() => setShowScorecard(true)}
+            style={{ position: "absolute", top: "calc(12px + var(--safe-t))", right: 12, zIndex: 4 }}
+          >
+            Scorecard
+          </button>
+          {currentHole && (
+            <div className="hole-bar glass">
+              <button
+                className="hole-bar__nav"
+                onClick={() => setHoleNumber((n) => Math.max(firstHoleNumber, n - 1))}
+                disabled={holeNumber <= firstHoleNumber}
+                aria-label="Previous hole"
+              >
+                ‹
+              </button>
+              <span className="hole-bar__label">
+                {currentHole.number}
+                <span className="hole-bar__par">
+                  {" · "}Par {currentHole.par}
+                </span>
+              </span>
+              <button
+                className="hole-bar__nav"
+                onClick={() => setHoleNumber((n) => Math.min(maxHoleNumber, n + 1))}
+                disabled={holeNumber >= maxHoleNumber}
+                aria-label="Next hole"
+              >
+                ›
+              </button>
+            </div>
+          )}
+        </div>
+        {armedPenaltyType && (
+          <div className="toast glass" style={{ top: "auto", bottom: 12, color: "var(--warn)" }}>
+            Tap the map where the penalty happened
+          </div>
+        )}
+        {addingShot && (
+          <div className="toast glass" style={{ top: "auto", bottom: 12, color: "var(--warn)" }}>
+            Tap the map where the shot was played from
+          </div>
+        )}
+        <ReviewMap
+          shots={shots ?? []}
+          fallbackOrigin={fallbackOrigin}
+          armedShotId={armed?.shotId ?? null}
+          armedAction={armed?.action}
+          clickArmed={armedPenaltyType !== null || addingShot}
+          onMapClick={handleMapClick}
+        />
       </div>
 
       {showScorecard && <ScorecardSheet entries={scorecardEntries} onClose={() => setShowScorecard(false)} />}
+
+      {/* Pin + putts, on the same screen the round uses at hole-out — existing marks pre-placed
+          so a fix is a nudge. Fixed to the viewport so it covers both layouts (and the nav). */}
+      {greenEditorOpen && currentHole && currentRoundHole && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60 }}>
+          <GreenMap
+            greenPolygon={greenPolygon}
+            fallbackCenter={currentRoundHole.pinLocation ?? currentHole.greenPoint ?? greenCentroid ?? fallbackOrigin ?? { lat: 43.55, lng: -80.2 }}
+            initialPin={currentRoundHole.pinLocation}
+            initialPuttStarts={puttStarts}
+            holeNumber={currentHole.number}
+            onFinish={handleGreenFinish}
+            onClose={() => setGreenEditorOpen(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }

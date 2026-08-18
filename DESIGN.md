@@ -418,6 +418,21 @@ the selected round's actual recorded shots.
   implementation. Only holes with a recorded `score` count toward the total, so a partial round
   still summarizes sensibly.
 
+- **Split layout on wide screens** (`.review-layout` in `index.css`, breakpoint 880px): the phone
+  keeps the map on top with the panel scrolling beneath and the hole bar / back / scorecard
+  floating over the map; from 880px the data panel takes the left column (`clamp(400px, 40vw,
+  560px)`) with its own header — back, course + date + score, a clickable 9-per-row hole strip
+  in scorecard tones, Scorecard — and the map fills the right column top to bottom. Holes are long,
+  not wide, so a tall frame fits them and the width goes to the data. One React tree; CSS `order`
+  and a `.review-map__mobile-chrome` wrapper decide which chrome shows. ←/→ step holes and Esc
+  disarms on a keyboard.
+- **Framing**: `ReviewMap` fits every stroke's start and end (`fitBounds`, bearing tee→last
+  point, pitch 55, padding that clears the hole bar and the tap toast, max zoom 19) rather than
+  centring the tee at a fixed zoom — a long par 5 fills a tall desktop frame instead of running
+  off the top. First placement is instant, later ones ease; it re-frames when the hole's set of
+  stroke ids changes or the map is resized, but not when a stroke merely moves, so repositioning
+  a shot doesn't send the camera drifting after it. A 60ms debounce swallows the empty list Dexie
+  briefly emits while a new hole's rows load.
 - **`ReviewMap.tsx` is a separate component from `CourseMap`**, not more optional props bolted
   onto it. Reviewing a completed round has a fundamentally different interaction model — a fixed
   historical shot path, tapping the map to set a *planned* aim point — versus a live round's
@@ -440,6 +455,26 @@ the selected round's actual recorded shots.
   other write in that file. The shot list below the map has a "🎯 Set Aim Target" toggle per shot;
   toggling one arms `ReviewMap`'s click handler, and the next map tap writes the point and disarms.
   Rendered as a small red marker per shot that has one set.
+- **Review items live with their hole.** Open flags are shown only on the hole they're about —
+  hole-level ones (score balance) above that hole's shot list, shot-level ones inside the shot's
+  card, each with a resolve tick — never as a round-wide queue. Other holes with something open
+  are pointed at: an amber dot on their cell in the desktop hole strip and an "Also to review:
+  Hole n" chip row under the shot list.
+- **Editing the hole after the round**: the score has a −/+ stepper (`setRoundHoleScore`) and a
+  balance hint ("Recorded: 4 shots + 2 putts = 6 · Set score to 6") whenever the rows and the
+  count disagree — the reader decides which side was right, nothing recomputes the score behind
+  them. "Add shot" arms a map tap for a stroke forgotten at the time: `insertShot` slots it in
+  wherever it lengthens the hole's path least (a fairway tap between the drive's landing spot and
+  the green becomes the approach; a tee tap goes first), dates it between its new neighbours so
+  reconciliation orders it the same way, re-chains, and the card opens in edit for the club. "↑
+  Earlier / ↓ Later" (`swapShotOrder`) trades times with the neighbouring stroke for the odd case
+  the heuristic lands one slot off; both rows become userEdited so a re-run keeps the order.
+  "Edit green" opens the same `GreenMap` the round uses at hole-out, with the existing pin and
+  putt starts pre-placed as draggable markers (`initialPuttStarts`); `saveGreenMarks` replaces
+  the green_mark rows, re-closes the approach onto the new first putt, and — importantly — keeps
+  the ORIGINAL marking time on the new putts: reconciliation reads a putt's timestamp as the
+  hole-out moment when it segments laps, so stamping the edit time would pin every later lap of
+  the round to that hole on the next re-run.
 - **Repositioning a shot**: the same arm-then-tap pattern moves where a shot was *played from*
   ("Move shot" → tap the map), with a one-tap "Move to tee" for tee shots — the common correction
   when the watch was pressed after walking off the box. `roundRepo.moveShotStart` writes the new
